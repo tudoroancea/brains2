@@ -1,0 +1,9 @@
+build
+install
+log
+.devcontainer
+.vscode
+*.pyc
+__pycache__
+*.egg-info
+.DS_Store
