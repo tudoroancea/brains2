@@ -10,6 +10,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include_directories(include)
+
 ####################################################################################################
 # dependencies
 ####################################################################################################
@@ -44,6 +48,14 @@ rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_type
 ####################################################################################################
 # common
 ####################################################################################################
+
+install(DIRECTORY
+  meshes
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+ament_auto_add_library(brains2_common SHARED src/common/cone_color.cpp src/common/marker_color.cpp src/common/math.cpp src/common/tracks.cpp)
+target_link_libraries(brains2_common Eigen3::Eigen nlohmann_json::nlohmann_json)
 
 ####################################################################################################
 # sim

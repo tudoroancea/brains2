@@ -1,9 +1,15 @@
-// Copyright (c) 2023. Tudor Oancea
+// Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #ifndef MARKER_COLOR_HPP
 #define MARKER_COLOR_HPP
 
 #include "std_msgs/msg/color_rgba.hpp"
 
-std_msgs::msg::ColorRGBA marker_colors(const std::string& color);
+namespace brains2 {
+namespace common {
 
-#endif  // MARKER_COLOR_HPP
+std_msgs::msg::ColorRGBA marker_colors(const std::string &color);
+
+} // namespace common
+} // namespace brains2
+
+#endif // MARKER_COLOR_HPP

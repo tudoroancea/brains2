@@ -1,6 +1,7 @@
-#include "ihm2/common/marker_color.hpp"
+// Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+#include "brains2/common/marker_color.hpp"
 
-std_msgs::msg::ColorRGBA marker_colors(const std::string& color) {
+std_msgs::msg::ColorRGBA brains2::common::marker_colors(const std::string& color) {
     std_msgs::msg::ColorRGBA color_msg;
     color_msg.a = 1.0;
     if (color == "red") {

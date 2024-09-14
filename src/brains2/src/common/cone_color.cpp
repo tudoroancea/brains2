@@ -1,33 +1,33 @@
-// Copyright (c) 2023. Tudor Oancea
-#include "ihm2/common/cone_color.hpp"
+// Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+#include "brains2/common/cone_color.hpp"
 #include <string>
 
-bool is_orange(const ConeColor& c) {
-    return c == ConeColor::BIG_ORANGE || c == ConeColor::SMALL_ORANGE;
+bool brains2::common::is_orange(const brains2::common::ConeColor& c) {
+    return c == brains2::common::ConeColor::BIG_ORANGE || c == brains2::common::ConeColor::SMALL_ORANGE;
 }
 
-ConeColor cone_color_from_string(const std::string& s) {
+brains2::common::ConeColor brains2::common::cone_color_from_string(const std::string& s) {
     if (s == "blue") {
-        return ConeColor::BLUE;
+        return brains2::common::ConeColor::BLUE;
     } else if (s == "yellow") {
-        return ConeColor::YELLOW;
+        return brains2::common::ConeColor::YELLOW;
     } else if (s == "big_orange") {
-        return ConeColor::BIG_ORANGE;
+        return brains2::common::ConeColor::BIG_ORANGE;
     } else if (s == "small_orange") {
-        return ConeColor::SMALL_ORANGE;
+        return brains2::common::ConeColor::SMALL_ORANGE;
     } else {
         throw std::runtime_error("invalid cone color " + s);
     }
 }
 
-std::string cone_color_to_string(const ConeColor& c) {
-    if (c == ConeColor::BLUE) {
+std::string brains2::common::cone_color_to_string(const brains2::common::ConeColor& c) {
+    if (c == brains2::common::ConeColor::BLUE) {
         return "blue";
-    } else if (c == ConeColor::YELLOW) {
+    } else if (c == brains2::common::ConeColor::YELLOW) {
         return "yellow";
-    } else if (c == ConeColor::BIG_ORANGE) {
+    } else if (c == brains2::common::ConeColor::BIG_ORANGE) {
         return "big_orange";
-    } else if (c == ConeColor::SMALL_ORANGE) {
+    } else if (c == brains2::common::ConeColor::SMALL_ORANGE) {
         return "small_orange";
     } else {
         throw std::runtime_error("invalid cone color");
