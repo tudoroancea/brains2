@@ -24,6 +24,7 @@ add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../t
 
 # find ROS 2 dependencies
 find_package(ament_cmake_auto REQUIRED)
+find_package(ament_cmake_gtest REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 ament_auto_find_build_dependencies()
 
@@ -74,10 +75,8 @@ ament_auto_add_library(brains2_common SHARED
 target_link_libraries(brains2_common Eigen3::Eigen nlohmann_json::nlohmann_json)
 
 if (CMAKE_TESTING_ENABLED)
-  add_executable(test_tracks tests/common/test_tracks.cpp)
-  add_dependencies(test_tracks brains2_common)
-  target_link_libraries(test_tracks PUBLIC brains2_common GTest::gtest GTest::gtest_main)
-  gtest_discover_tests(test_tracks)
+  ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
+  target_link_libraries(test_tracks brains2_common GTest::gtest GTest::gtest_main)
 endif()
 
 ####################################################################################################
