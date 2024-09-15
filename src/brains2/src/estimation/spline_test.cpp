@@ -1,21 +1,21 @@
 #include <osqp/osqp.h>
 #include <OsqpEigen/OsqpEigen.h>
+#include <algorithm>  // for std::upper_bound
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCore>
 #include <fstream>
 #include <iostream>
+#include <numeric>  // for std::partial_sum
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <unsupported/Eigen/KroneckerProduct>
 #include <vector>
-#include <tuple>
-#include <algorithm> // for std::upper_bound
-#include <numeric>   // for std::partial_sum
-#include <chrono>
 #include "brains2/common/cone_color.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
@@ -182,7 +182,8 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
         throw std::runtime_error("Failed to solve QP for X");
     }
 
-    Eigen::VectorXd p_X = solver.getSolution();
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_X =
+        solver.getSolution();
 
     if (!solver.updateGradient(q.col(1))) {
         throw std::runtime_error("Failed to set q_y");
@@ -198,13 +199,14 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
         throw std::runtime_error("Failed to solve QP for Y");
     }
 
-    Eigen::VectorXd p_Y = solver.getSolution();
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_Y =
+        solver.getSolution();
 
-    // Reshape p_X and p_Y to (N, 4) matrices
-    Eigen::MatrixXd p_X_mat = Eigen::Map<Eigen::MatrixXd>(p_X.data(), 4, N).transpose();
-    Eigen::MatrixXd p_Y_mat = Eigen::Map<Eigen::MatrixXd>(p_Y.data(), 4, N).transpose();
+    // return std::make_pair(p_X_mat, p_Y_mat);
+    p_X.resize(N, 4);
+    p_Y.resize(N, 4);
 
-    return std::make_pair(p_X_mat, p_Y_mat);
+    return std::make_pair(p_X, p_Y);
 }
 
 // Function to compute the lengths of each spline interval
