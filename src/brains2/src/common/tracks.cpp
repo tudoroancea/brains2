@@ -15,6 +15,7 @@ tl::optional<std::string> validate_track_name(const std::string& track_name) {
     if (std::filesystem::exists(track_file)) {
         return track_file.string();
     } else {
+        std::cerr << "Track " << track_name << " not found in TRACK_DATABASE_PATH" << std::endl;
         return tl::nullopt;
     }
 #else
@@ -22,13 +23,9 @@ tl::optional<std::string> validate_track_name(const std::string& track_name) {
 #endif
 }
 
-tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> brains2::common::load_cones(
-    const std::string& track_name) {
-    tl::optional<std::string> track_name_opt = validate_track_name(track_name);
-    if (!track_name_opt) {
-        return tl::nullopt;
-    }
-    rapidcsv::Document cones(track_name_opt.value());
+tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>>
+brains2::common::load_cones_from_file(const std::filesystem::path& track_path) {
+    rapidcsv::Document cones(track_path.string());
     // get the positions of the cones in columns X and Y and the corresponding
     // type in column cone_type
     std::vector<double> cones_X = cones.GetColumn<double>("X");
@@ -46,20 +43,29 @@ tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> b
     return cones_map;
 }
 
+tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>>
+brains2::common::load_cones_from_track_database(const std::string& track_name) {
+    tl::optional<std::string> track_name_opt = validate_track_name(track_name);
+    if (!track_name_opt) {
+        return tl::nullopt;
+    }
+    return brains2::common::load_cones_from_file(track_name_opt.value());
+}
+
 void brains2::common::save_cones(
-    const std::string& filename,
+    const std::filesystem::path &track_path,
     const std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>& cones_map) {
-    std::ofstream f(filename);
+
+    std::ofstream f(track_path.string());
     f << "color,X,Y\n";
 
     for (auto it = cones_map.begin(); it != cones_map.end(); ++it) {
         for (Eigen::Index id(0); id < it->second.rows(); ++id) {
             f << brains2::common::cone_color_to_string(it->first) << "," << it->second(id, 0) << ","
-              << it->second(id, 1) << ",0.0,0.0,0.0,0.0,"
-              << (it->first == brains2::common::ConeColor::YELLOW || it->second(id, 0) > 0) << ","
-              << (it->first == brains2::common::ConeColor::BLUE || it->second(id, 0) < 0) << "\n";
+              << it->second(id, 1) << "\n";
         }
     }
+    f.close();
 }
 
 // void brains2::common::load_center_line(const std::string& track_name,
