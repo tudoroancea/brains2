@@ -60,7 +60,9 @@ target_link_libraries(brains2_common Eigen3::Eigen nlohmann_json::nlohmann_json)
 ####################################################################################################
 # sim
 ####################################################################################################
-
+ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp src/sim/models.c)
+target_link_libraries(brains2_sim Eigen3::Eigen)
+target_include_directories(brains2_sim PUBLIC src/sim)
 ####################################################################################################
 # control
 ####################################################################################################
