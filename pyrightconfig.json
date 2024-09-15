@@ -1,3 +1,5 @@
 {
-  "typeCheckingMode": "off"
+  "typeCheckingMode": "off",
+  "venvPath": "~/miniforge3/envs",
+  "venv": "brains2"
 }

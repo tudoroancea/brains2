@@ -3,7 +3,8 @@
 #include <string>
 
 bool brains2::common::is_orange(const brains2::common::ConeColor& c) {
-    return c == brains2::common::ConeColor::BIG_ORANGE || c == brains2::common::ConeColor::SMALL_ORANGE;
+    return c == brains2::common::ConeColor::BIG_ORANGE ||
+           c == brains2::common::ConeColor::SMALL_ORANGE;
 }
 
 brains2::common::ConeColor brains2::common::cone_color_from_string(const std::string& s) {

@@ -16,10 +16,9 @@ float deg2rad(float deg);
 double deg2rad(double deg);
 float rad2deg(float rad);
 double rad2deg(double rad);
-geometry_msgs::msg::Quaternion rpy_to_quaternion(double roll, double pitch,
-                                                 double yaw);
+geometry_msgs::msg::Quaternion rpy_to_quaternion(double roll, double pitch, double yaw);
 
-} // namespace common
-} // namespace brains2
+}  // namespace common
+}  // namespace brains2
 
-#endif // MATH_HPP
+#endif  // MATH_HPP
