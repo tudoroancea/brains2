@@ -155,63 +155,50 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     b_y[A_rows - 2] = delta_s[0] * std::sin(initial_heading);
     b_y[A_rows - 1] = delta_s[N - 1] * std::sin(final_heading);
 
-    // Setup OSQP solver for X
-    OsqpEigen::Solver solver_x;
-    solver_x.settings()->setWarmStart(true);
-    solver_x.settings()->setVerbosity(verbose);
-    solver_x.data()->setNumberOfVariables(P.cols());
-    solver_x.data()->setNumberOfConstraints(A_rows);
+    // Setup OSQP solver
+    OsqpEigen::Solver solver;
+    solver.settings()->setWarmStart(true);
+    solver.settings()->setVerbosity(verbose);
+    solver.data()->setNumberOfVariables(P.cols());
+    solver.data()->setNumberOfConstraints(A_rows);
 
-    if (!solver_x.data()->setHessianMatrix(P)) {
+    if (!solver.data()->setHessianMatrix(P)) {
         throw std::runtime_error("Failed to set P");
     }
-    if (!solver_x.data()->setGradient(q.col(0))) {
+    if (!solver.data()->setGradient(q.col(0))) {
         throw std::runtime_error("Failed to set q_x");
     }
-    if (!solver_x.data()->setLinearConstraintsMatrix(A)) {
+    if (!solver.data()->setLinearConstraintsMatrix(A)) {
         throw std::runtime_error("Failed to set A");
     }
-    solver_x.data()->setLowerBound(b_x);
-    solver_x.data()->setUpperBound(b_x);
-    if (!solver_x.initSolver()) {
+    solver.data()->setLowerBound(b_x);
+    solver.data()->setUpperBound(b_x);
+    if (!solver.initSolver()) {
         throw std::runtime_error("Failed to initialize solver for X");
     }
 
     // Solve for X
-    if (solver_x.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
+    if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
         throw std::runtime_error("Failed to solve QP for X");
     }
 
-    Eigen::VectorXd p_X = solver_x.getSolution();
+    Eigen::VectorXd p_X = solver.getSolution();
 
-    // Setup OSQP solver for Y
-    OsqpEigen::Solver solver_y;
-    solver_y.settings()->setWarmStart(true);
-    solver_y.settings()->setVerbosity(verbose);
-    solver_y.data()->setNumberOfVariables(P.cols());
-    solver_y.data()->setNumberOfConstraints(A_rows);
-
-    if (!solver_y.data()->setHessianMatrix(P)) {
-        throw std::runtime_error("Failed to set P");
-    }
-    if (!solver_y.data()->setGradient(q.col(1))) {
+    if (!solver.updateGradient(q.col(1))) {
         throw std::runtime_error("Failed to set q_y");
     }
-    if (!solver_y.data()->setLinearConstraintsMatrix(A)) {
+    if (!solver.updateLinearConstraintsMatrix(A)) {
         throw std::runtime_error("Failed to set A");
     }
-    solver_y.data()->setLowerBound(b_y);
-    solver_y.data()->setUpperBound(b_y);
-    if (!solver_y.initSolver()) {
-        throw std::runtime_error("Failed to initialize solver for Y");
-    }
+    solver.updateLowerBound(b_y);
+    solver.updateUpperBound(b_y);
 
     // Solve for Y
-    if (solver_y.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
+    if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
         throw std::runtime_error("Failed to solve QP for Y");
     }
 
-    Eigen::VectorXd p_Y = solver_y.getSolution();
+    Eigen::VectorXd p_Y = solver.getSolution();
 
     // Reshape p_X and p_Y to (N, 4) matrices
     Eigen::MatrixXd p_X_mat = Eigen::Map<Eigen::MatrixXd>(p_X.data(), 4, N).transpose();
