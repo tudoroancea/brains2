@@ -89,7 +89,8 @@ target_include_directories(brains2_sim PUBLIC src/sim)
 ament_auto_add_executable(sim_node src/sim/sim_node.cpp)
 target_link_libraries(sim_node
   "${cpp_typesupport_target}" # for custom message and service types defined in this package
-    brains2_sim
+  brains2_common
+  brains2_sim
 )
 ####################################################################################################
 # control
