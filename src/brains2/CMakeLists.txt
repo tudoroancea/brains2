@@ -76,7 +76,7 @@ target_link_libraries(brains2_common Eigen3::Eigen nlohmann_json::nlohmann_json)
 
 if (CMAKE_TESTING_ENABLED)
   ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
-  target_link_libraries(test_tracks brains2_common GTest::gtest GTest::gtest_main)
+  target_link_libraries(test_tracks brains2_common)
 endif()
 
 ####################################################################################################
