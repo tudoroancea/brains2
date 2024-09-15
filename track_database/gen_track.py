@@ -211,7 +211,7 @@ class TrackGenerator:
 
     def bounded_voronoi(
         self, input_points: np.ndarray, bounding_box: np.ndarray
-    ) -> spatial.qhull.Voronoi:
+    ) -> spatial.Voronoi:
         """
         Creates a Voronoi diagram bounded by the bounding box.
         Mirror input points at edges of the bounding box.
@@ -223,7 +223,7 @@ class TrackGenerator:
             bounding_box (numpy.ndarray): Specifies the boundaries of the Voronoi diagram, [x_min, x_max, y_min, y_max].
 
         Returns:
-            scipy.spatial.qhull.Voronoi: Voronoi diagram object.
+            scipy.spatial.Voronoi: Voronoi diagram object.
         """
 
         def _mirror(boundary, axis):
@@ -470,7 +470,7 @@ class TrackGenerator:
 
     def _plot_voronoi(
         self,
-        vor: spatial.qhull.Voronoi,
+        vor: spatial.Voronoi,
         sorted_vertices: np.ndarray,
         random_point_indices: np.ndarray,
         input_points: np.ndarray,
@@ -481,7 +481,7 @@ class TrackGenerator:
         Visualises the voronoi diagram and the resulting track.
 
         Args:
-            vor (scipy.spatial.qhull.Voronoi): Voronoi diagram object.
+            vor (scipy.spatial.Voronoi): Voronoi diagram object.
             sorted_vertices (numpy.ndarray): Selected vertices sorted clockwise.
             random_point_indices (numpy.ndarray): Selected points.
             input_points (numpy.ndarray): All Voronoi points.
@@ -548,20 +548,19 @@ class TrackGenerator:
         track_name: str,
     ):
         """Writes the track data to a csv files."""
-        track_dir = os.path.abspath(os.path.join(output_dir, track_name))
-        os.makedirs(track_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
         save_cones(
-            os.path.join(track_dir, track_name + "_cones.csv"),
+            os.path.join(output_dir, track_name + ".csv"),
             self.blue_cones,
             self.yellow_cones,
             TrackGenerator.ORANGE_CONES,
-            [],
         )
-        save_center_line(
-            os.path.join(track_dir, track_name + "_center_line.csv"),
-            self.center_line,
-            np.full_like(self.center_line, self._track_width / 2),
-        )
+        # TODO(mattbrth): Uncomment when center line is needed again
+        # save_center_line(
+        #     os.path.join(ouptut_dir, track_name + "_center_line.csv"),
+        #     self.center_line,
+        #     np.full_like(self.center_line, self._track_width / 2),
+        # )
 
 
 if __name__ == "__main__":
