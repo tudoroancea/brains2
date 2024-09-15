@@ -9,7 +9,7 @@ namespace common {
 
 std_msgs::msg::ColorRGBA marker_colors(const std::string &color);
 
-} // namespace common
-} // namespace brains2
+}  // namespace common
+}  // namespace brains2
 
-#endif // MARKER_COLOR_HPP
+#endif  // MARKER_COLOR_HPP

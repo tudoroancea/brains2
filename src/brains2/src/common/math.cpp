@@ -1,8 +1,8 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/common/math.hpp"
+#include <cmath>
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
-#include <cmath>
 
 double brains2::common::clip(double n, double lower, double upper) {
     return std::max(lower, std::min(n, upper));
@@ -19,7 +19,8 @@ Eigen::VectorXd brains2::common::atan2(const Eigen::VectorXd& y, const Eigen::Ve
 double brains2::common::wrap_to_pi(double x) {
     double tpr = std::fmod(x + M_PI, 2 * M_PI);
     if (tpr < 0) {
-        tpr += 2 * M_PI;  // necessary because of how fmod works in C++ (it always return a remainder with the same sign as the dividend)
+        tpr += 2 * M_PI;  // necessary because of how fmod works in C++ (it always return a
+                          // remainder with the same sign as the dividend)
     }
     return tpr - M_PI;
 }
@@ -48,7 +49,9 @@ double brains2::common::deg2rad(double deg) {
     return deg * 0.017453292519943295;
 }
 
-geometry_msgs::msg::Quaternion brains2::common::rpy_to_quaternion(double roll, double pitch, double yaw) {
+geometry_msgs::msg::Quaternion brains2::common::rpy_to_quaternion(double roll,
+                                                                  double pitch,
+                                                                  double yaw) {
     tf2::Quaternion q;
     q.setRPY(roll, pitch, yaw);
     return tf2::toMsg(q);
