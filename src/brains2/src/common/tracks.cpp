@@ -1,15 +1,18 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/common/tracks.hpp"
-#include "brains2/common/math.hpp"
-#include "brains2/external/rapidcsv.hpp"
 #include <cmath>
 #include <filesystem>
 #include <vector>
+#include "brains2/common/math.hpp"
+#include "brains2/external/rapidcsv.hpp"
 
-// functions to load/save cones and center line from the track_database package ===========================================
-static std::string validate_track_name_or_file(const std::string& track_name_or_file, std::string tdb_suffix = "_cones.csv") {
+// functions to load/save cones and center line from the track_database package
+// ===========================================
+static std::string validate_track_name_or_file(const std::string& track_name_or_file,
+                                               std::string tdb_suffix = "_cones.csv") {
 #ifdef TRACK_DATABASE_PATH
-    std::filesystem::path tdb_track(TRACK_DATABASE_PATH), other_track(track_name_or_file), actual_track;
+    std::filesystem::path tdb_track(TRACK_DATABASE_PATH), other_track(track_name_or_file),
+        actual_track;
     tdb_track /= (track_name_or_file + "/" + track_name_or_file + tdb_suffix);
     other_track = std::filesystem::absolute(other_track);
     if (std::filesystem::exists(tdb_track)) {
@@ -17,7 +20,10 @@ static std::string validate_track_name_or_file(const std::string& track_name_or_
     } else if (std::filesystem::exists(other_track)) {
         actual_track = other_track;
     } else {
-        throw std::runtime_error("track " + track_name_or_file + " not found neither in TRACK_DATABASE_PATH nor in the current directory, tried:\n\r" + tdb_track.string() + "\n\r" + other_track.string());
+        throw std::runtime_error("track " + track_name_or_file +
+                                 " not found neither in TRACK_DATABASE_PATH "
+                                 "nor in the current directory, tried:\n\r" +
+                                 tdb_track.string() + "\n\r" + other_track.string());
     }
 
     if (!std::filesystem::exists(actual_track)) {
@@ -32,10 +38,12 @@ static std::string validate_track_name_or_file(const std::string& track_name_or_
 #endif
 }
 
-std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d> load_cones(const std::string& track_name_or_file) {
+std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d> load_cones(
+    const std::string& track_name_or_file) {
     // if the file is a CSV file, load it directly
     rapidcsv::Document cones(validate_track_name_or_file(track_name_or_file, "_cones.csv"));
-    // get the positions of the cones in columns X and Y and the corresponding type in column cone_type
+    // get the positions of the cones in columns X and Y and the corresponding
+    // type in column cone_type
     std::vector<double> cones_x = cones.GetColumn<double>("X");
     std::vector<double> cones_y = cones.GetColumn<double>("Y");
     std::vector<std::string> cones_type = cones.GetColumn<std::string>("cone_type");
@@ -51,34 +59,27 @@ std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d> load_cones(cons
     return cones_map;
 }
 
-
 void brains2::common::save_cones(
-        const std::string& filename,
-        const std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>& cones_map) {
+    const std::string& filename,
+    const std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>& cones_map) {
     std::ofstream f(filename);
     f << "cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left\n";
 
     for (auto it = cones_map.begin(); it != cones_map.end(); ++it) {
         for (Eigen::Index id(0); id < it->second.rows(); ++id) {
-            f << brains2::common::cone_color_to_string(it->first)
-              << ","
-              << it->second(id, 0)
-              << ","
-              << it->second(id, 1)
-              << ",0.0,0.0,0.0,0.0,"
-              << (it->first == brains2::common::ConeColor::YELLOW || it->second(id, 0) > 0)
-              << ","
-              << (it->first == brains2::common::ConeColor::BLUE || it->second(id, 0) < 0)
-              << "\n";
+            f << brains2::common::cone_color_to_string(it->first) << "," << it->second(id, 0) << ","
+              << it->second(id, 1) << ",0.0,0.0,0.0,0.0,"
+              << (it->first == brains2::common::ConeColor::YELLOW || it->second(id, 0) > 0) << ","
+              << (it->first == brains2::common::ConeColor::BLUE || it->second(id, 0) < 0) << "\n";
         }
     }
 }
 
-void brains2::common::load_center_line(
-        const std::string& track_name_or_file,
-        Eigen::MatrixX2d& center_line,
-        Eigen::MatrixX2d& track_widths) {
-    rapidcsv::Document center_line_csv(validate_track_name_or_file(track_name_or_file, "_center_line.csv"));
+void brains2::common::load_center_line(const std::string& track_name_or_file,
+                                       Eigen::MatrixX2d& center_line,
+                                       Eigen::MatrixX2d& track_widths) {
+    rapidcsv::Document center_line_csv(
+        validate_track_name_or_file(track_name_or_file, "_center_line.csv"));
     size_t row_count = center_line_csv.GetRowCount();
     center_line.resize(row_count, 2);
     track_widths.resize(row_count, 2);
@@ -90,18 +91,19 @@ void brains2::common::load_center_line(
     }
 }
 
-void brains2::common::save_center_line(
-        const std::string& filename,
-        const Eigen::MatrixX2d& center_line,
-        const Eigen::MatrixX2d& track_widths) {
+void brains2::common::save_center_line(const std::string& filename,
+                                       const Eigen::MatrixX2d& center_line,
+                                       const Eigen::MatrixX2d& track_widths) {
     std::ofstream f(filename);
     f << "x,y,right_width,left_width\n";
     for (Eigen::Index i = 0; i < center_line.rows(); ++i) {
-        f << center_line(i, 0) << "," << center_line(i, 1) << "," << track_widths(i, 0) << "," << track_widths(i, 1) << "\n";
+        f << center_line(i, 0) << "," << center_line(i, 1) << "," << track_widths(i, 0) << ","
+          << track_widths(i, 1) << "\n";
     }
 }
 
-// class used to wrap the track files generated in python =================================================================
+// class used to wrap the track files generated in python
+// =================================================================
 
 brains2::common::Track::Track(const std::string& csv_file) {
     rapidcsv::Document doc(csv_file);
@@ -158,11 +160,17 @@ static size_t locate_index(const Eigen::VectorXd& v, double x) {
     return std::upper_bound(v.data(), v.data() + v.size(), x) - v.data() - 1;
 }
 
-static double angle3pt(const Eigen::Vector2d& a, const Eigen::Vector2d& b, const Eigen::Vector2d& c) {
-    return brains2::common::wrap_to_pi(std::atan2(c(1) - b(1), c(0) - b(0)) - std::atan2(a(1) - b(1), a(0) - b(0)));
+static double angle3pt(const Eigen::Vector2d& a,
+                       const Eigen::Vector2d& b,
+                       const Eigen::Vector2d& c) {
+    return brains2::common::wrap_to_pi(std::atan2(c(1) - b(1), c(0) - b(0)) -
+                                       std::atan2(a(1) - b(1), a(0) - b(0)));
 }
 
-void brains2::common::Track::interp(const Eigen::MatrixXd& coeffs, double s, double& value, int ind) const {
+void brains2::common::Track::interp(const Eigen::MatrixXd& coeffs,
+                                    double s,
+                                    double& value,
+                                    int ind) const {
     // find i such that s_ref[i] <= s < s_ref[i+1]
     if (ind < 0) {
         ind = locate_index(s_ref, s);
@@ -171,19 +179,19 @@ void brains2::common::Track::interp(const Eigen::MatrixXd& coeffs, double s, dou
     value = coeffs(ind, 0) + coeffs(ind, 1) * (s - s_ref(ind));
 }
 
-void brains2::common::Track::project(
-        const Eigen::Vector2d& car_pos,
-        double s_guess,
-        double s_tol,
-        double* s_proj,
-        double* X_ref_proj,
-        double* Y_ref_proj,
-        double* phi_ref_proj,
-        double* phi_ref_preview,
-        double* kappa_ref_proj,
-        double* right_width_proj,
-        double* left_width_proj) {
-    // extract all the points in X_ref, Y_ref associated with s_ref values within s_guess +- s_tol
+void brains2::common::Track::project(const Eigen::Vector2d& car_pos,
+                                     double s_guess,
+                                     double s_tol,
+                                     double* s_proj,
+                                     double* X_ref_proj,
+                                     double* Y_ref_proj,
+                                     double* phi_ref_proj,
+                                     double* phi_ref_preview,
+                                     double* kappa_ref_proj,
+                                     double* right_width_proj,
+                                     double* left_width_proj) {
+    // extract all the points in X_ref, Y_ref associated with s_ref values
+    // within s_guess +- s_tol
     double s_low = std::max(s_guess - s_tol, s_ref(0)),
            s_up = std::min(s_guess + s_tol, s_ref(s_ref.size() - 1));
     long long id_low = locate_index(s_ref, s_low), id_up = locate_index(s_ref, s_up);
@@ -193,12 +201,15 @@ void brains2::common::Track::project(
     if (id_up < static_cast<long long>(s_ref.size()) - 1) {
         ++id_up;
     }
-    Eigen::ArrayX2d local_traj = Eigen::ArrayX2d::Zero(id_up - id_low + 1, 2);  // problem with difference of size_ints ?
+    Eigen::ArrayX2d local_traj =
+        Eigen::ArrayX2d::Zero(id_up - id_low + 1,
+                              2);  // problem with difference of size_ints ?
     local_traj.col(0) = X_ref.segment(id_low, id_up - id_low + 1);
     local_traj.col(1) = Y_ref.segment(id_low, id_up - id_low + 1);
 
     // find the closest point to car_pos to find one segment extremity
-    Eigen::VectorXd sqdist = (local_traj.col(0) - car_pos(0)).square() + (local_traj.col(1) - car_pos(1)).square();
+    Eigen::VectorXd sqdist =
+        (local_traj.col(0) - car_pos(0)).square() + (local_traj.col(1) - car_pos(1)).square();
     long long id_min, id_prev, id_next;
     sqdist.minCoeff(&id_min);
     id_prev = id_min - 1;
@@ -212,9 +223,12 @@ void brains2::common::Track::project(
     // TODO: what happens if id_min == 0 or id_min == local_traj.rows() - 1 ?
     // This should not happen though
 
-    // compute the angles between car_pos, the closest point and the next and previous point to find the second segment extremity
-    double angle_prev = std::fabs(angle3pt(local_traj.row(id_min), car_pos, local_traj.row(id_prev))),
-           angle_next = std::fabs(angle3pt(local_traj.row(id_min), car_pos, local_traj.row(id_next)));
+    // compute the angles between car_pos, the closest point and the next and
+    // previous point to find the second segment extremity
+    double angle_prev =
+               std::fabs(angle3pt(local_traj.row(id_min), car_pos, local_traj.row(id_prev))),
+           angle_next =
+               std::fabs(angle3pt(local_traj.row(id_min), car_pos, local_traj.row(id_next)));
     Eigen::Vector2d a, b;
     double sa, sb;
     if (angle_prev > angle_next) {
@@ -233,7 +247,8 @@ void brains2::common::Track::project(
     double dx = b(0) - a(0), dy = b(1) - a(1);
     double lambda = ((car_pos(0) - a(0)) * dx + (car_pos(1) - a(1)) * dy) / (dx * dx + dy * dy);
 
-    // compute the interpolated values (with non null pointers) at lambda using the index of the closest point
+    // compute the interpolated values (with non null pointers) at lambda using
+    // the index of the closest point
     if (s_proj != nullptr) {
         *s_proj = sa + lambda * (sb - sa);
     }
@@ -261,7 +276,10 @@ void brains2::common::Track::project(
     }
 }
 
-void brains2::common::Track::frenet_to_cartesian(const double& s, const double& n, double& X, double& Y) const {
+void brains2::common::Track::frenet_to_cartesian(const double& s,
+                                                 const double& n,
+                                                 double& X,
+                                                 double& Y) const {
     double X_ref, Y_ref, phi_ref;
     this->interp(coeffs_phi, s, phi_ref);
     this->interp(coeffs_X, s, X_ref);
@@ -271,7 +289,10 @@ void brains2::common::Track::frenet_to_cartesian(const double& s, const double& 
     Y = Y_ref + n * normal(1);
 }
 
-void brains2::common::Track::frenet_to_cartesian(const Eigen::VectorXd& s, const Eigen::VectorXd& n, Eigen::VectorXd& X, Eigen::VectorXd& Y) const {
+void brains2::common::Track::frenet_to_cartesian(const Eigen::VectorXd& s,
+                                                 const Eigen::VectorXd& n,
+                                                 Eigen::VectorXd& X,
+                                                 Eigen::VectorXd& Y) const {
     X.resize(s.size());
     Y.resize(s.size());
     for (Eigen::Index i = 0; i < s.size(); ++i) {
@@ -279,9 +300,21 @@ void brains2::common::Track::frenet_to_cartesian(const Eigen::VectorXd& s, const
     }
 }
 
-double brains2::common::Track::length() const { return -s_ref(0); }
-size_t brains2::common::Track::size() const { return s_ref.size(); }
-double* brains2::common::Track::get_s_ref() { return s_ref.data(); }
-double* brains2::common::Track::get_kappa_ref() { return kappa_ref.data(); }
-double* brains2::common::Track::get_X_ref() { return X_ref.data(); }
-double* brains2::common::Track::get_Y_ref() { return Y_ref.data(); }
+double brains2::common::Track::length() const {
+    return -s_ref(0);
+}
+size_t brains2::common::Track::size() const {
+    return s_ref.size();
+}
+double* brains2::common::Track::get_s_ref() {
+    return s_ref.data();
+}
+double* brains2::common::Track::get_kappa_ref() {
+    return kappa_ref.data();
+}
+double* brains2::common::Track::get_X_ref() {
+    return X_ref.data();
+}
+double* brains2::common::Track::get_Y_ref() {
+    return Y_ref.data();
+}
