@@ -10,4 +10,4 @@ PYTHON_EXE=$(which python3)
 echo "Using python interpreter: $PYTHON_EXE"
 
 # run colcon build
-PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources colcon build --symlink-install --executor parallel --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev
+PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources colcon build --symlink-install --executor parallel --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=Release -Wno-dev
