@@ -5,7 +5,8 @@
 #include <string>
 #include <unordered_map>
 #include "brains2/common/cone_color.hpp"
-#include "eigen3/Eigen/Dense"
+#include "brains2/external/optional.hpp"
+#include "Eigen/Dense"
 
 namespace brains2 {
 namespace common {
@@ -14,18 +15,19 @@ namespace common {
 // functions to load/save cones and center line from the track_database package
 // ============================================================================
 
-std::unordered_map<ConeColor, Eigen::MatrixX2d> load_cones(const std::string &track_name_or_file);
+tl::optional<std::unordered_map<ConeColor, Eigen::MatrixX2d>> load_cones(
+    const std::string &track_name);
 
 void save_cones(const std::string &filename,
                 const std::unordered_map<ConeColor, Eigen::MatrixX2d> &cones_map);
 
-void load_center_line(const std::string &track_name_or_file,
-                      Eigen::MatrixX2d &center_line,
-                      Eigen::MatrixX2d &track_widths);
-
-void save_center_line(const std::string &filename,
-                      const Eigen::MatrixX2d &center_line,
-                      const Eigen::MatrixX2d &track_widths);
+// void load_center_line(const std::string &track_name_or_file,
+//                       Eigen::MatrixX2d &center_line,
+//                       Eigen::MatrixX2d &track_widths);
+//
+// void save_center_line(const std::string &filename,
+//                       const Eigen::MatrixX2d &center_line,
+//                       const Eigen::MatrixX2d &track_widths);
 
 // =================================================================
 // class used to wrap the track files generated in python
@@ -33,8 +35,10 @@ void save_center_line(const std::string &filename,
 
 class Track {
 private:
+    // TODO(mattbrth): merge right_width and left_width into one vector track_width
     Eigen::VectorXd s_ref, X_ref, Y_ref, phi_ref, kappa_ref, right_width, left_width;
     Eigen::VectorXd delta_s;
+    // TODO(mattbrth): same for coeffs
     Eigen::MatrixX2d coeffs_X, coeffs_Y, coeffs_phi, coeffs_kappa, coeffs_right_width,
         coeffs_left_width;
 

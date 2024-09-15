@@ -6,14 +6,11 @@
 namespace brains2 {
 namespace common {
 
-enum class ConeColor : char {
+enum class ConeColor : uint8_t {
     BLUE,
     YELLOW,
-    BIG_ORANGE,
-    SMALL_ORANGE,
+    ORANGE,
 };
-
-bool is_orange(const ConeColor &c);
 
 ConeColor cone_color_from_string(const std::string &s);
 

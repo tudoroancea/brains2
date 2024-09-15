@@ -8,53 +8,40 @@
 
 // functions to load/save cones and center line from the track_database package
 // ===========================================
-static std::string validate_track_name_or_file(const std::string& track_name_or_file,
-                                               std::string tdb_suffix = "_cones.csv") {
+static tl::optional<std::string> validate_track_name(const std::string& track_name) {
 #ifdef TRACK_DATABASE_PATH
-    std::filesystem::path tdb_track(TRACK_DATABASE_PATH), other_track(track_name_or_file),
-        actual_track;
-    tdb_track /= (track_name_or_file + "/" + track_name_or_file + tdb_suffix);
-    other_track = std::filesystem::absolute(other_track);
-    if (std::filesystem::exists(tdb_track)) {
-        actual_track = tdb_track;
-    } else if (std::filesystem::exists(other_track)) {
-        actual_track = other_track;
+    std::filesystem::path track_file(TRACK_DATABASE_PATH);
+    track_file /= (track_name + ".csv");
+    if (std::filesystem::exists(track_file)) {
+        return track_file.string();
     } else {
-        throw std::runtime_error("track " + track_name_or_file +
-                                 " not found neither in TRACK_DATABASE_PATH "
-                                 "nor in the current directory, tried:\n\r" +
-                                 tdb_track.string() + "\n\r" + other_track.string());
+        return tl::nullopt;
     }
-
-    if (!std::filesystem::exists(actual_track)) {
-        throw std::runtime_error("file " + actual_track.string() + " does not exist");
-    }
-    if (!(actual_track.string().substr(actual_track.string().size() - 4) == ".csv")) {
-        throw std::runtime_error("file " + actual_track.string() + " is not a CSV file");
-    }
-    return actual_track.string();
 #else
-    throw std::runtime_error("TRACK_DATABASE_PATH not defined");
+#error TRACK_DATABASE_PATH not defined
 #endif
 }
 
-std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d> load_cones(
-    const std::string& track_name_or_file) {
-    // if the file is a CSV file, load it directly
-    rapidcsv::Document cones(validate_track_name_or_file(track_name_or_file, "_cones.csv"));
+tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> load_cones(
+    const std::string& track_name) {
+    tl::optional<std::string> track_name_opt = validate_track_name(track_name);
+    if (!track_name_opt) {
+        return tl::nullopt;
+    }
+    rapidcsv::Document cones(track_name_opt.value());
     // get the positions of the cones in columns X and Y and the corresponding
     // type in column cone_type
-    std::vector<double> cones_x = cones.GetColumn<double>("X");
-    std::vector<double> cones_y = cones.GetColumn<double>("Y");
-    std::vector<std::string> cones_type = cones.GetColumn<std::string>("cone_type");
+    std::vector<double> cones_X = cones.GetColumn<double>("X");
+    std::vector<double> cones_Y = cones.GetColumn<double>("Y");
+    std::vector<std::string> cones_type = cones.GetColumn<std::string>("color");
     std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d> cones_map;
-    for (size_t i = 0; i < cones_x.size(); ++i) {
+    for (size_t i = 0; i < cones_X.size(); ++i) {
         brains2::common::ConeColor type = brains2::common::cone_color_from_string(cones_type[i]);
         if (cones_map.find(type) == cones_map.end()) {
             cones_map[type] = Eigen::MatrixX2d::Zero(0, 2);
         }
         cones_map[type].conservativeResize(cones_map[type].rows() + 1, 2);
-        cones_map[type].bottomRows<1>() << cones_x[i], cones_y[i];
+        cones_map[type].bottomRows<1>() << cones_X[i], cones_Y[i];
     }
     return cones_map;
 }
@@ -63,7 +50,7 @@ void brains2::common::save_cones(
     const std::string& filename,
     const std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>& cones_map) {
     std::ofstream f(filename);
-    f << "cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left\n";
+    f << "color,X,Y\n";
 
     for (auto it = cones_map.begin(); it != cones_map.end(); ++it) {
         for (Eigen::Index id(0); id < it->second.rows(); ++id) {
@@ -75,32 +62,35 @@ void brains2::common::save_cones(
     }
 }
 
-void brains2::common::load_center_line(const std::string& track_name_or_file,
-                                       Eigen::MatrixX2d& center_line,
-                                       Eigen::MatrixX2d& track_widths) {
-    rapidcsv::Document center_line_csv(
-        validate_track_name_or_file(track_name_or_file, "_center_line.csv"));
-    size_t row_count = center_line_csv.GetRowCount();
-    center_line.resize(row_count, 2);
-    track_widths.resize(row_count, 2);
-    for (size_t i = 0; i < row_count; ++i) {
-        center_line(i, 0) = center_line_csv.GetCell<double>("x", i);
-        center_line(i, 1) = center_line_csv.GetCell<double>("y", i);
-        track_widths(i, 0) = center_line_csv.GetCell<double>("right_width", i);
-        track_widths(i, 1) = center_line_csv.GetCell<double>("left_width", i);
-    }
-}
-
-void brains2::common::save_center_line(const std::string& filename,
-                                       const Eigen::MatrixX2d& center_line,
-                                       const Eigen::MatrixX2d& track_widths) {
-    std::ofstream f(filename);
-    f << "x,y,right_width,left_width\n";
-    for (Eigen::Index i = 0; i < center_line.rows(); ++i) {
-        f << center_line(i, 0) << "," << center_line(i, 1) << "," << track_widths(i, 0) << ","
-          << track_widths(i, 1) << "\n";
-    }
-}
+// void brains2::common::load_center_line(const std::string& track_name,
+//                                        Eigen::MatrixX2d& center_line,
+//                                        Eigen::MatrixX2d& track_widths) {
+//     tl::optional<std::string> track_name_opt = validate_track_name(track_name);
+//     if (!track_name_opt) {
+//         return;
+//     }
+//     rapidcsv::Document center_line_csv(track_name_opt.value());
+//     size_t row_count = center_line_csv.GetRowCount();
+//     center_line.resize(row_count, 2);
+//     track_widths.resize(row_count, 2);
+//     for (size_t i = 0; i < row_count; ++i) {
+//         center_line(i, 0) = center_line_csv.GetCell<double>("x", i);
+//         center_line(i, 1) = center_line_csv.GetCell<double>("y", i);
+//         track_widths(i, 0) = center_line_csv.GetCell<double>("right_width", i);
+//         track_widths(i, 1) = center_line_csv.GetCell<double>("left_width", i);
+//     }
+// }
+//
+// void brains2::common::save_center_line(const std::string& filename,
+//                                        const Eigen::MatrixX2d& center_line,
+//                                        const Eigen::MatrixX2d& track_widths) {
+//     std::ofstream f(filename);
+//     f << "x,y,right_width,left_width\n";
+//     for (Eigen::Index i = 0; i < center_line.rows(); ++i) {
+//         f << center_line(i, 0) << "," << center_line(i, 1) << "," << track_widths(i, 0) << ","
+//           << track_widths(i, 1) << "\n";
+//     }
+// }
 
 // class used to wrap the track files generated in python
 // =================================================================
