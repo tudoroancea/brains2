@@ -1,1 +1,1 @@
-mamba env update -n brains2 -f env.yml
+mamba env update -f env.yml
