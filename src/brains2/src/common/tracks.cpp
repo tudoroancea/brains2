@@ -8,7 +8,7 @@
 
 // functions to load/save cones and center line from the track_database package
 // ===========================================
-static tl::optional<std::string> validate_track_name(const std::string& track_name) {
+tl::optional<std::string> validate_track_name(const std::string& track_name) {
 #ifdef TRACK_DATABASE_PATH
     std::filesystem::path track_file(TRACK_DATABASE_PATH);
     track_file /= (track_name + ".csv");
@@ -22,7 +22,7 @@ static tl::optional<std::string> validate_track_name(const std::string& track_na
 #endif
 }
 
-tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> load_cones(
+tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> brains2::common::load_cones(
     const std::string& track_name) {
     tl::optional<std::string> track_name_opt = validate_track_name(track_name);
     if (!track_name_opt) {
