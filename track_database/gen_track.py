@@ -8,39 +8,27 @@ from enum import Enum
 
 
 def save_cones(
-    filename: str, blue_cones, yellow_cones, big_orange_cones, small_orange_cones
-):
+    filename: str,
+    blue_cones: np.ndarray,
+    yellow_cones: np.ndarray,
+    orange_cones: np.ndarray,
+) -> None:
     """
     Save the cones in CSV file specified by filename. This file will have the following
     format:
-        cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left
+        color,X,Y
     """
     with open(filename, "w") as f:
-        f.write("cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left\n")
+        f.write("color,X,Y\n")
         for cone in blue_cones:
-            f.write("blue,{},{},0.0,0.0,0.0,0.0,0,1\n".format(cone[0], cone[1]))
+            f.write("blue,{},{}\n".format(cone[0], cone[1]))
         for cone in yellow_cones:
-            f.write("yellow,{},{},0.0,0.0,0.0,0.0,1,0\n".format(cone[0], cone[1]))
-        for cone in big_orange_cones:
-            f.write(
-                "big_orange,{},{},0.0,0.0,0.0,0.0,{},{}\n".format(
-                    cone[0],
-                    cone[1],
-                    int(cone[0] > 0),
-                    int(cone[0] < 0),
-                )
-            )
-        for cone in small_orange_cones:
-            f.write(
-                "small_orange,{},{},0.0,0.0,0.0,0.0,{},{}\n".format(
-                    cone[0],
-                    cone[1],
-                    int(cone[0] > 0),
-                    int(cone[0] < 0),
-                )
-            )
+            f.write("yellow,{},{}\n".format(cone[0], cone[1]))
+        for cone in orange_cones:
+            f.write("orange,{},{}\n".format(cone[0], cone[1]))
 
 
+# TODO(mattbrth): judge if this is still needed and if we need to keep only on track width
 def save_center_line(filename: str, center_line: np.ndarray, track_widths: np.ndarray):
     """
     Save the center line in CSV file specified by filename. This file will have the
@@ -56,28 +44,16 @@ def save_center_line(filename: str, center_line: np.ndarray, track_widths: np.nd
 
 
 def plot_cones(
-    blue_cones,
-    yellow_cones,
-    big_orange_cones,
-    small_orange_cones,
-    origin=np.zeros(2),
-    show=True,
+    blue_cones: np.ndarray,
+    yellow_cones: np.ndarray,
+    orange_cones: np.ndarray,
+    origin: np.ndarray = np.zeros(2),
+    show: bool = True,
 ):
+    """Plot a series of cones with matplotlib."""
     plt.scatter(blue_cones[:, 0], blue_cones[:, 1], s=14, c="b", marker="^")
     plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], s=14, c="y", marker="^")
-    plt.scatter(
-        big_orange_cones[:, 0], big_orange_cones[:, 1], s=28, c="orange", marker="^"
-    )
-    try:
-        plt.scatter(
-            small_orange_cones[:, 0],
-            small_orange_cones[:, 1],
-            s=7,
-            c="orange",
-            marker="^",
-        )
-    except IndexError:
-        pass
+    plt.scatter(orange_cones[:, 0], orange_cones[:, 1], s=28, c="orange", marker="^")
     plt.scatter(origin[0], origin[1], c="g", marker="x")
     plt.axis("equal")
     plt.tight_layout()
@@ -193,7 +169,7 @@ class TrackGenerator:
     Ensures that the tracks curvature is within limits and that the car starts at a straight section.
     """
 
-    BIG_ORANGE_CONES = np.array([[-2.2, 4.7], [2.2, 4.7], [-2.2, 7.3], [2.2, 7.3]])
+    ORANGE_CONES = np.array([[-2.2, 4.7], [2.2, 4.7], [-2.2, 7.3], [2.2, 7.3]])
 
     def __init__(
         self,
@@ -557,8 +533,7 @@ class TrackGenerator:
         plot_cones(
             self.blue_cones,
             self.yellow_cones,
-            self.BIG_ORANGE_CONES,
-            np.empty((0, 2)),
+            self.ORANGE_CONES,
             show=False,
         )
         plt.plot(*self.center_line.T, "k-o", markersize=2)
@@ -579,7 +554,7 @@ class TrackGenerator:
             os.path.join(track_dir, track_name + "_cones.csv"),
             self.blue_cones,
             self.yellow_cones,
-            TrackGenerator.BIG_ORANGE_CONES,
+            TrackGenerator.ORANGE_CONES,
             [],
         )
         save_center_line(
@@ -600,8 +575,8 @@ if __name__ == "__main__":
     if args.seed is not None:
         np.random.seed(int(args.seed))
     generator = TrackGenerator(
-        lat_offset=51.197682,
-        lon_offset=5.323411,
+        # lat_offset=51.197682,
+        # lon_offset=5.323411,
     )
     generator.create_track(plot_track=True, plot_voronoi=True)
     generator.save_track(args.output_dir, args.track_name)
