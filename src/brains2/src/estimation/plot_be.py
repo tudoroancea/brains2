@@ -37,7 +37,8 @@ plt.scatter(
 )
 plt.legend()
 # set the aspect ratio to be equal
-plt.gca().set_aspect("equal", adjustable="box")
+plt.axis("equal")
+plt.tight_layout()
 
 # find the min and max of the x and y coordinates
 min_x = min(cones["X"].min(), gt["X"].min())

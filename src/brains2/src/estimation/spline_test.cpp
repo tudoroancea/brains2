@@ -36,35 +36,31 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     Eigen::VectorXd delta_s = delta_diff.rowwise().norm();
 
     // Compute rho
-    Eigen::VectorXd delta_s_head = delta_s.head(N - 1);
-    Eigen::VectorXd delta_s_tail = delta_s.tail(N - 1);
-    Eigen::VectorXd rho = delta_s_head.array() / delta_s_tail.array();
+    Eigen::VectorXd rho = delta_s.head(N - 1).array() / delta_s.tail(N - 1).array();
 
     // Build matrices A, B, C
 
     // Build A
-    int A_rows = 3 * (N - 1) + 2;
-    int A_cols = 4 * N;
-    Eigen::SparseMatrix<double> A(A_rows, A_cols);
     std::vector<Eigen::Triplet<double>> tripletListA;
+    tripletListA.reserve(9*(N-1) + 3*(N-1) + 4);
 
     // First part of A: spkron(speye(N - 1), array)
     for (int i = 0; i < N - 1; ++i) {
         int row_offset = 3 * i;
         int col_offset = 4 * i;
 
-        // First row
+        // First row : continuity between spline segments
         tripletListA.emplace_back(row_offset, col_offset + 0, 1.0);
         tripletListA.emplace_back(row_offset, col_offset + 1, 1.0);
         tripletListA.emplace_back(row_offset, col_offset + 2, 1.0);
         tripletListA.emplace_back(row_offset, col_offset + 3, 1.0);
 
-        // Second row
+        // Second row : continuity of first derivative
         tripletListA.emplace_back(row_offset + 1, col_offset + 1, 1.0);
         tripletListA.emplace_back(row_offset + 1, col_offset + 2, 2.0);
         tripletListA.emplace_back(row_offset + 1, col_offset + 3, 3.0);
 
-        // Third row
+        // Third row : continuity of second derivative 
         tripletListA.emplace_back(row_offset + 2, col_offset + 2, 2.0);
         tripletListA.emplace_back(row_offset + 2, col_offset + 3, 6.0);
     }
@@ -90,13 +86,14 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     tripletListA.emplace_back(last_row, col_offset + 2, 2.0);
     tripletListA.emplace_back(last_row, col_offset + 3, 3.0);
 
+    int A_rows = 3 * (N - 1) + 2;
+    int A_cols = 4 * N;
+    Eigen::SparseMatrix<double> A(A_rows, A_cols);
     A.setFromTriplets(tripletListA.begin(), tripletListA.end());
 
     // Build B
-    int B_rows = N + 1;
-    int B_cols = 4 * N;
-    Eigen::SparseMatrix<double> B(B_rows, B_cols);
     std::vector<Eigen::Triplet<double>> tripletListB;
+    tripletListB.reserve(N + 4);
 
     // First part of B: spkron(speye(N), [1, 0, 0, 0])
     for (int i = 0; i < N; ++i) {
@@ -112,13 +109,14 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
         tripletListB.emplace_back(last_row_B, col_offset + j, 1.0);
     }
 
+    int B_rows = N + 1;
+    int B_cols = 4 * N;
+    Eigen::SparseMatrix<double> B(B_rows, B_cols);
     B.setFromTriplets(tripletListB.begin(), tripletListB.end());
 
     // Build C
-    int C_rows = N + 1;
-    int C_cols = 4 * N;
-    Eigen::SparseMatrix<double> C(C_rows, C_cols);
     std::vector<Eigen::Triplet<double>> tripletListC;
+    tripletListC.reserve(N + 2);
 
     // First part of C
     for (int i = 0; i < N; ++i) {
@@ -135,14 +133,16 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     tripletListC.emplace_back(last_row_C, col_offset + 2, 2.0 / (delta_s_last * delta_s_last));
     tripletListC.emplace_back(last_row_C, col_offset + 3, 6.0 / (delta_s_last * delta_s_last));
 
+    int C_rows = N + 1;
+    int C_cols = 4 * N;
+    Eigen::SparseMatrix<double> C(C_rows, C_cols);
     C.setFromTriplets(tripletListC.begin(), tripletListC.end());
 
     // Compute P = B^T * B + curv_weight * C^T * C
     Eigen::SparseMatrix<double> P = B.transpose() * B + curv_weight * C.transpose() * C;
 
     // Compute q = -B^T * path
-    Eigen::VectorXd q_x = -B.transpose() * path.col(0);
-    Eigen::VectorXd q_y = -B.transpose() * path.col(1);
+    Eigen::VectorXd q = -B.transpose() * path;
 
     // Build constraint vector b
     Eigen::VectorXd b_x(A_rows);
@@ -165,7 +165,7 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     if (!solver_x.data()->setHessianMatrix(P)) {
         throw std::runtime_error("Failed to set P");
     }
-    if (!solver_x.data()->setGradient(q_x)) {
+    if (!solver_x.data()->setGradient(q.col(0))) {
         throw std::runtime_error("Failed to set q_x");
     }
     if (!solver_x.data()->setLinearConstraintsMatrix(A)) {
@@ -194,7 +194,7 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     if (!solver_y.data()->setHessianMatrix(P)) {
         throw std::runtime_error("Failed to set P");
     }
-    if (!solver_y.data()->setGradient(q_y)) {
+    if (!solver_y.data()->setGradient(q.col(1))) {
         throw std::runtime_error("Failed to set q_y");
     }
     if (!solver_y.data()->setLinearConstraintsMatrix(A)) {
