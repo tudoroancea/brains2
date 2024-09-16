@@ -17,6 +17,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(include)
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
+add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 
 ####################################################################################################
 # dependencies
@@ -31,6 +32,7 @@ ament_auto_find_build_dependencies()
 # find other libraries: eigen3, nlohmann json
 find_package(Eigen3 REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(yaml-cpp REQUIRED)
 set(CMAKE_TESTING_ENABLED ON)
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
@@ -72,7 +74,7 @@ ament_auto_add_library(brains2_common SHARED
     src/common/math.cpp
     src/common/tracks.cpp
 )
-target_link_libraries(brains2_common Eigen3::Eigen nlohmann_json::nlohmann_json)
+target_link_libraries(brains2_common Eigen3::Eigen)
 
 if (CMAKE_TESTING_ENABLED)
   ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
@@ -89,6 +91,7 @@ target_include_directories(brains2_sim PUBLIC src/sim)
 ament_auto_add_executable(sim_node src/sim/sim_node.cpp)
 target_link_libraries(sim_node
   "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  yaml-cpp::yaml-cpp
   brains2_common
   brains2_sim
 )
