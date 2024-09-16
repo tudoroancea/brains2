@@ -353,16 +353,15 @@ private:
         marker.pose.position.y = Y;
         marker.pose.orientation = brains2::common::rpy_to_quaternion_msg(0.0, 0.0, 0.0);
         if (!small) {
-            marker.scale.z *= (285.0 / 228.0);
             marker.scale.x *= (285.0 / 228.0);
-            marker.scale.y *= (505.0 / 325.0);
+            marker.scale.y *= (285.0 / 228.0);
+            marker.scale.z *= (505.0 / 325.0);
         }
         marker.color = brains2::common::marker_colors(color);
         return marker;
     }
 
     std::vector<visualization_msgs::msg::Marker> get_car_markers() {
-        // double X = state.X, Y = state.Y, phi = state.phi, delta = state.delta;
         std::vector<visualization_msgs::msg::Marker> markers;
         std::string car_mesh = this->get_parameter("car_mesh").as_string();
         markers.resize(5);
