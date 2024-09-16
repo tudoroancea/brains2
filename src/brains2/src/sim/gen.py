@@ -1,109 +1,11 @@
 # Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+import numpy as np
 import casadi as ca
+from icecream import ic
 
 sym_t = ca.SX | ca.MX
-# from casadi import (
-#     MX,
-#     ca.SX,
-#     Function,
-#     atan,
-#     ca.atan2,
-#     ca.cos,
-#     hypot,
-#     interpolant,
-#     ca.sin,
-#     sqrt,
-#     tan,
-#     tanh,
-#     ca.vertcat,
-# )
 
 g = 9.81  # gravity
-
-# # car inertia parameters
-# m = 230.0  # mass
-# I_z = 137.583  # yaw moment of inertia
-
-# # geometric parameters
-# z_CG = 0.295  # height of center of gravity
-# front_axle_track = rear_axle_track = axle_track = 1.24  # wheelbase
-# l_R = 0.7853  # distance from CoG to rear axle
-# l_F = 0.7853  # distance from CoG to front axle
-# wheelbase = 1.5706  # distance between the two axles
-# rear_weight_distribution = l_R / wheelbase
-# front_weight_distribution = l_F / wheelbase
-# car_length = 3.19  # length of the car
-# car_width = 1.55  # width of the car
-
-# # drivetrain parameters (simplified)
-# C_m0 = 4.950
-# C_r0 = 297.030
-# C_r1 = 16.665
-# C_r2 = 0.6784
-
-# # Pacejka base parameters
-# b1s = -6.75e-6
-# b2s = 1.35e-1
-# b3s = 1.2e-3
-# c1s = 1.86
-# d1s = 1.12e-4
-# d2s = 1.57
-# e1s = -5.38e-6
-# e2s = 1.11e-2
-# e3s = -4.26
-# b1a = 3.79e1
-# b2a = 5.28e2
-# c1a = 1.57
-# d1a = -2.03e-4
-# d2a = 1.77
-# e1a = -2.24e-3
-# e2a = 1.81
-
-# # Pacejka parameters (constant version)
-# static_weight = 0.5 * m * g * l_F / wheelbase
-# BCDs = (b1s * static_weight**2 + b2s * static_weight) * np.exp(-b3s * static_weight)
-# Cs = c1s
-# Ds = d1s * static_weight + d2s
-# Es = e1s * static_weight**2 + e2s * static_weight + e3s
-# Bs = BCDs / (Cs * Ds)
-# BCDa = b1a * np.ca.sin(2 * np.arcca.tan(static_weight / b2a))
-# Ca = c1a
-# Da = d1a * static_weight + d2a
-# Ea = e1a * static_weight + e2a
-# Ba = BCDa / (Ca * Da)
-
-# # wheel parameters (ony used in dyn10 model)
-# R_w = 0.20809  # wheel radius
-# I_w = 0.3  # wheel inertia
-# k_d = 0.17  # dynamic friction coefficient
-# k_s = 15.0  # static friction coefficient
-
-# # time constants of actuators
-# t_T = 1e-3  # time constant for throttle actuator
-# t_delta = 0.02  # time constant for steering actuator
-
-# # aerodynamic parameters
-# C_downforce = 3.96864
-
-# # torque vectoring gains
-# K_tv = 300.0
-
-# marginal_constant = t_T * BCDs * (R_w * R_w / I_w + 1 / 0.3)
-marginal_constant = 0.01
-
-# alpha = ca.SX.sym("alpha")
-# lat_pacejka = Function(
-#     "lat_pacejka",
-#     [alpha],
-#     [Da * ca.sin(Ca * ca.aca.tan(Ba * alpha - Ea * (Ba * alpha - ca.aca.tan(Ba * alpha))))],
-# )
-# s = ca.SX.sym("s")
-# lon_pacejka = Function(
-#     "lon_pacejka",
-#     [s],
-#     [Ds * ca.sin(Cs * ca.aca.tan(Bs * s - Es * (Bs * s - ca.aca.tan(Bs * s))))],
-# )
-# del alpha, s
 
 ####################################################################################################
 # modelling utilities
@@ -131,20 +33,7 @@ def smooth_abs_nonzero(x: sym_t, min_val: float = 1e-6) -> sym_t:
 ####################################################################################################
 
 
-# def get_drag_force(v_x: sym_t) -> sym_t:
-#     """the drag force (aerodynamic and rolling resistance)"""
-#     return -(C_r0 + C_r1 * v_x + C_r2 * v_x * v_x) * smooth_sgn(v_x)
-# def get_motor_force(T: sym_t) -> sym_t:
-#     return C_m0 * T
-# def get_pose_derivative_cartesian_6(phi: ca.SX, v_x: ca.SX, v_y: ca.SX, omega: ca.SX) -> ca.SX:
-#     return ca.vertcat(
-#         v_x * ca.cos(phi) - v_y * ca.sin(phi),
-#         v_x * ca.sin(phi) + v_y * ca.cos(phi),
-#         omega,
-#     )
-
-
-def kin_model(rk_steps: int = 10) -> ca.Function:
+def kin_model(rk_steps: int = 1) -> ca.Function:
     """
     create a function with inputs current state, parameters, and sampling time, and output the next state and a_x, a_y
 
@@ -165,6 +54,25 @@ def kin_model(rk_steps: int = 10) -> ca.Function:
     tau_RL = ca.SX.sym("tau_RL")
     tau_RR = ca.SX.sym("tau_RR")
     x = ca.vertcat(X, Y, phi, v_x, v_y, omega, delta, tau_FL, tau_FR, tau_RL, tau_RR)
+    x_name = (
+        "["
+        + ", ".join(
+            [
+                X.name(),
+                Y.name(),
+                phi.name(),
+                v_x.name(),
+                v_y.name(),
+                omega.name(),
+                delta.name(),
+                tau_FL.name(),
+                tau_FR.name(),
+                tau_RL.name(),
+                tau_RR.name(),
+            ]
+        )
+        + "]"
+    )
 
     # control variables
     u_delta = ca.SX.sym("u_delta")
@@ -173,6 +81,19 @@ def kin_model(rk_steps: int = 10) -> ca.Function:
     u_tau_RL = ca.SX.sym("u_tau_RL")
     u_tau_RR = ca.SX.sym("u_tau_RR")
     u = ca.vertcat(u_delta, u_tau_FL, u_tau_FR, u_tau_RL, u_tau_RR)
+    u_name = (
+        "["
+        + ", ".join(
+            [
+                u_delta.name(),
+                u_tau_FL.name(),
+                u_tau_FR.name(),
+                u_tau_RL.name(),
+                u_tau_RR.name(),
+            ]
+        )
+        + "]"
+    )
 
     # parameters
     m = ca.SX.sym("m")
@@ -183,29 +104,46 @@ def kin_model(rk_steps: int = 10) -> ca.Function:
     C_r0 = ca.SX.sym("C_r0")
     C_r1 = ca.SX.sym("C_r1")
     C_r2 = ca.SX.sym("C_r2")
-    t_T = ca.SX.sym("t_T")
+    t_tau = ca.SX.sym("t_tau")
     t_delta = ca.SX.sym("t_delta")
-    p = ca.vertcat(m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_T, t_delta)
+    p = ca.vertcat(m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta)
+    p_name = (
+        "["
+        + ", ".join(
+            [
+                m.name(),
+                I_z.name(),
+                l_R.name(),
+                l_F.name(),
+                C_m0.name(),
+                C_r0.name(),
+                C_r1.name(),
+                C_r2.name(),
+                t_tau.name(),
+                t_delta.name(),
+            ]
+        )
+        + "]"
+    )
 
     # actuator dynamics
     delta_dot = (u_delta - delta) / t_delta
-    tau_FL_dot = (u_tau_FL - tau_FL) / t_T
-    tau_FR_dot = (u_tau_FR - tau_FR) / t_T
-    tau_RL_dot = (u_tau_RL - tau_RL) / t_T
-    tau_RR_dot = (u_tau_RR - tau_RR) / t_T
+    tau_FL_dot = (u_tau_FL - tau_FL) / t_tau
+    tau_FR_dot = (u_tau_FR - tau_FR) / t_tau
+    tau_RL_dot = (u_tau_RL - tau_RL) / t_tau
+    tau_RR_dot = (u_tau_RR - tau_RR) / t_tau
 
     # longitudinal dynamics
     T = tau_FL + tau_FR + tau_RL + tau_RR  # total torque
     F_motor = C_m0 * T  # the traction force
-    F_drag = -(C_r0 + C_r1 * v_x + C_r2 * v_x * v_x) * smooth_sgn(
-        v_x
-    )  # drag force (aerodynamic and rolling resistance)
+    F_drag = -(C_r0 + C_r1 * v_x + C_r2 * v_x**2) * smooth_sgn(v_x)  # total drag force
+    # F_drag = 0.0
     F_Rx = 0.5 * F_motor + F_drag  # force applied at the rear wheels
     F_Fx = 0.5 * F_motor  # force applied at the front wheels
 
-    a_x = (F_Rx + F_Fx * ca.cos(delta) + F_drag) / m
+    a_x = (F_Rx + F_Fx * ca.cos(delta)) / m
     a_y = F_Fx * ca.sin(delta) / m
-    accels = ca.Function("accels", [x, p], [a_x, a_y])
+    accels = ca.Function("accels", [x, p], [ca.vertcat(a_x, a_y)], ["x", "p"], ["a"])
 
     cont_dynamics = ca.Function(
         "kin6_model_cont",
@@ -218,32 +156,41 @@ def kin_model(rk_steps: int = 10) -> ca.Function:
                 a_x + v_y * omega,
                 a_y - v_x * omega,
                 l_F * F_Fx * ca.sin(delta) / I_z,
+                delta_dot,
                 tau_FL_dot,
                 tau_FR_dot,
                 tau_RL_dot,
                 tau_RR_dot,
-                delta_dot,
             )
         ],
+        [x_name, u_name, p_name],
+        ["x_dot"],
     )
 
     dt = ca.SX.sym("dt")
-    x_next = x
-    new_dt = dt / rk_steps
-    for i in range(rk_steps):
-        k1 = cont_dynamics(x, u, new_dt)
-        k2 = cont_dynamics(x + k1 / 2, u, new_dt)
-        k3 = cont_dynamics(x + k2 / 2, u, new_dt)
-        k4 = cont_dynamics(x + k3, u, new_dt)
-        x_next = x + k1 / 6 + k2 / 3 + k3 / 3 + k4 / 6
+    k1 = cont_dynamics(x, u, p)
+    k2 = cont_dynamics(x + dt * k1 / 2, u, p)
+    k3 = cont_dynamics(x + dt * k2 / 2, u, p)
+    k4 = cont_dynamics(x + dt * k3, u, p)
+    x_next = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
-    return ca.Function(
+    disc_dynamics = ca.Function(
         "kin6_model",
         [x, u, p, dt],
-        [x_next, accels(x_next, p)[0]],
-        ["x", "u", "p", "dt"],
-        ["x_next", "accelerations"],
+        [x_next, accels(x_next, p)],
+        [x_name, u_name, p_name, "dt"],
+        ["x_next", "[a_x, a_y]"],
     )
+
+    # test with some data
+    x0 = ca.DM([0.0, 0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    u0 = ca.DM([0.0, 50.0, 50.0, 50.0, 50.0])
+    p0 = ca.DM(
+        [230.0, 137.583, 0.7853, 0.7853, 4.950, 297.030, 16.665, 0.6784, 0.01, 0.02]
+    )
+    dt = 0.01
+    ic(x0, u0, p0, dt, cont_dynamics(x0, u0, p0), disc_dynamics(x0, u0, p0, dt))
+    return disc_dynamics
 
 
 # def dyn6_model(x: ca.SX, u: ca.SX, _: ca.SX) -> ca.SX:
