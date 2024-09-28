@@ -38,7 +38,7 @@ int kin6_model_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz
 #define kin6_model_SZ_ARG 4
 #define kin6_model_SZ_RES 2
 #define kin6_model_SZ_IW 0
-#define kin6_model_SZ_W 67
+#define kin6_model_SZ_W 184
 casadi_functions* kin6_model_functions(void);
 #ifdef __cplusplus
 } /* extern "C" */

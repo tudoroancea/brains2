@@ -1,6 +1,7 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include <cmath>
 #include <fstream>
+#include <rclcpp/logging.hpp>
 #include <unordered_map>
 #include "ament_index_cpp/get_package_share_directory.hpp"
 #include "brains2/common/cone_color.hpp"
@@ -161,25 +162,6 @@ private:
         const bool use_kin6 = true;
 
         // call sim solver
-        // RCLCPP_INFO(this->get_logger(),
-        //             "Simulating with x=[%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f], u=[%f, %f, "
-        //             "%f, %f, %f]",
-        //             state.X,
-        //             state.Y,
-        //             state.phi,
-        //             state.v_x,
-        //             state.v_y,
-        //             state.omega,
-        //             state.delta,
-        //             state.tau_FL,
-        //             state.tau_FR,
-        //             state.tau_RL,
-        //             state.tau_RR,
-        //             control.u_delta,
-        //             control.u_tau_FL,
-        //             control.u_tau_FR,
-        //             control.u_tau_RL,
-        //             control.u_tau_RR);
         brains2::sim::Sim::State new_state{};
         std::tie(new_state, accels) = sim->simulate(state, control, dt);
         state = new_state;
@@ -220,6 +202,7 @@ private:
         this->pose_msg.x = state.X;
         this->pose_msg.y = state.Y;
         this->pose_msg.phi = state.phi;
+        RCLCPP_DEBUG(this->get_logger(), "Publishing pose");
         this->pose_pub->publish(this->pose_msg);
 
         // Publish velocity
@@ -227,12 +210,14 @@ private:
         this->velocity_msg.v_x = state.v_x;
         this->velocity_msg.v_y = state.v_y;
         this->velocity_msg.omega = state.omega;
+        RCLCPP_DEBUG(this->get_logger(), "Publishing velocity");
         this->velocity_pub->publish(this->velocity_msg);
 
         // Publish acceleration
         this->acceleration_msg.header.stamp = this->now();
         this->acceleration_msg.a_x = accels.a_x;
         this->acceleration_msg.a_y = accels.a_y;
+        RCLCPP_DEBUG(this->get_logger(), "Publishing acceleration");
         this->acceleration_pub->publish(this->acceleration_msg);
 
         // Publish current controls
@@ -242,6 +227,7 @@ private:
         this->current_controls_msg.tau_fr = state.tau_FR;
         this->current_controls_msg.tau_rl = state.tau_RL;
         this->current_controls_msg.tau_rr = state.tau_RR;
+        RCLCPP_DEBUG(this->get_logger(), "Publishing current controls");
         this->current_controls_pub->publish(this->current_controls_msg);
 
         // Publish transform from world to car
@@ -252,6 +238,7 @@ private:
         this->transform.transform.translation.y = state.Y;
         this->transform.transform.rotation =
             brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.phi);
+        RCLCPP_DEBUG(this->get_logger(), "Publishing transform");
         this->tf_broadcaster->sendTransform(this->transform);
 
         // publish diagnostics
@@ -260,6 +247,7 @@ private:
         diag_msg.status[0].values[2].value = use_kin6 ? "kin6" : "dyn6";
         diag_msg.status[0].values[3].value = std::to_string(this->last_lap_time);
         diag_msg.status[0].values[4].value = std::to_string(this->best_lap_time);
+        RCLCPP_DEBUG(this->get_logger(), "Publishing diagnostics");
         this->diagnostics_pub->publish(diag_msg);
 
         visualization_msgs::msg::MarkerArray markers_msg;
@@ -267,6 +255,7 @@ private:
         for (const auto &marker : car_markers) {
             markers_msg.markers.push_back(marker);
         }
+        RCLCPP_DEBUG(this->get_logger(), "Publishing viz");
         this->viz_pub->publish(markers_msg);
     }
 
@@ -481,6 +470,7 @@ public:
                                                                  this,
                                                                  std::placeholders::_1,
                                                                  std::placeholders::_2));
+        // Create messages
         this->create_diagnostics_message();
 
         // load cones from track file and create the markers for the cones

@@ -26,7 +26,6 @@ public:
         double tau_max, delta_max, delta_dot_max;
     };
     struct Accels {
-        static constexpr int dim = 2;
         double a_x, a_y;
     };
     static constexpr int nx = State::dim;

@@ -1,7 +1,7 @@
 // Copyright (c) 2024, Tudor Oancea, Matteo Berthet
 #include "brains2/sim/sim.hpp"
-#include "brains2/external/icecream.hpp"
 #include "brains2/common/math.hpp"
+#include "brains2/external/icecream.hpp"
 #include "models.h"
 
 using namespace brains2::sim;
@@ -31,6 +31,7 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     mem->res[0] = x_next.data();
     mem->res[1] = a.data();
 }
+
 Sim::~Sim() {
     casadi_free(mem);
 }
@@ -38,18 +39,18 @@ Sim::~Sim() {
 std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
                                                  const Sim::Control &control,
                                                  double dt) {
-    x = {state.X,
-         state.Y,
-         state.phi,
-         state.v_x,
-         state.v_y,
-         state.omega,
-         state.delta,
-         state.tau_FL,
-         state.tau_FR,
-         state.tau_RL,
-         state.tau_RR};
-    u = {control.u_delta, control.u_tau_FL, control.u_tau_FR, control.u_tau_RL, control.u_tau_RR};
+    mem->arg[3] = &dt;
+    x[0] = state.X;
+    x[1] = state.Y;
+    x[2] = state.phi;
+    x[3] = state.v_x;
+    x[4] = state.v_y;
+    x[5] = state.omega;
+    x[6] = state.delta;
+    x[7] = state.tau_FL;
+    x[8] = state.tau_FR;
+    x[9] = state.tau_RL;
+    x[10] = state.tau_RR;
     const double ddelta_max = dt * limits.delta_dot_max;
     u[0] = clip(clip(control.u_delta, state.delta - ddelta_max, state.delta + ddelta_max),
                 -limits.delta_max,
@@ -58,8 +59,20 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
     u[2] = clip(control.u_tau_FR, -limits.tau_max, limits.tau_max);
     u[3] = clip(control.u_tau_RL, -limits.tau_max, limits.tau_max);
     u[4] = clip(control.u_tau_RR, -limits.tau_max, limits.tau_max);
-    casadi_eval(mem);
-    // IC(x, u, p, x_next, a);
+
+    int exit_code = casadi_eval(mem);
+
+    // TODO(tudoroancea): use optionals
+    if (exit_code != 0) {
+        throw std::runtime_error("Simulation returned non-zero exit code");
+    }
+    if (std::isnan(x_next[0]) or std::isnan(x_next[1]) or std::isnan(x_next[2]) or
+        std::isnan(x_next[3]) or std::isnan(x_next[4]) or std::isnan(x_next[5]) or
+        std::isnan(x_next[6]) or std::isnan(x_next[7]) or std::isnan(x_next[8]) or
+        std::isnan(x_next[9]) or std::isnan(x_next[10]) or std::isnan(a[0]) or std::isnan(a[1])) {
+        throw std::runtime_error("Simulation returned NaN");
+    }
+
     return {State{x_next[0],
                   x_next[1],
                   x_next[2],

@@ -168,11 +168,14 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
     )
 
     dt = ca.SX.sym("dt")
-    k1 = cont_dynamics(x, u, p)
-    k2 = cont_dynamics(x + dt * k1 / 2, u, p)
-    k3 = cont_dynamics(x + dt * k2 / 2, u, p)
-    k4 = cont_dynamics(x + dt * k3, u, p)
-    x_next = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+    scaled_dt = dt / rk_steps
+    x_next = x
+    for _ in range(rk_steps):
+        k1 = cont_dynamics(x_next, u, p)
+        k2 = cont_dynamics(x_next + scaled_dt * k1 / 2, u, p)
+        k3 = cont_dynamics(x_next + scaled_dt * k2 / 2, u, p)
+        k4 = cont_dynamics(x_next + scaled_dt * k3, u, p)
+        x_next = x_next + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
     disc_dynamics = ca.Function(
         "kin6_model",
@@ -186,10 +189,13 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
     x0 = ca.DM([0.0, 0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     u0 = ca.DM([0.0, 50.0, 50.0, 50.0, 50.0])
     p0 = ca.DM(
-        [230.0, 137.583, 0.7853, 0.7853, 4.950, 297.030, 16.665, 0.6784, 0.01, 0.02]
+        [230.0, 137.583, 0.7853, 0.7853, 4.950, 297.030, 16.665, 0.6784, 0.001, 0.02]
     )
     dt = 0.01
-    ic(x0, u0, p0, dt, cont_dynamics(x0, u0, p0), disc_dynamics(x0, u0, p0, dt))
+    x1, a1 = disc_dynamics(x0, u0, p0, dt)
+    x2, a2 = disc_dynamics(x1, u0, p0, dt)
+    x3, a3 = disc_dynamics(x2, u0, p0, dt)
+    ic(x0, u0, p0, dt, x1, x2, x3, a1, a2, a3)
     return disc_dynamics
 
 
@@ -343,7 +349,7 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
 
 
 def main():
-    kin_model_fun = kin_model()
+    kin_model_fun = kin_model(10)
     C = ca.CodeGenerator(
         "models",
         {
