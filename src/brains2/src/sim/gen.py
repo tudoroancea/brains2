@@ -7,7 +7,7 @@ from acados_template import AcadosSimOptions, AcadosModel, AcadosSim, AcadosSimS
 
 sym_t = ca.SX | ca.MX
 
-g = 9.81  # gravity
+g = 9.81  # gravity acceleration
 
 ####################################################################################################
 # modelling utilities
@@ -35,7 +35,7 @@ def smooth_abs_nonzero(x: sym_t, min_val: float = 1e-6) -> sym_t:
 ####################################################################################################
 
 
-def kin_model(rk_steps: int = 1):
+def kin6_model(rk_steps: int = 1):
     """
     create a function with inputs current state, parameters, and sampling time, and output the next state and a_x, a_y
 
@@ -164,6 +164,7 @@ def kin_model(rk_steps: int = 1):
         tau_RL_dot,
         tau_RR_dot,
     )
+    xdot = ca.cse(xdot)
     cont_dynamics = ca.Function(
         "kin6_cont_dyn",
         [x, u, p],
@@ -181,21 +182,23 @@ def kin_model(rk_steps: int = 1):
     model.xdot = ca.SX.sym("xdot", x.shape)
     model.f_impl_expr = model.xdot - xdot
 
+    # Create simulation solver options
     sim_opts = AcadosSimOptions()
     sim_opts.T = 0.01  # will be overwritten by the simulation
-    sim_opts.num_stages = 4
-    sim_opts.num_steps = 10
+    sim_opts.num_stages = 4  # number of collocation points
+    sim_opts.num_steps = 10  # number of time steps
     sim_opts.integrator_type = "IRK"
     sim_opts.collocation_type = "GAUSS_RADAU_IIA"
 
+    # Generate simulation solver code
     sim = AcadosSim()
     sim.model = model
     sim.solver_options = sim_opts
     sim.code_export_directory = "generated"
-    sim.parameter_values = np.ones(model.p.shape)  # needed to have the right shape
-    sim.verbose = True
+    sim.parameter_values = np.ones(model.p.shape)  # will be overwritten by the simulation
     AcadosSimSolver.generate(sim, json_file="generated/kin6_model.json")
 
+    # Generate casadi function code for accelerations
     accels.generate(
         "kin6_accels",
         {
@@ -212,92 +215,6 @@ def kin_model(rk_steps: int = 1):
     os.remove("generated/main_sim_kin6.c")
     os.remove("generated/Makefile")
     os.remove("generated/acados_sim_solver.pxd")
-    return
-
-    # discretize with RK4
-    scaled_dt = 1.0 / rk_steps
-    x_next = x
-    for _ in range(rk_steps):
-        k1 = cont_dynamics(x_next, u, p)
-        k2 = cont_dynamics(x_next + scaled_dt * k1 / 2, u, p)
-        k3 = cont_dynamics(x_next + scaled_dt * k2 / 2, u, p)
-        k4 = cont_dynamics(x_next + scaled_dt * k3, u, p)
-        x_next = x_next + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
-
-    disc_dynamics = ca.Function(
-        "kin6_disc_dyn",
-        [x, u, p],
-        [x_next],
-        # [x_name, u_name, p_name],
-        ["x0", "u", "p"],
-        ["xf"],
-    )
-
-    kin6_model = ca.Function(
-        "kin6_model",
-        [x, u, p],
-        [disc_dynamics(x0=x, u=u, p=p)["xf"], accels(x_next, p)],
-        [x_name, u_name, p_name],
-        ["x_next", "a_next"],
-    )
-
-    disc_dynamics = ca.integrator(
-        "kin6_disc_dyn",
-        "collocation",
-        {"x": x, "u": u, "p": p, "ode": cont_dynamics(x, u, p)},
-    )
-    disc_dynamics.generate(
-        "bruh",
-        {
-            "main": True,
-            "mex": False,
-            "with_mem": True,
-            "verbose": True,
-            "with_header": True,
-            "indent": 4,
-        },
-    )
-
-    # disc_dynamics = ca.Function( "kin6_model",
-    #     [x, u, p, dt],
-    #     [x_next, accels(x_next, p)],
-    #     [x_name, u_name, p_name, "dt"],
-    #     ["x_next", "[a_x, a_y]"],
-    # )
-
-    # step response
-    x0 = ca.DM([0.0, 0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    u = ca.DM([0.0, 50.0, 50.0, 50.0, 50.0])
-    p = ca.DM(
-        [
-            230.0,
-            137.583,
-            0.7853,
-            0.7853,
-            4.950,
-            297.030,
-            16.665,
-            0.6784,
-            0.001,
-            0.02,
-            0.01,
-        ]
-    )
-    # alternative discrete dynamics based on casadi.integrator
-    # integrator = ca.integrator(
-    #     "rk4", "rk", {"x": x, "u": u, "p": p, "ode": xdot}, 0.0, dt, {}
-    # )
-    # ic(cont_dynamics, disc_dynamics)
-    # x1, a1 = disc_dynamics(x0, u0, p0, dt)
-    # x2, a2 = disc_dynamics(x1, u0, p0, dt)
-    # x3, a3 = disc_dynamics(x2, u0, p0, dt)
-    # ic(x0, u0, p0, dt, x1, x2, x3, a1, a2, a3)
-    # x1 = disc_dynamics(x0=x0, p=p, u=u)["xf"]
-    # x2 = disc_dynamics(x0=x1, p=p, u=u)["xf"]
-    # x3 = disc_dynamics(x0=x2, p=p, u=u)["xf"]
-    # ic(x0, u, p, x1, x2, x3)
-
-    return kin6_model
 
 
 # def dyn6_model(x: ca.SX, u: ca.SX, _: ca.SX) -> ca.SX:
@@ -450,21 +367,7 @@ def kin_model(rk_steps: int = 1):
 
 
 def main():
-    kin_model()
-    # kin_model_fun = kin_model(100)
-    # C = ca.CodeGenerator(
-    #     "models",
-    #     {
-    #         "main": True,
-    #         "mex": False,
-    #         "with_mem": True,
-    #         "verbose": True,
-    #         "with_header": True,
-    #         "indent": 4,
-    #     },
-    # )
-    # C.add(kin_model_fun)
-    # C.generate()
+    kin6_model()
 
 
 if __name__ == "__main__":

@@ -33,7 +33,20 @@ public:
     static constexpr int nu = Control::dim;
     static constexpr int np = Parameters::dim;
 
+    Sim() = delete;
+    Sim(const Parameters &params, const Limits &limits);
+    virtual ~Sim();
+
+    Sim(const Sim &other) = delete;
+    Sim &operator=(const Sim &other) = delete;
+
+    std::pair<State, Accels> simulate(const State &state, const Control &control, double dt);
+
 private:
+    // Control limits used for the simulation
+    Limits limits;
+    // Arrays for the current state, target controls, next state and accelerations. These are used
+    // for both the simulation solver and the CasADi function evaluation (for the accelerations).
     // x = [X, Y, phi, v_x, v_y, omega, delta, tau_FL, tau_FR, tau_RL, tau_RR]
     std::array<double, nx> x;
     // u = [u_delta, u_tau_FL, u_tau_FR, u_tau_RL, u_tau_RR]
@@ -45,28 +58,16 @@ private:
     std::array<double, nx> x_next;
     // a = [a_x, a_y]
     std::array<double, 2> a;
-    // Control limits used for the simulation
-    Limits limits;
 
-    // auxiliary memory for the CasADi function evaluation
+    // Auxiliary memory for the CasADi function evaluation
     casadi_mem *accel_fun_mem;
 
-    // acados simulation solver variables
+    // Acados simulation solver variables
     void *kin6_sim_capsule;
     sim_config *kin6_sim_config;
     sim_in *kin6_sim_in;
     sim_out *kin6_sim_out;
     void *kin6_sim_dims;
-
-public:
-    Sim() = delete;
-    Sim(const Parameters &params, const Limits &limits);
-    virtual ~Sim();
-
-    Sim(const Sim &other) = delete;
-    Sim &operator=(const Sim &other) = delete;
-
-    std::pair<State, Accels> simulate(const State &state, const Control &control, double dt);
 };
 
 }  // namespace sim

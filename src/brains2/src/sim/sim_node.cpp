@@ -116,7 +116,6 @@ private:
 
     void controls_callback(const brains2::msg::Controls::SharedPtr msg) {
         if (!this->get_parameter("manual_control").as_bool()) {
-            RCLCPP_INFO(this->get_logger(), "Received controls");
             control.u_tau_FL = msg->tau_fl;
             control.u_tau_FR = msg->tau_fr;
             control.u_tau_RL = msg->tau_rl;
@@ -127,7 +126,6 @@ private:
 
     void alternative_controls_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
         if (this->get_parameter("manual_control").as_bool()) {
-            RCLCPP_INFO(this->get_logger(), "Received alternative controls");
             control.u_tau_FL = msg->linear.x;
             control.u_tau_FR = msg->linear.x;
             control.u_tau_RL = msg->linear.x;
@@ -153,27 +151,11 @@ private:
 
     void sim_timer_cb() {
         auto start = this->now();
-        // depending on the last velocity v=sqrt(v_x^2+v_y^2), decide which model to
-        // use and set its inputs
-        // TODO(#25): move this to Sim and retrieve it with an info struct
-        // bool use_kin6(std::hypot(state.v_x, state.v_y) <
-        // this->get_parameter("v_dyn").as_double());
-        const bool use_kin6 = true;
 
         // call sim solver
         brains2::sim::Sim::State new_state{};
         std::tie(new_state, accels) = sim->simulate(state, control, dt);
         state = new_state;
-
-        // TODO(#25): move this to Sim
-        // prohibit the car from going backwards
-        // if (state.v_x < 0.0 or
-        //     (state.tau_FL <= 0.1 and state.tau_FR <= 0.1 and state.tau_RL <= 0.1 and
-        //      state.tau_RR <= 0.1 and state.v_x <= 0.01)) {
-        //     state.v_x = 0.0;
-        //     state.v_y = 0.0;
-        //     state.omega = 0.0;
-        // }
 
         auto end = this->now();
 
@@ -201,7 +183,6 @@ private:
         this->pose_msg.x = state.X;
         this->pose_msg.y = state.Y;
         this->pose_msg.phi = state.phi;
-        RCLCPP_DEBUG(this->get_logger(), "Publishing pose");
         this->pose_pub->publish(this->pose_msg);
 
         // Publish velocity
@@ -209,14 +190,12 @@ private:
         this->velocity_msg.v_x = state.v_x;
         this->velocity_msg.v_y = state.v_y;
         this->velocity_msg.omega = state.omega;
-        RCLCPP_DEBUG(this->get_logger(), "Publishing velocity");
         this->velocity_pub->publish(this->velocity_msg);
 
         // Publish acceleration
         this->acceleration_msg.header.stamp = this->now();
         this->acceleration_msg.a_x = accels.a_x;
         this->acceleration_msg.a_y = accels.a_y;
-        RCLCPP_DEBUG(this->get_logger(), "Publishing acceleration");
         this->acceleration_pub->publish(this->acceleration_msg);
 
         // Publish current controls
@@ -226,7 +205,6 @@ private:
         this->current_controls_msg.tau_fr = state.tau_FR;
         this->current_controls_msg.tau_rl = state.tau_RL;
         this->current_controls_msg.tau_rr = state.tau_RR;
-        RCLCPP_DEBUG(this->get_logger(), "Publishing current controls");
         this->current_controls_pub->publish(this->current_controls_msg);
 
         // Publish transform from world to car
@@ -237,16 +215,13 @@ private:
         this->transform.transform.translation.y = state.Y;
         this->transform.transform.rotation =
             brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.phi);
-        RCLCPP_DEBUG(this->get_logger(), "Publishing transform");
         this->tf_broadcaster->sendTransform(this->transform);
 
         // publish diagnostics
         diag_msg.status[0].values[0].value = std::to_string(1000 * (end - start).seconds());
         diag_msg.status[0].values[1].value = this->get_parameter("track_name").as_string();
-        diag_msg.status[0].values[2].value = use_kin6 ? "kin6" : "dyn6";
-        diag_msg.status[0].values[3].value = std::to_string(this->last_lap_time);
-        diag_msg.status[0].values[4].value = std::to_string(this->best_lap_time);
-        RCLCPP_DEBUG(this->get_logger(), "Publishing diagnostics");
+        diag_msg.status[0].values[2].value = std::to_string(this->last_lap_time);
+        diag_msg.status[0].values[3].value = std::to_string(this->best_lap_time);
         this->diagnostics_pub->publish(diag_msg);
 
         visualization_msgs::msg::MarkerArray markers_msg;
@@ -254,7 +229,6 @@ private:
         for (const auto &marker : car_markers) {
             markers_msg.markers.push_back(marker);
         }
-        RCLCPP_DEBUG(this->get_logger(), "Publishing viz");
         this->viz_pub->publish(markers_msg);
     }
 
@@ -267,9 +241,8 @@ private:
         diag_msg.status[0].values.resize(5);
         diag_msg.status[0].values[0].key = "sim runtime (ms)";
         diag_msg.status[0].values[1].key = "track name";
-        diag_msg.status[0].values[2].key = "model";
-        diag_msg.status[0].values[3].key = "last lap time (s)";
-        diag_msg.status[0].values[4].key = "best lap time (s)";
+        diag_msg.status[0].values[2].key = "last lap time (s)";
+        diag_msg.status[0].values[3].key = "best lap time (s)";
     }
 
     void create_cones_markers(const std::string &track_name) {
