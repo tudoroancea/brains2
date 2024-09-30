@@ -1,18 +1,25 @@
 // SplineFitter.cpp
 
 #include "brains2/estimation/spline_fitting/spline_fitter.h"
+#include <cmath>
+#include <numeric>
 
-SplineFitter::SplineFitter(const Eigen::MatrixXd& path,
-                           double curv_weight,
-                           double initial_heading,
-                           double final_heading,
-                           bool verbose)
-    : path(path),
-      curv_weight(curv_weight),
-      initial_heading(initial_heading),
-      final_heading(final_heading),
-      verbose(verbose) {
-    // Constructor implementation (if needed)
+SplineFitter::SplineFitter(const Eigen::MatrixXd& path, double curv_weight, bool verbose)
+    : path(path), curv_weight(curv_weight), verbose(verbose) {
+    initial_heading = atan2(path(1, 1) - path(0, 1), path(1, 0) - path(0, 0));
+    final_heading = atan2(path(path.rows() - 1, 1) - path(path.rows() - 2, 1),
+                          path(path.rows() - 1, 0) - path(path.rows() - 2, 0));
+}
+
+tl::expected<SplineFitter, SplineFittingError> SplineFitter::create(const Eigen::MatrixXd& path,
+                                                                    double curv_weight,
+                                                                    bool verbose) {
+    // Ensure the path has at least 3 points
+    if (path.rows() < 3) {
+        return tl::make_unexpected(SplineFittingError::NotEnoughPoints);
+    }
+
+    return SplineFitter(path, curv_weight, verbose);
 }
 
 tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
@@ -133,8 +140,7 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     Eigen::SparseMatrix<double> P = B.transpose() * B + curv_weight * C.transpose() * C;
 
     // Compute q = -B^T * path_
-    Eigen::VectorXd q_x = -B.transpose() * path.col(0);
-    Eigen::VectorXd q_y = -B.transpose() * path.col(1);
+    Eigen::MatrixXd q = -B.transpose() * path;
 
     // Build constraint vector b
     Eigen::VectorXd b_x = Eigen::VectorXd::Zero(A_rows);
@@ -156,7 +162,7 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     if (!solver.data()->setHessianMatrix(P)) {
         return tl::make_unexpected(SplineFittingError::SetHessian);
     }
-    if (!solver.data()->setGradient(q_x)) {
+    if (!solver.data()->setGradient(q.col(0))) {
         return tl::make_unexpected(SplineFittingError::SetGradient);
     }
     if (!solver.data()->setLinearConstraintsMatrix(A)) {
@@ -172,9 +178,12 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
         return tl::make_unexpected(SplineFittingError::SolveQP);
     }
 
-    Eigen::VectorXd p_X_vec = solver.getSolution();
+    // Eigen::VectorXd p_X_vec = solver.getSolution();
 
-    if (!solver.updateGradient(q_y)) {
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_X =
+        solver.getSolution();
+
+    if (!solver.updateGradient(q.col(1))) {
         return tl::make_unexpected(SplineFittingError::SetGradient);
     }
     if (!solver.updateLinearConstraintsMatrix(A)) {
@@ -182,21 +191,33 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     }
     solver.updateBounds(b_y, b_y);
 
+    // // Solve for Y
+    // if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
+    //     return tl::make_unexpected(SplineFittingError::SolveQP);
+    // }
+
+    // Eigen::VectorXd p_Y_vec = solver.getSolution();
+
+    // // Reshape p_X_vec and p_Y_vec into matrices of shape (N, 4)
+    // int total_coeffs = 4 * N;
+    // if (p_X_vec.size() != total_coeffs || p_Y_vec.size() != total_coeffs) {
+    //     return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
+    // }
+
+    // Eigen::MatrixXd p_X = Eigen::Map<Eigen::MatrixXd>(p_X_vec.data(), N, 4);
+    // Eigen::MatrixXd p_Y = Eigen::Map<Eigen::MatrixXd>(p_Y_vec.data(), N, 4);
+
     // Solve for Y
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
         return tl::make_unexpected(SplineFittingError::SolveQP);
     }
 
-    Eigen::VectorXd p_Y_vec = solver.getSolution();
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_Y =
+        solver.getSolution();
 
-    // Reshape p_X_vec and p_Y_vec into matrices of shape (N, 4)
-    int total_coeffs = 4 * N;
-    if (p_X_vec.size() != total_coeffs || p_Y_vec.size() != total_coeffs) {
-        return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
-    }
-
-    Eigen::MatrixXd p_X = Eigen::Map<Eigen::MatrixXd>(p_X_vec.data(), N, 4);
-    Eigen::MatrixXd p_Y = Eigen::Map<Eigen::MatrixXd>(p_Y_vec.data(), N, 4);
+    // return std::make_pair(p_X_mat, p_Y_mat);
+    p_X.resize(N, 4);
+    p_Y.resize(N, 4);
 
     spline_coefficients = std::make_pair(p_X, p_Y);
 
@@ -266,6 +287,8 @@ tl::expected<
     std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>,
     SplineFittingError>
 SplineFitter::uniformly_sample_spline(int n_samples) {
+    n_samples =
+        n_samples - 1;  // Subtract 1 to exclude the last point which will be added at the end
     // Get coefficients
     const Eigen::MatrixXd& coeffs_X = spline_coefficients.first;
     const Eigen::MatrixXd& coeffs_Y = spline_coefficients.second;
@@ -311,15 +334,15 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
     }
 
     // Evaluate X_interp and Y_interp using the spline coefficients
-    Eigen::VectorXd X_interp(n_samples);
-    Eigen::VectorXd Y_interp(n_samples);
+    Eigen::VectorXd X_interp(n_samples + 1);  // Add one to include the last point
+    Eigen::VectorXd Y_interp(n_samples + 1);  // Add one to include the last point
     for (int i = 0; i < n_samples; ++i) {
         int idx = idx_interp(i);
 
-        // Ensure idx is within bounds
-        if (idx >= N) {
-            idx = N - 1;
-        }
+        // // Ensure idx is within bounds
+        // if (idx >= N) {
+        //     idx = N - 1;
+        // }
 
         double t = t_interp(i);
         double t2 = t * t;
@@ -330,6 +353,12 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
         Y_interp(i) =
             coeffs_Y(idx, 0) + coeffs_Y(idx, 1) * t + coeffs_Y(idx, 2) * t2 + coeffs_Y(idx, 3) * t3;
     }
+
+    // Add the last point
+    X_interp(n_samples) =
+        coeffs_X(N - 1, 0) + coeffs_X(N - 1, 1) + coeffs_X(N - 1, 2) + coeffs_X(N - 1, 3);
+    Y_interp(n_samples) =
+        coeffs_Y(N - 1, 0) + coeffs_Y(N - 1, 1) + coeffs_Y(N - 1, 2) + coeffs_Y(N - 1, 3);
 
     return std::make_tuple(X_interp, Y_interp, idx_interp, t_interp, s_interp);
 }

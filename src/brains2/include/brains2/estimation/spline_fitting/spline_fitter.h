@@ -5,25 +5,12 @@
 
 #include <osqp/osqp.h>
 #include <OsqpEigen/OsqpEigen.h>
-#include <algorithm>  // for std::upper_bound
-#include <cassert>
-#include <chrono>
-#include <cmath>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCore>
-#include <fstream>
-#include <iostream>
-#include <numeric>  // for std::partial_sum
-#include <sstream>
-#include <stdexcept>
-#include <string>
 #include <tuple>
 #include <unsupported/Eigen/KroneckerProduct>
-#include <vector>
-#include "brains2/common/cone_color.hpp"
 #include "brains2/external/expected.hpp"
-#include "brains2/external/rapidcsv.hpp"
 
 // Define a pair of matrices to hold the result
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;
@@ -36,17 +23,16 @@ enum class SplineFittingError {
     SetConstraints,
     SetHessian,
     InitSolver,
-    SolveQP
+    SolveQP,
+    NotEnoughPoints,
 };
 
 class SplineFitter {
 public:
     // Constructor
-    SplineFitter(const Eigen::MatrixXd& path,
-                 double curv_weight = 1.0,
-                 double initial_heading = M_PI / 2,
-                 double final_heading = M_PI / 2,
-                 bool verbose = false);
+    static tl::expected<SplineFitter, SplineFittingError> create(const Eigen::MatrixXd& path,
+                                                                 double curv_weight = 1.0,
+                                                                 bool verbose = false);
 
     // Method to fit the open spline
     tl::expected<void, SplineFittingError> fit_open_spline();
@@ -77,6 +63,8 @@ private:
 
     MatrixPair spline_coefficients;
     Eigen::VectorXd delta_s;
+
+    SplineFitter(const Eigen::MatrixXd& path, double curv_weight = 1.0, bool verbose = false);
 };
 
 #endif  // SPLINE_FITTER_HPP
