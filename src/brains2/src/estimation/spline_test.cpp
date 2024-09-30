@@ -17,18 +17,32 @@
 #include <unsupported/Eigen/KroneckerProduct>
 #include <vector>
 #include "brains2/common/cone_color.hpp"
+#include "brains2/external/expected.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
 // Define a pair of matrices to hold the result
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;
 
-MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
-                           double curv_weight = 1.0,
-                           double initial_heading = M_PI / 2,
-                           double final_heading = M_PI / 2,
-                           bool verbose = false) {
+enum class ErrorBE {
+    PathShape,
+    DeltaSLength,
+    CoefficientsDimensions,
+    SetGradient,
+    SetConstraints,
+    SetHeissian,
+    InitSolver,
+    SolveQP
+};
+
+tl::expected<MatrixPair, ErrorBE> fit_open_spline(const Eigen::MatrixXd& path,
+                                                  double curv_weight = 1.0,
+                                                  double initial_heading = M_PI / 2,
+                                                  double final_heading = M_PI / 2,
+                                                  bool verbose = false) {
     // Ensure the path has shape (N+1, 2)
-    assert(path.cols() == 2 && "path must have shape (N,2)");
+    if (path.cols() != 2) {
+        return tl::make_unexpected(ErrorBE::PathShape);
+    }
     int N = path.rows() - 1;  // path has N+1 points for N segments
 
     // Compute delta_s
@@ -145,10 +159,9 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     Eigen::VectorXd q = -B.transpose() * path;
 
     // Build constraint vector b
-    Eigen::VectorXd b_x(A_rows);
-    Eigen::VectorXd b_y(A_rows);
-    b_x.setZero();
-    b_y.setZero();
+    Eigen::VectorXd b_x = Eigen::VectorXd::Zero(A_rows);
+    Eigen::VectorXd b_y = Eigen::VectorXd::Zero(A_rows);
+
     b_x[A_rows - 2] = delta_s[0] * std::cos(initial_heading);
     b_x[A_rows - 1] = delta_s[N - 1] * std::cos(final_heading);
 
@@ -163,40 +176,38 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     solver.data()->setNumberOfConstraints(A_rows);
 
     if (!solver.data()->setHessianMatrix(P)) {
-        throw std::runtime_error("Failed to set P");
+        return tl::make_unexpected(ErrorBE::SetHeissian);
     }
     if (!solver.data()->setGradient(q.col(0))) {
-        throw std::runtime_error("Failed to set q_x");
+        return tl::make_unexpected(ErrorBE::SetGradient);
     }
     if (!solver.data()->setLinearConstraintsMatrix(A)) {
-        throw std::runtime_error("Failed to set A");
+        return tl::make_unexpected(ErrorBE::SetConstraints);
     }
-    solver.data()->setLowerBound(b_x);
-    solver.data()->setUpperBound(b_x);
+    solver.data()->setBounds(b_x, b_x);
     if (!solver.initSolver()) {
-        throw std::runtime_error("Failed to initialize solver for X");
+        return tl::make_unexpected(ErrorBE::InitSolver);
     }
 
     // Solve for X
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-        throw std::runtime_error("Failed to solve QP for X");
+        return tl::make_unexpected(ErrorBE::SolveQP);
     }
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_X =
         solver.getSolution();
 
     if (!solver.updateGradient(q.col(1))) {
-        throw std::runtime_error("Failed to set q_y");
+        return tl::make_unexpected(ErrorBE::SetGradient);
     }
     if (!solver.updateLinearConstraintsMatrix(A)) {
-        throw std::runtime_error("Failed to set A");
+        return tl::make_unexpected(ErrorBE::SetConstraints);
     }
-    solver.updateLowerBound(b_y);
-    solver.updateUpperBound(b_y);
+    solver.updateBounds(b_y, b_y);
 
     // Solve for Y
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-        throw std::runtime_error("Failed to solve QP for Y");
+        return tl::make_unexpected(ErrorBE::SolveQP);
     }
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_Y =
@@ -206,24 +217,25 @@ MatrixPair fit_open_spline(const Eigen::MatrixXd& path,
     p_X.resize(N, 4);
     p_Y.resize(N, 4);
 
-    return std::make_pair(p_X, p_Y);
+    MatrixPair p_XY = std::make_pair(p_X, p_Y);
+
+    return p_XY;
 }
 
 // Function to compute the lengths of each spline interval
-Eigen::VectorXd compute_spline_interval_lengths(
-    const Eigen::MatrixXd& coeffs_X,
-    const Eigen::MatrixXd& coeffs_Y,
-    int no_interp_points = 100)
-{
+tl::expected<Eigen::VectorXd, ErrorBE> compute_spline_interval_lengths(
+    const Eigen::MatrixXd& coeffs_X, const Eigen::MatrixXd& coeffs_Y, int no_interp_points = 100) {
     // Check that coeffs_X and coeffs_Y have the same dimensions and are Nx4 matrices
     if (coeffs_X.rows() != coeffs_Y.rows() || coeffs_X.cols() != 4 || coeffs_Y.cols() != 4) {
-        throw std::invalid_argument("coeffs_X and coeffs_Y must be of shape (N, 4)");
+        return tl::make_unexpected(ErrorBE::CoefficientsDimensions);
     }
 
     int N = coeffs_X.rows(); // Number of spline segments
 
     // Generate t_steps from 0.0 to 1.0 with no_interp_points points
     Eigen::VectorXd t_steps = Eigen::VectorXd::LinSpaced(no_interp_points, 0.0, 1.0);
+    Eigen::VectorXd t_steps2 = t_steps.array().square();
+    Eigen::VectorXd t_steps3 = t_steps.array().cube();
 
     // Initialize delta_s vector to hold lengths of each spline interval
     Eigen::VectorXd delta_s(N);
@@ -242,13 +254,13 @@ Eigen::VectorXd compute_spline_interval_lengths(
         // Add contributions from each term
         x.array() += coeff_X(0); // a0
         x.array() += coeff_X(1) * t_steps.array(); // a1 * t
-        x.array() += coeff_X(2) * t_steps.array().square(); // a2 * t^2
-        x.array() += coeff_X(3) * t_steps.array().cube(); // a3 * t^3
+        x.array() += coeff_X(2) * t_steps2.array();  // a2 * t^2
+        x.array() += coeff_X(3) * t_steps3.array();  // a3 * t^3
 
         y.array() += coeff_Y(0); // b0
         y.array() += coeff_Y(1) * t_steps.array(); // b1 * t
-        y.array() += coeff_Y(2) * t_steps.array().square(); // b2 * t^2
-        y.array() += coeff_Y(3) * t_steps.array().cube(); // b3 * t^3
+        y.array() += coeff_Y(2) * t_steps2.array();  // b2 * t^2
+        y.array() += coeff_Y(3) * t_steps3.array();  // b3 * t^3
 
         // Compute differences between consecutive points
         Eigen::VectorXd dx = x.segment(1, no_interp_points - 1) - x.segment(0, no_interp_points - 1);
@@ -265,20 +277,20 @@ Eigen::VectorXd compute_spline_interval_lengths(
 }
 
 // Function to uniformly sample the spline
-std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>
-uniformly_sample_spline(
-    const Eigen::MatrixXd& coeffs_X,
-    const Eigen::MatrixXd& coeffs_Y,
-    const Eigen::VectorXd& delta_s,
-    int n_samples)
-{
+tl::expected<
+    std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>,
+    ErrorBE>
+uniformly_sample_spline(const Eigen::MatrixXd& coeffs_X,
+                        const Eigen::MatrixXd& coeffs_Y,
+                        const Eigen::VectorXd& delta_s,
+                        int n_samples) {
     // Check that coeffs_X and coeffs_Y have shape (N, 4)
     int N = coeffs_X.rows();
     if (coeffs_X.rows() != coeffs_Y.rows() || coeffs_X.cols() != 4 || coeffs_Y.cols() != 4) {
-        throw std::invalid_argument("coeffs_X and coeffs_Y must have shape (N, 4)");
+        return tl::make_unexpected(ErrorBE::CoefficientsDimensions);
     }
     if (delta_s.size() != N) {
-        throw std::invalid_argument("delta_s must have length N");
+        return tl::make_unexpected(ErrorBE::DeltaSLength);
     }
 
     // Compute cumulative sum of delta_s
@@ -336,10 +348,15 @@ uniformly_sample_spline(
 
 int main() {
     // rapidcsv::Document cones("src/brains2/src/estimation/test_cones.csv");
-    rapidcsv::Document cones("src/brains2/src/estimation/alpha_cones.csv");
 
-    const size_t resample_points = 2000;
+    // const std::string path_input = "src/brains2/src/estimation/alpha_cones.csv";
+    const std::string path_input = "src/brains2/src/estimation/test_cones.csv";
+    // const std::string path_output = "src/brains2/src/estimation/interpolated_spline_alpha.csv";
+    const std::string path_output = "src/brains2/src/estimation/interpolated_spline.csv";
+    const size_t resample_points = 100;
     const double curv_weight = 1.0;
+
+    rapidcsv::Document cones(path_input);
 
     Eigen::MatrixXd blue_cones;
     Eigen::MatrixXd yellow_cones;
@@ -401,29 +418,36 @@ int main() {
     double final_heading_blue = atan2(blue_cones(blue_cones.rows() - 1, 1) - blue_cones(blue_cones.rows() - 2, 1),
                                       blue_cones(blue_cones.rows() - 1, 0) - blue_cones(blue_cones.rows() - 2, 0));
 
-    MatrixPair splines_blue = fit_open_spline(blue_cones, curv_weight, initial_heading_blue, final_heading_blue);
-    MatrixPair splines_yellow = fit_open_spline(yellow_cones, curv_weight, initial_heading_yellow, final_heading_yellow);
+    MatrixPair splines_blue =
+        fit_open_spline(blue_cones, curv_weight, initial_heading_blue, final_heading_blue).value();
+    MatrixPair splines_yellow =
+        fit_open_spline(yellow_cones, curv_weight, initial_heading_yellow, final_heading_yellow)
+            .value();
 
     Eigen::VectorXd delta_s_blue =
-        compute_spline_interval_lengths(splines_blue.first, splines_blue.second);
+        compute_spline_interval_lengths(splines_blue.first, splines_blue.second).value();
     Eigen::VectorXd delta_s_yellow =
-        compute_spline_interval_lengths(splines_yellow.first, splines_yellow.second);
+        compute_spline_interval_lengths(splines_yellow.first, splines_yellow.second).value();
 
-    auto result_blue = uniformly_sample_spline(splines_blue.first, splines_blue.second, delta_s_blue, resample_points);
-    
-    auto result_yellow = uniformly_sample_spline(splines_yellow.first, splines_yellow.second, delta_s_yellow, resample_points);
+    std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>
+        result_blue = uniformly_sample_spline(splines_blue.first,
+                                              splines_blue.second,
+                                              delta_s_blue,
+                                              resample_points)
+                          .value();
 
-    Eigen::VectorXd X_interp_blue = std::get<0>(result_blue);
-    Eigen::VectorXd Y_interp_blue = std::get<1>(result_blue);
-    Eigen::VectorXi idx_interp_blue = std::get<2>(result_blue);
-    Eigen::VectorXd t_interp_blue = std::get<3>(result_blue);
-    Eigen::VectorXd s_interp_blue = std::get<4>(result_blue);
+    std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>
+        result_yellow = uniformly_sample_spline(splines_yellow.first,
+                                                splines_yellow.second,
+                                                delta_s_yellow,
+                                                resample_points)
+                            .value();
 
-    Eigen::VectorXd X_interp_yellow = std::get<0>(result_yellow);
-    Eigen::VectorXd Y_interp_yellow = std::get<1>(result_yellow);
-    Eigen::VectorXi idx_interp_yellow = std::get<2>(result_yellow);
-    Eigen::VectorXd t_interp_yellow = std::get<3>(result_yellow);
-    Eigen::VectorXd s_interp_yellow = std::get<4>(result_yellow);
+    auto [X_interp_blue, Y_interp_blue, idx_interp_blue, t_interp_blue, s_interp_blue] =
+        result_blue;
+
+    auto [X_interp_yellow, Y_interp_yellow, idx_interp_yellow, t_interp_yellow, s_interp_yellow] =
+        result_yellow;
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -432,7 +456,7 @@ int main() {
 
     // print x_interp and y_interp to csv color, x, y
     std::ofstream file;
-    file.open("interpolated_spline_alpha.csv");
+    file.open(path_output);
     file << "color,X,Y\n";
     for (size_t i = 0; i < X_interp_blue.size(); ++i) {
         file << "blue," << X_interp_blue(i) << "," << Y_interp_blue(i) << "\n";
