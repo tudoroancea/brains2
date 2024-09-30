@@ -3,10 +3,10 @@ import pandas as pd
 import os
 
 # color,X,Y for blue and yellow cones with x and y the coordinates in meters
-cones = pd.read_csv(os.path.dirname(__file__) + "/interpolated_spline.csv")
-# cones = pd.read_csv(os.path.dirname(__file__) + "/interpolated_spline_alpha.csv")
-gt = pd.read_csv(os.path.dirname(__file__) + "/test_cones.csv")
-# gt = pd.read_csv(os.path.dirname(__file__) + "/alpha_cones.csv")
+# cones = pd.read_csv(os.path.dirname(__file__) + "/interpolated_spline.csv")
+cones = pd.read_csv(os.path.dirname(__file__) + "/interpolated_spline_alpha.csv")
+# gt = pd.read_csv(os.path.dirname(__file__) + "/test_cones.csv")
+gt = pd.read_csv(os.path.dirname(__file__) + "/alpha_cones.csv")
 
 # plot a scatter plot of the cones with a bigger size for the ground truth cones
 plt.scatter(
