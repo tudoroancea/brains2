@@ -5,7 +5,6 @@
 #include <array>
 #include "acados/sim/sim_common.h"
 #include "casadi/mem.h"
-#include "generated/acados_sim_solver_kin6.h"
 
 namespace brains2 {
 namespace sim {
@@ -53,7 +52,7 @@ private:
     casadi_mem *accel_fun_mem;
 
     // acados simulation solver variables
-    kin6_sim_solver_capsule *kin6_sim_capsule;
+    void *kin6_sim_capsule;
     sim_config *kin6_sim_config;
     sim_in *kin6_sim_in;
     sim_out *kin6_sim_out;
