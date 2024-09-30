@@ -30,6 +30,8 @@ ament_auto_find_build_dependencies()
 
 # find other libraries: eigen3, nlohmann json
 find_package(Eigen3 REQUIRED)
+find_package(OsqpEigen REQUIRED)
+find_package(osqp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 set(CMAKE_TESTING_ENABLED ON)
 if (CMAKE_TESTING_ENABLED)
@@ -90,6 +92,8 @@ endif()
 ####################################################################################################
 # estimation
 ####################################################################################################
+ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_test.cpp)
+target_link_libraries(brains2_be_spline_test brains2_common OsqpEigen::OsqpEigen osqp::osqp)
 
 ####################################################################################################
 # create package
