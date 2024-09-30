@@ -139,9 +139,11 @@ def kin_model(rk_steps: int = 1):
     T = tau_FL + tau_FR + tau_RL + tau_RR  # total torque
     F_motor = C_m0 * T  # the traction force
     F_drag = -(C_r0 + C_r1 * v_x + C_r2 * v_x**2) * smooth_sgn(v_x)  # total drag force
-    # F_drag = 0.0
     F_Rx = 0.5 * F_motor + F_drag  # force applied at the rear wheels
     F_Fx = 0.5 * F_motor  # force applied at the front wheels
+    beta = ca.arctan(l_R / (l_R + l_F) * ca.tan(delta))
+    v_dot = (ca.cos(beta) * F_Rx + ca.cos(delta - beta) * F_Fx) / m
+    beta_dot = l_R / (l_R + l_F) * delta_dot
 
     # accelerations
     a_x = (F_Rx + F_Fx * ca.cos(delta)) / m
@@ -153,9 +155,9 @@ def kin_model(rk_steps: int = 1):
         v_x * ca.cos(phi) - v_y * ca.sin(phi),
         v_x * ca.sin(phi) + v_y * ca.cos(phi),
         omega,
-        a_x + v_y * omega,
-        a_y - v_x * omega,
-        l_F * F_Fx * ca.sin(delta) / I_z,
+        v_dot * ca.cos(beta) - v_y * beta_dot,
+        v_dot * ca.sin(beta) + v_x * beta_dot,
+        (v_dot * ca.sin(beta) + v_x * beta_dot) / l_R,
         delta_dot,
         tau_FL_dot,
         tau_FR_dot,
@@ -183,7 +185,7 @@ def kin_model(rk_steps: int = 1):
     sim_opts.T = 0.01  # will be overwritten by the simulation
     sim_opts.num_stages = 4
     sim_opts.num_steps = 10
-    sim_opts.integrator_type = "ERK"
+    sim_opts.integrator_type = "IRK"
     sim_opts.collocation_type = "GAUSS_RADAU_IIA"
 
     sim = AcadosSim()
