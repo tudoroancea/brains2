@@ -1,7 +1,6 @@
 #include <osqp/osqp.h>
 #include <OsqpEigen/OsqpEigen.h>
 #include <algorithm>  // for std::upper_bound
-#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <Eigen/Dense>
@@ -10,13 +9,10 @@
 #include <fstream>
 #include <iostream>
 #include <numeric>  // for std::partial_sum
-#include <sstream>
-#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <unsupported/Eigen/KroneckerProduct>
 #include <vector>
-#include "brains2/common/cone_color.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
