@@ -8,6 +8,13 @@
 using namespace brains2::sim;
 using namespace brains2::common;
 
+const std::array<std::string, 4> Sim::SimErrorStrings = {
+    "SAMPLING_TIME_UPDATE_ERROR",
+    "ACADOS_SOLVER_ERROR",
+    "ACCELS_FUNCTION_ERROR",
+    "NANS_IN_RESULT",
+};
+
 Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     : limits(limits),
       x{0.0},
@@ -49,9 +56,8 @@ Sim::~Sim() {
     kin6_acados_sim_solver_free_capsule((kin6_sim_solver_capsule *)kin6_sim_capsule);
 }
 
-std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
-                                                 const Sim::Control &control,
-                                                 double dt) {
+tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
+    const Sim::State &state, const Sim::Control &control, double dt) {
     // Set current state
     x[0] = state.X;
     x[1] = state.Y;
@@ -66,7 +72,7 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
     x[10] = state.tau_RR;
 
     // Set current target controls (and enforce limits)
-    const double ddelta_max = p[Sim::Parameters::dim - 1] * limits.delta_dot_max;
+    const double ddelta_max = p[Sim::np - 1] * limits.delta_dot_max;
     u[0] = clip(clip(control.u_delta, state.delta - ddelta_max, state.delta + ddelta_max),
                 -limits.delta_max,
                 limits.delta_max);
@@ -89,14 +95,14 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
                                                   p.data(),
                                                   p.size());
     if (exit_code != 0) {
-        throw std::runtime_error("Failed to update parameters");
+        return tl::make_unexpected(SimError::SAMPLING_TIME_UPDATE_ERROR);
     }
 
-    // Call simmulation solver
+    // Call simulation solver
     sim_in_set(kin6_sim_config, kin6_sim_dims, kin6_sim_in, "T", &dt);
     exit_code = kin6_acados_sim_solve((kin6_sim_solver_capsule *)kin6_sim_capsule);
     if (exit_code != 0) {
-        throw std::runtime_error("Simulation returned non-zero exit code");
+        return tl::make_unexpected(SimError::ACADOS_SOLVER_ERROR);
     }
 
     // Get next state
@@ -104,7 +110,7 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
 
     exit_code = casadi_eval(accel_fun_mem);
     if (exit_code != 0) {
-        throw std::runtime_error("Acceleration function returned non-zero exit code");
+        return tl::make_unexpected(SimError::ACCELS_FUNCTION_ERROR);
     }
     State next_state{x_next[0],
                      x_next[1],
@@ -122,7 +128,7 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
     // Check for NaNs
     if (std::any_of(x_next.begin(), x_next.end(), [](double value) { return std::isnan(value); }) ||
         std::any_of(a.begin(), a.end(), [](double value) { return std::isnan(value); })) {
-        throw std::runtime_error("Simulation returned NaN");
+        return tl::make_unexpected(SimError::NANS_IN_RESULT);
     }
 
     // Prohibit the car from going backwards
@@ -133,5 +139,5 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
         next_state.v_y = 0.0;
         next_state.omega = 0.0;
     }
-    return {next_state, next_accels};
+    return std::make_pair(next_state, next_accels);
 }

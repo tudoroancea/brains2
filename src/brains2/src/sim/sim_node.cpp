@@ -108,6 +108,7 @@ private:
 
     // cones
     visualization_msgs::msg::MarkerArray cones_marker_array;
+    visualization_msgs::msg::MarkerArray car_markers_msg;
 
     // lap timing
     std::pair<double, double> last_position, start_line_pos_1, start_line_pos_2;
@@ -142,10 +143,11 @@ private:
 
     void reset_srv_cb([[maybe_unused]] const std_srvs::srv::Empty::Request::SharedPtr request,
                       [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
+        // Reset the state and accelerations
         this->state =
             brains2::sim::Sim::State{0.0, 0.0, M_PI_2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         this->accels = brains2::sim::Sim::Accels{0.0, 0.0};
-        // reset lap timing
+        // Reset lap timing
         this->last_lap_time_stamp = rclcpp::Time(0, 0);
     }
 
@@ -154,7 +156,13 @@ private:
 
         // call sim solver
         brains2::sim::Sim::State new_state{};
-        std::tie(new_state, accels) = sim->simulate(state, control, dt);
+        auto expected_sim_result = sim->simulate(state, control, dt);
+        if (!expected_sim_result) {
+            throw std::runtime_error("Simulation error: " +
+                                     brains2::sim::Sim::SimErrorStrings[static_cast<std::uint8_t>(
+                                         expected_sim_result.error())]);
+        }
+        std::tie(new_state, accels) = expected_sim_result.value();
         state = new_state;
 
         auto end = this->now();
@@ -224,12 +232,14 @@ private:
         diag_msg.status[0].values[3].value = std::to_string(this->best_lap_time);
         this->diagnostics_pub->publish(diag_msg);
 
-        visualization_msgs::msg::MarkerArray markers_msg;
-        std::vector<visualization_msgs::msg::Marker> car_markers = get_car_markers();
-        for (const auto &marker : car_markers) {
-            markers_msg.markers.push_back(marker);
-        }
-        this->viz_pub->publish(markers_msg);
+        // visualization_msgs::msg::MarkerArray markers_msg;
+        // std::vector<visualization_msgs::msg::Marker> car_markers = get_car_markers();
+        // for (const auto &marker : car_markers) {
+        //     markers_msg.markers.push_back(marker);
+        // }
+        // TODO: modify car_markers_msg
+        this->update_tire_markers();
+        this->viz_pub->publish(car_markers_msg);
     }
 
     void create_diagnostics_message() {
@@ -252,14 +262,10 @@ private:
         }
         const auto &cones_map = cones_map_opt.value();
 
-        // set deleteall to all the markers in the cones_marker_array and publish it
-        for (auto &marker : cones_marker_array.markers) {
-            marker.action = visualization_msgs::msg::Marker::DELETEALL;
-        }
-        this->viz_pub->publish(cones_marker_array);
-
         // create new cones
-        cones_marker_array.markers.clear();
+        cones_marker_array.markers.resize(cones_map.at(brains2::common::ConeColor::BLUE).rows() +
+                                          cones_map.at(brains2::common::ConeColor::YELLOW).rows() +
+                                          cones_map.at(brains2::common::ConeColor::ORANGE).rows());
         for (auto &[color, cones] : cones_map) {
             for (int i = 0; i < cones.rows(); i++) {
                 cones_marker_array.markers.push_back(
@@ -322,46 +328,51 @@ private:
         return marker;
     }
 
-    std::vector<visualization_msgs::msg::Marker> get_car_markers() {
-        std::vector<visualization_msgs::msg::Marker> markers;
-        std::string car_mesh = this->get_parameter("car_mesh").as_string();
+    void create_car_markers() {
+        std::vector<visualization_msgs::msg::Marker> &markers = car_markers_msg.markers;
         markers.resize(5);
-        markers[0].header.frame_id = "world";
-        markers[0].ns = "car";
+        markers[0].header.frame_id = "car";
+        markers[0].ns = "chassis";
         markers[0].type = visualization_msgs::msg::Marker::MESH_RESOURCE;
         markers[0].action = visualization_msgs::msg::Marker::MODIFY;
-        markers[0].mesh_resource = this->get_local_mesh_path(car_mesh);
-        markers[0].pose.position.x = state.X;
-        markers[0].pose.position.y = state.Y;
-        markers[0].pose.orientation = brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.phi);
+        markers[0].mesh_resource = this->get_local_mesh_path("ariane.stl");
+        markers[0].pose.orientation = brains2::common::rpy_to_quaternion_msg(0.0, 0.0, 0.0);
         markers[0].scale.x = 1.0;
         markers[0].scale.y = 1.0;
         markers[0].scale.z = 1.0;
         markers[0].color = brains2::common::marker_colors("white");
         for (size_t i(1); i < 5; ++i) {
-            markers[i].header.frame_id = "world";
-            markers[i].ns = "car";
+            markers[i].header.frame_id = "car";
+            markers[i].ns = "tires";
             markers[i].id = i;
             markers[i].type = visualization_msgs::msg::Marker::MESH_RESOURCE;
             markers[i].mesh_resource = this->get_local_mesh_path("ariane_wheel.stl");
             markers[i].action = visualization_msgs::msg::Marker::MODIFY;
-            double wheel_x(i < 3 ? 0.7853 : -0.7853), wheel_y(i % 2 == 0 ? 0.6291 : -0.6291),
-                wheel_phi(i < 3 ? state.delta : 0.0);
-            // the STL represents right wheels, so for left wheels (i.e. i=1,3) we add a yaw of pi
-            wheel_phi += (i % 2 == 1 ? 0.0 : M_PI);
-            markers[i].pose.position.x =
-                state.X + wheel_x * std::cos(state.phi) - wheel_y * std::sin(state.phi);
-            markers[i].pose.position.y =
-                state.Y + wheel_x * std::sin(state.phi) + wheel_y * std::cos(state.phi);
+            // The wheels are listed in CW order, starting from the front left
+            markers[i].pose.position.x = (i < 3 ? 0.7853 : -0.7853);
+            markers[i].pose.position.y = (i % 2 == 1 ? 0.6291 : -0.6291);
             markers[i].pose.position.z = 0.20809;
+            // the STL represents left wheels, so for right wheels (i.e. i=2,4) we add a yaw of pi
             markers[i].pose.orientation =
-                brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.phi + wheel_phi);
+                brains2::common::rpy_to_quaternion_msg(0.0, 0.0, i % 2 == 0 ? 0.0 : M_PI);
             markers[i].scale.x = 1.0;
             markers[i].scale.y = 1.0;
             markers[i].scale.z = 1.0;
             markers[i].color = brains2::common::marker_colors("dark_gray");
         }
-        return markers;
+    }
+
+    void update_tire_markers() {
+        car_markers_msg.markers[0].header.stamp = this->now();
+        car_markers_msg.markers[1].header.stamp = this->now();
+        car_markers_msg.markers[2].header.stamp = this->now();
+        car_markers_msg.markers[3].header.stamp = this->now();
+        car_markers_msg.markers[4].header.stamp = this->now();
+
+        car_markers_msg.markers[1].pose.orientation =
+            brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.delta);
+        car_markers_msg.markers[2].pose.orientation =
+            brains2::common::rpy_to_quaternion_msg(0.0, 0.0, M_PI + state.delta);
     }
 
     inline std::string get_local_mesh_path(std::string mesh_file) {
@@ -371,12 +382,12 @@ private:
 
 public:
     SimNode() : Node("sim_node"), sim{}, state{}, control{}, accels{} {
+        // Declare all node parameters
         this->declare_parameter<double>("freq", 100.0);
         this->declare_parameter<bool>("manual_control", true);
         this->declare_parameter<std::string>("track_name", "alpha");
-        this->declare_parameter<std::string>("car_mesh", "ariane.stl");
-        this->declare_parameter<double>("v_dyn", 1.0);
 
+        // Compute sampling time
         dt = 1 / this->get_parameter("freq").as_double();
 
 #ifdef CAR_CONSTANTS_PATH
@@ -398,13 +409,23 @@ public:
             car_constants["actuators"]["torque_max"].as<double>(),
             car_constants["actuators"]["steering_max"].as<double>(),
             car_constants["actuators"]["steering_rate_max"].as<double>()};
-        IC(params, limits);
+
+        {
+            std::string init_message{};
+            IC_CONFIG.prefix("");
+            IC_CONFIG.output(init_message);
+            IC(params, limits);
+            RCLCPP_INFO(this->get_logger(),
+                        "Sim initialized with parameters: %s",
+                        init_message.c_str());
+        }
+
         // Create Sim object
         this->sim = std::make_unique<brains2::sim::Sim>(params, limits);
 #else
 #error CAR_CONSTANTS_PATH is not defined
 #endif
-        // reset the sim to initialize state and controls
+        // Reset the sim to initialize state and controls
         this->reset_srv_cb(nullptr, nullptr);
 
         // Create ros publishers.
@@ -443,6 +464,7 @@ public:
                                                                  std::placeholders::_2));
         // Create messages
         this->create_diagnostics_message();
+        this->create_car_markers();
 
         // load cones from track file and create the markers for the cones
         this->create_cones_markers(this->get_parameter("track_name").as_string());

@@ -4,6 +4,7 @@
 
 #include <array>
 #include "acados/sim/sim_common.h"
+#include "brains2/external/expected.hpp"
 #include "casadi/mem.h"
 
 namespace brains2 {
@@ -11,6 +12,7 @@ namespace sim {
 
 class Sim {
 public:
+    /* */
     struct State {
         static constexpr int dim = 11;
         double X, Y, phi, v_x, v_y, omega, delta, tau_FL, tau_FR, tau_RL, tau_RR;
@@ -33,14 +35,46 @@ public:
     static constexpr int nu = Control::dim;
     static constexpr int np = Parameters::dim;
 
-    Sim() = delete;
-    Sim(const Parameters &params, const Limits &limits);
-    virtual ~Sim();
+    /*
+     * @brief Possible errors that can occur during a simulation step.
+     */
+    enum class SimError : std::uint8_t {
+        SAMPLING_TIME_UPDATE_ERROR = 0,
+        ACADOS_SOLVER_ERROR = 1,
+        ACCELS_FUNCTION_ERROR = 2,
+        NANS_IN_RESULT = 3,
+    };
+    static const std::array<std::string, 4> SimErrorStrings;
 
+    // We remove the default constructor, copy constructor and assignment operator because this
+    // class has to allocate data on the heap (for the acados simulation solver and the casadi
+    // function evaluation).
+    Sim() = delete;
     Sim(const Sim &other) = delete;
     Sim &operator=(const Sim &other) = delete;
 
-    std::pair<State, Accels> simulate(const State &state, const Control &control, double dt);
+    /*
+     * @brief Create a new simulation object.
+     *
+     * @param params The parameters of the model.
+     * @param limits The control limits of the simulation.
+     */
+    Sim(const Parameters &params, const Limits &limits);
+    virtual ~Sim();
+
+    /*
+     * @brief Run a simulation step, while enforcing the control limits and ensuring the car doesn't
+     * driver in reverse.
+     *
+     * @param state The current state of the car.
+     * @param control The target controls for the car, held constant during the simulation step.
+     * @param dt The time to simlate for.
+     * @return The next state of the car and the accelerations of the car if no erros occur,
+     * otherwise a SimError.
+     */
+    tl::expected<std::pair<State, Accels>, SimError> simulate(const State &state,
+                                                              const Control &control,
+                                                              double dt);
 
 private:
     // Control limits used for the simulation
