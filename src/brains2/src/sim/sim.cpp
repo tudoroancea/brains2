@@ -66,7 +66,7 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
     x[10] = state.tau_RR;
 
     // Set current target controls (and enforce limits)
-    const double ddelta_max = dt * limits.delta_dot_max;
+    const double ddelta_max = p[Sim::Parameters::dim - 1] * limits.delta_dot_max;
     u[0] = clip(clip(control.u_delta, state.delta - ddelta_max, state.delta + ddelta_max),
                 -limits.delta_max,
                 limits.delta_max);
