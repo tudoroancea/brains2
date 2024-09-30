@@ -40,8 +40,8 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     // Build matrices A, B, C
 
     // Build A
-    std::vector<Eigen::Triplet<double>> tripletListA;
-    tripletListA.reserve(9 * (N - 1) + 3 * (N - 1) + 4);
+    std::vector<Eigen::Triplet<double>> triplet_list_A;
+    triplet_list_A.reserve(9 * (N - 1) + 3 * (N - 1) + 4);
 
     // First part of A: spkron(speye(N - 1), array)
     for (int i = 0; i < N - 1; ++i) {
@@ -49,19 +49,19 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
         int col_offset = 4 * i;
 
         // First row : continuity between spline segments
-        tripletListA.emplace_back(row_offset, col_offset + 0, 1.0);
-        tripletListA.emplace_back(row_offset, col_offset + 1, 1.0);
-        tripletListA.emplace_back(row_offset, col_offset + 2, 1.0);
-        tripletListA.emplace_back(row_offset, col_offset + 3, 1.0);
+        triplet_list_A.emplace_back(row_offset, col_offset + 0, 1.0);
+        triplet_list_A.emplace_back(row_offset, col_offset + 1, 1.0);
+        triplet_list_A.emplace_back(row_offset, col_offset + 2, 1.0);
+        triplet_list_A.emplace_back(row_offset, col_offset + 3, 1.0);
 
         // Second row : continuity of first derivative
-        tripletListA.emplace_back(row_offset + 1, col_offset + 1, 1.0);
-        tripletListA.emplace_back(row_offset + 1, col_offset + 2, 2.0);
-        tripletListA.emplace_back(row_offset + 1, col_offset + 3, 3.0);
+        triplet_list_A.emplace_back(row_offset + 1, col_offset + 1, 1.0);
+        triplet_list_A.emplace_back(row_offset + 1, col_offset + 2, 2.0);
+        triplet_list_A.emplace_back(row_offset + 1, col_offset + 3, 3.0);
 
         // Third row : continuity of second derivative
-        tripletListA.emplace_back(row_offset + 2, col_offset + 2, 2.0);
-        tripletListA.emplace_back(row_offset + 2, col_offset + 3, 6.0);
+        triplet_list_A.emplace_back(row_offset + 2, col_offset + 2, 2.0);
+        triplet_list_A.emplace_back(row_offset + 2, col_offset + 3, 6.0);
     }
 
     // Second part of A: additional entries based on rho
@@ -70,72 +70,72 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
         int col = 4 * (i + 1);
 
         // Entries for -1, -rho, -2*rho^2
-        tripletListA.emplace_back(row, col + 0, -1.0);
-        tripletListA.emplace_back(row + 1, col + 1, -rho[i]);
-        tripletListA.emplace_back(row + 2, col + 2, -2.0 * rho[i] * rho[i]);
+        triplet_list_A.emplace_back(row, col + 0, -1.0);
+        triplet_list_A.emplace_back(row + 1, col + 1, -rho[i]);
+        triplet_list_A.emplace_back(row + 2, col + 2, -2.0 * rho[i] * rho[i]);
     }
 
     // Third part of A: initial heading constraint
-    tripletListA.emplace_back(3 * (N - 1), 1, 1.0);
+    triplet_list_A.emplace_back(3 * (N - 1), 1, 1.0);
 
     // Fourth part of A: final heading constraint
     int last_row = 3 * (N - 1) + 1;
     int col_offset = 4 * (N - 1);
-    tripletListA.emplace_back(last_row, col_offset + 1, 1.0);
-    tripletListA.emplace_back(last_row, col_offset + 2, 2.0);
-    tripletListA.emplace_back(last_row, col_offset + 3, 3.0);
+    triplet_list_A.emplace_back(last_row, col_offset + 1, 1.0);
+    triplet_list_A.emplace_back(last_row, col_offset + 2, 2.0);
+    triplet_list_A.emplace_back(last_row, col_offset + 3, 3.0);
 
     int A_rows = 3 * (N - 1) + 2;
     int A_cols = 4 * N;
     Eigen::SparseMatrix<double> A(A_rows, A_cols);
-    A.setFromTriplets(tripletListA.begin(), tripletListA.end());
+    A.setFromTriplets(triplet_list_A.begin(), triplet_list_A.end());
 
     // Build B
-    std::vector<Eigen::Triplet<double>> tripletListB;
-    tripletListB.reserve(N + 4);
+    std::vector<Eigen::Triplet<double>> triplet_list_B;
+    triplet_list_B.reserve(N + 4);
 
     // First part of B: spkron(speye(N), [1, 0, 0, 0])
     for (int i = 0; i < N; ++i) {
         int row = i;
         int col = 4 * i;
-        tripletListB.emplace_back(row, col, 1.0);
+        triplet_list_B.emplace_back(row, col, 1.0);
     }
 
     // Second part of B: spkron([0, ..., 0, 1], [1, 1, 1, 1])
     int last_row_B = N;
     col_offset = 4 * (N - 1);
     for (int j = 0; j < 4; ++j) {
-        tripletListB.emplace_back(last_row_B, col_offset + j, 1.0);
+        triplet_list_B.emplace_back(last_row_B, col_offset + j, 1.0);
     }
 
     int B_rows = N + 1;
     int B_cols = 4 * N;
     Eigen::SparseMatrix<double> B(B_rows, B_cols);
-    B.setFromTriplets(tripletListB.begin(), tripletListB.end());
+    B.setFromTriplets(triplet_list_B.begin(), triplet_list_B.end());
 
     // Build C
-    std::vector<Eigen::Triplet<double>> tripletListC;
-    tripletListC.reserve(N + 2);
+    std::vector<Eigen::Triplet<double>> triplet_list_C;
+    triplet_list_C.reserve(N + 2);
 
     // First part of C
     for (int i = 0; i < N; ++i) {
         int row = i;
         int col = 4 * i + 2;
         double value = 2.0 / (delta_s[i] * delta_s[i]);
-        tripletListC.emplace_back(row, col, value);
+        triplet_list_C.emplace_back(row, col, value);
     }
 
     // Second part of C: last row
     double delta_s_last = delta_s[N - 1];
     int last_row_C = N;
     col_offset = 4 * (N - 1);
-    tripletListC.emplace_back(last_row_C, col_offset + 2, 2.0 / (delta_s_last * delta_s_last));
-    tripletListC.emplace_back(last_row_C, col_offset + 3, 6.0 / (delta_s_last * delta_s_last));
+    triplet_list_C.emplace_back(last_row_C, col_offset + 2, 2.0 / (delta_s_last * delta_s_last));
+    triplet_list_C.emplace_back(last_row_C, col_offset + 3, 6.0 / (delta_s_last * delta_s_last));
 
     int C_rows = N + 1;
     int C_cols = 4 * N;
     Eigen::SparseMatrix<double> C(C_rows, C_cols);
-    C.setFromTriplets(tripletListC.begin(), tripletListC.end());
+    C.setFromTriplets(triplet_list_C.begin(), triplet_list_C.end());
 
     // Compute P = B^T * B + curv_weight * C^T * C
     Eigen::SparseMatrix<double> P = B.transpose() * B + curv_weight * C.transpose() * C;
