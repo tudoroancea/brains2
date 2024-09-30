@@ -1,6 +1,7 @@
 #include <osqp/osqp.h>
 #include <OsqpEigen/OsqpEigen.h>
 #include <algorithm>  // for std::upper_bound
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <Eigen/Dense>
@@ -9,35 +10,38 @@
 #include <fstream>
 #include <iostream>
 #include <numeric>  // for std::partial_sum
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <unsupported/Eigen/KroneckerProduct>
 #include <vector>
+#include "brains2/common/cone_color.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
 // Define a pair of matrices to hold the result
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;
 
-enum class ErrorBE {
+enum class SplineFittingError {
     PathShape,
     DeltaSLength,
     CoefficientsDimensions,
     SetGradient,
     SetConstraints,
-    SetHeissian,
+    SetHessian,
     InitSolver,
     SolveQP
 };
 
-tl::expected<MatrixPair, ErrorBE> fit_open_spline(const Eigen::MatrixXd& path,
+tl::expected<MatrixPair, SplineFittingError> fit_open_spline(const Eigen::MatrixXd& path,
                                                   double curv_weight = 1.0,
                                                   double initial_heading = M_PI / 2,
                                                   double final_heading = M_PI / 2,
                                                   bool verbose = false) {
     // Ensure the path has shape (N+1, 2)
     if (path.cols() != 2) {
-        return tl::make_unexpected(ErrorBE::PathShape);
+        return tl::make_unexpected(SplineFittingError::PathShape);
     }
     int N = path.rows() - 1;  // path has N+1 points for N segments
 
@@ -172,38 +176,38 @@ tl::expected<MatrixPair, ErrorBE> fit_open_spline(const Eigen::MatrixXd& path,
     solver.data()->setNumberOfConstraints(A_rows);
 
     if (!solver.data()->setHessianMatrix(P)) {
-        return tl::make_unexpected(ErrorBE::SetHeissian);
+        return tl::make_unexpected(SplineFittingError::SetHessian);
     }
     if (!solver.data()->setGradient(q.col(0))) {
-        return tl::make_unexpected(ErrorBE::SetGradient);
+        return tl::make_unexpected(SplineFittingError::SetGradient);
     }
     if (!solver.data()->setLinearConstraintsMatrix(A)) {
-        return tl::make_unexpected(ErrorBE::SetConstraints);
+        return tl::make_unexpected(SplineFittingError::SetConstraints);
     }
     solver.data()->setBounds(b_x, b_x);
     if (!solver.initSolver()) {
-        return tl::make_unexpected(ErrorBE::InitSolver);
+        return tl::make_unexpected(SplineFittingError::InitSolver);
     }
 
     // Solve for X
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-        return tl::make_unexpected(ErrorBE::SolveQP);
+        return tl::make_unexpected(SplineFittingError::SolveQP);
     }
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_X =
         solver.getSolution();
 
     if (!solver.updateGradient(q.col(1))) {
-        return tl::make_unexpected(ErrorBE::SetGradient);
+        return tl::make_unexpected(SplineFittingError::SetGradient);
     }
     if (!solver.updateLinearConstraintsMatrix(A)) {
-        return tl::make_unexpected(ErrorBE::SetConstraints);
+        return tl::make_unexpected(SplineFittingError::SetConstraints);
     }
     solver.updateBounds(b_y, b_y);
 
     // Solve for Y
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-        return tl::make_unexpected(ErrorBE::SolveQP);
+        return tl::make_unexpected(SplineFittingError::SolveQP);
     }
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_Y =
@@ -219,19 +223,19 @@ tl::expected<MatrixPair, ErrorBE> fit_open_spline(const Eigen::MatrixXd& path,
 }
 
 // Function to compute the lengths of each spline interval
-tl::expected<Eigen::VectorXd, ErrorBE> compute_spline_interval_lengths(
+tl::expected<Eigen::VectorXd, SplineFittingError> compute_spline_interval_lengths(
     const Eigen::MatrixXd& coeffs_X, const Eigen::MatrixXd& coeffs_Y, int no_interp_points = 100) {
     // Check that coeffs_X and coeffs_Y have the same dimensions and are Nx4 matrices
     if (coeffs_X.rows() != coeffs_Y.rows() || coeffs_X.cols() != 4 || coeffs_Y.cols() != 4) {
-        return tl::make_unexpected(ErrorBE::CoefficientsDimensions);
+        return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
     }
 
     int N = coeffs_X.rows(); // Number of spline segments
 
     // Generate t_steps from 0.0 to 1.0 with no_interp_points points
     Eigen::VectorXd t_steps = Eigen::VectorXd::LinSpaced(no_interp_points, 0.0, 1.0);
-    Eigen::VectorXd t_steps2 = t_steps.array().square();
-    Eigen::VectorXd t_steps3 = t_steps.array().cube();
+    Eigen::VectorXd t_steps_square = t_steps.array().square();
+    Eigen::VectorXd t_steps_cube = t_steps.array().cube();
 
     // Initialize delta_s vector to hold lengths of each spline interval
     Eigen::VectorXd delta_s(N);
@@ -250,13 +254,13 @@ tl::expected<Eigen::VectorXd, ErrorBE> compute_spline_interval_lengths(
         // Add contributions from each term
         x.array() += coeff_X(0); // a0
         x.array() += coeff_X(1) * t_steps.array(); // a1 * t
-        x.array() += coeff_X(2) * t_steps2.array();  // a2 * t^2
-        x.array() += coeff_X(3) * t_steps3.array();  // a3 * t^3
+        x.array() += coeff_X(2) * t_steps_square.array();  // a2 * t^2
+        x.array() += coeff_X(3) * t_steps_cube.array();  // a3 * t^3
 
         y.array() += coeff_Y(0); // b0
         y.array() += coeff_Y(1) * t_steps.array(); // b1 * t
-        y.array() += coeff_Y(2) * t_steps2.array();  // b2 * t^2
-        y.array() += coeff_Y(3) * t_steps3.array();  // b3 * t^3
+        y.array() += coeff_Y(2) * t_steps_square.array();  // b2 * t^2
+        y.array() += coeff_Y(3) * t_steps_cube.array();  // b3 * t^3
 
         // Compute differences between consecutive points
         Eigen::VectorXd dx = x.segment(1, no_interp_points - 1) - x.segment(0, no_interp_points - 1);
@@ -275,7 +279,7 @@ tl::expected<Eigen::VectorXd, ErrorBE> compute_spline_interval_lengths(
 // Function to uniformly sample the spline
 tl::expected<
     std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>,
-    ErrorBE>
+    SplineFittingError>
 uniformly_sample_spline(const Eigen::MatrixXd& coeffs_X,
                         const Eigen::MatrixXd& coeffs_Y,
                         const Eigen::VectorXd& delta_s,
@@ -283,10 +287,10 @@ uniformly_sample_spline(const Eigen::MatrixXd& coeffs_X,
     // Check that coeffs_X and coeffs_Y have shape (N, 4)
     int N = coeffs_X.rows();
     if (coeffs_X.rows() != coeffs_Y.rows() || coeffs_X.cols() != 4 || coeffs_Y.cols() != 4) {
-        return tl::make_unexpected(ErrorBE::CoefficientsDimensions);
+        return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
     }
     if (delta_s.size() != N) {
-        return tl::make_unexpected(ErrorBE::DeltaSLength);
+        return tl::make_unexpected(SplineFittingError::DeltaSLength);
     }
 
     // Compute cumulative sum of delta_s
