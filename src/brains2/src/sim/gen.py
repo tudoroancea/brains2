@@ -1,5 +1,6 @@
 # Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 import shutil
+import os
 import numpy as np
 import casadi as ca
 from acados_template import AcadosSimOptions, AcadosModel, AcadosSim, AcadosSimSolver
@@ -107,8 +108,7 @@ def kin_model(rk_steps: int = 1):
     C_r2 = ca.SX.sym("C_r2")
     t_tau = ca.SX.sym("t_tau")
     t_delta = ca.SX.sym("t_delta")
-    dt = ca.SX.sym("dt")
-    p = ca.vertcat(m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta, dt)
+    p = ca.vertcat(m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta)
     p_name = (
         "["
         + ", ".join(
@@ -123,7 +123,6 @@ def kin_model(rk_steps: int = 1):
                 C_r2.name(),
                 t_tau.name(),
                 t_delta.name(),
-                dt.name(),
             ]
         )
         + "]"
@@ -150,21 +149,18 @@ def kin_model(rk_steps: int = 1):
     accels = ca.Function("accels", [x, p], [ca.vertcat(a_x, a_y)], ["x", "p"], ["a"])
 
     # assemble the continuous dynamics
-    xdot = (
-        ca.vertcat(
-            v_x * ca.cos(phi) - v_y * ca.sin(phi),
-            v_x * ca.sin(phi) + v_y * ca.cos(phi),
-            omega,
-            a_x + v_y * omega,
-            a_y - v_x * omega,
-            l_F * F_Fx * ca.sin(delta) / I_z,
-            delta_dot,
-            tau_FL_dot,
-            tau_FR_dot,
-            tau_RL_dot,
-            tau_RR_dot,
-        )
-        / dt
+    xdot = ca.vertcat(
+        v_x * ca.cos(phi) - v_y * ca.sin(phi),
+        v_x * ca.sin(phi) + v_y * ca.cos(phi),
+        omega,
+        a_x + v_y * omega,
+        a_y - v_x * omega,
+        l_F * F_Fx * ca.sin(delta) / I_z,
+        delta_dot,
+        tau_FL_dot,
+        tau_FR_dot,
+        tau_RL_dot,
+        tau_RR_dot,
     )
     cont_dynamics = ca.Function(
         "kin6_cont_dyn",
@@ -180,9 +176,11 @@ def kin_model(rk_steps: int = 1):
     model.u = u
     model.p = p
     model.f_expl_expr = xdot
+    model.xdot = ca.SX.sym("xdot", x.shape)
+    model.f_impl_expr = model.xdot - xdot
 
     sim_opts = AcadosSimOptions()
-    sim_opts.T = 0.01
+    sim_opts.T = 0.01  # will be overwritten by the simulation
     sim_opts.num_stages = 4
     sim_opts.num_steps = 10
     sim_opts.integrator_type = "ERK"
@@ -209,6 +207,9 @@ def kin_model(rk_steps: int = 1):
     )
     shutil.move("kin6_accels.c", "generated/kin6_accels.c")
     shutil.move("kin6_accels.h", "generated/kin6_accels.h")
+    os.remove("generated/main_sim_kin6.c")
+    os.remove("generated/Makefile")
+    os.remove("generated/acados_sim_solver.pxd")
     return
 
     # discretize with RK4

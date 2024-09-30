@@ -89,8 +89,10 @@ endif()
 file(GLOB_RECURSE generated_sources src/sim/generated/*.c)
 message(STATUS "Generated sources: ${generated_sources}")
 ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp ${generated_sources})
-target_link_libraries(brains2_sim Eigen3::Eigen)
-target_include_directories(brains2_sim PUBLIC src/sim install/acados/include)
+target_link_libraries(brains2_sim Eigen3::Eigen acados)
+target_include_directories(brains2_sim PUBLIC src/sim 
+    # install/acados/include
+)
 
 ament_auto_add_executable(sim_node src/sim/sim_node.cpp)
 target_link_libraries(sim_node
@@ -98,7 +100,6 @@ target_link_libraries(sim_node
   yaml-cpp::yaml-cpp
   brains2_common
   brains2_sim
-  acados
 )
 
 # if (CMAKE_TESTING_ENABLED)

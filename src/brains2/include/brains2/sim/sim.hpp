@@ -2,8 +2,10 @@
 #ifndef BRAINS2_SIM_SIM_HPP
 #define BRAINS2_SIM_SIM_HPP
 
-#include <casadi/mem.h>
 #include <array>
+#include "acados/sim/sim_common.h"
+#include "casadi/mem.h"
+#include "generated/acados_sim_solver_kin6.h"
 
 namespace brains2 {
 namespace sim {
@@ -19,8 +21,8 @@ public:
         double u_delta, u_tau_FL, u_tau_FR, u_tau_RL, u_tau_RR;
     };
     struct Parameters {
-        static constexpr int dim = 11;
-        double m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_T, t_delta, dt;
+        static constexpr int dim = 10;
+        double m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_T, t_delta;
     };
     struct Limits {
         double tau_max, delta_max, delta_dot_max;
@@ -46,8 +48,16 @@ private:
     std::array<double, 2> a;
     // Control limits used for the simulation
     Limits limits;
+
     // auxiliary memory for the CasADi function evaluation
-    casadi_mem *mem;
+    casadi_mem *accel_fun_mem;
+
+    // acados simulation solver variables
+    kin6_sim_solver_capsule *kin6_sim_capsule;
+    sim_config *kin6_sim_config;
+    sim_in *kin6_sim_in;
+    sim_out *kin6_sim_out;
+    void *kin6_sim_dims;
 
 public:
     Sim() = delete;

@@ -34,6 +34,7 @@ extern "C" {
 #define casadi_f0 CASADI_PREFIX(f0)
 #define casadi_s0 CASADI_PREFIX(s0)
 #define casadi_s1 CASADI_PREFIX(s1)
+#define casadi_s2 CASADI_PREFIX(s2)
 #define casadi_sq CASADI_PREFIX(sq)
 
 /* Symbol visibility in DLLs */
@@ -54,9 +55,10 @@ extern "C" {
 casadi_real casadi_sq(casadi_real x) { return x*x;}
 
 static const casadi_int casadi_s0[15] = {11, 1, 0, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-static const casadi_int casadi_s1[6] = {2, 1, 0, 2, 0, 1};
+static const casadi_int casadi_s1[14] = {10, 1, 0, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+static const casadi_int casadi_s2[6] = {2, 1, 0, 2, 0, 1};
 
-/* accels:(x[11],p[11])->(a[2]) */
+/* accels:(x[11],p[10])->(a[2]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a2, a3, a4, a5, a6;
     a0=5.0000000000000000e-01;
@@ -155,14 +157,14 @@ CASADI_SYMBOL_EXPORT const char* accels_name_out(casadi_int i) {
 CASADI_SYMBOL_EXPORT const casadi_int* accels_sparsity_in(casadi_int i) {
     switch (i) {
         case 0: return casadi_s0;
-        case 1: return casadi_s0;
+        case 1: return casadi_s1;
         default: return 0;
     }
 }
 
 CASADI_SYMBOL_EXPORT const casadi_int* accels_sparsity_out(casadi_int i) {
     switch (i) {
-        case 0: return casadi_s1;
+        case 0: return casadi_s2;
         default: return 0;
     }
 }

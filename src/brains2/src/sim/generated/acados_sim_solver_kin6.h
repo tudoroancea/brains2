@@ -37,7 +37,7 @@
 #define KIN6_NX     11
 #define KIN6_NZ     0
 #define KIN6_NU     5
-#define KIN6_NP     11
+#define KIN6_NP     10
 
 #ifdef __cplusplus
 extern "C" {
