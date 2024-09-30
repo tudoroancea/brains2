@@ -3,6 +3,7 @@
 #include "brains2/estimation/spline_fitting/spline_fitter.h"
 #include <cmath>
 #include <numeric>
+#include "brains2/external/icecream.hpp"
 
 SplineFitter::SplineFitter(const Eigen::MatrixXd& path, double curv_weight, bool verbose)
     : path(path), curv_weight(curv_weight), verbose(verbose) {
@@ -191,22 +192,6 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     }
     solver.updateBounds(b_y, b_y);
 
-    // // Solve for Y
-    // if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-    //     return tl::make_unexpected(SplineFittingError::SolveQP);
-    // }
-
-    // Eigen::VectorXd p_Y_vec = solver.getSolution();
-
-    // // Reshape p_X_vec and p_Y_vec into matrices of shape (N, 4)
-    // int total_coeffs = 4 * N;
-    // if (p_X_vec.size() != total_coeffs || p_Y_vec.size() != total_coeffs) {
-    //     return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
-    // }
-
-    // Eigen::MatrixXd p_X = Eigen::Map<Eigen::MatrixXd>(p_X_vec.data(), N, 4);
-    // Eigen::MatrixXd p_Y = Eigen::Map<Eigen::MatrixXd>(p_Y_vec.data(), N, 4);
-
     // Solve for Y
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
         return tl::make_unexpected(SplineFittingError::SolveQP);
@@ -287,8 +272,8 @@ tl::expected<
     std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>,
     SplineFittingError>
 SplineFitter::uniformly_sample_spline(int n_samples) {
-    n_samples =
-        n_samples - 1;  // Subtract 1 to exclude the last point which will be added at the end
+    // n_samples =
+    //     n_samples - 1;  // Subtract 1 to exclude the last point which will be added at the end
     // Get coefficients
     const Eigen::MatrixXd& coeffs_X = spline_coefficients.first;
     const Eigen::MatrixXd& coeffs_Y = spline_coefficients.second;
@@ -307,19 +292,18 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
     std::partial_sum(delta_s.data(), delta_s.data() + N, s.data());
 
     // Generate s_interp: n_samples equally spaced values from 0 to s(N - 1), excluding endpoint
-    Eigen::VectorXd s_interp(n_samples);
     double s_max = s(N - 1);
-    double delta = s_max / n_samples;
-    for (int i = 0; i < n_samples; ++i) {
-        s_interp(i) = i * delta;
-    }
+    Eigen::VectorXd s_interp = Eigen::VectorXd::LinSpaced(n_samples, 0.0, s_max);
 
     // Find idx_interp: index of the spline segment that contains each s_interp[i]
     Eigen::VectorXi idx_interp(n_samples);
     for (int i = 0; i < n_samples; ++i) {
-        // Find the smallest index idx such that s_interp[i] < s[idx]
         auto it = std::upper_bound(s.data(), s.data() + N, s_interp(i));
-        idx_interp(i) = static_cast<int>(it - s.data());
+        int idx = static_cast<int>(it - s.data());
+        if (idx >= N) {
+            idx = N - 1;
+        }
+        idx_interp(i) = idx;
     }
 
     // Compute t_interp: parameter t within each spline segment
@@ -331,18 +315,16 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
         } else {
             t_interp(i) = s_interp(i) / delta_s(0);
         }
+        if (t_interp(i) > 1.0) {
+            t_interp(i) = 1.0;
+        }
     }
 
     // Evaluate X_interp and Y_interp using the spline coefficients
-    Eigen::VectorXd X_interp(n_samples + 1);  // Add one to include the last point
-    Eigen::VectorXd Y_interp(n_samples + 1);  // Add one to include the last point
+    Eigen::VectorXd X_interp(n_samples);
+    Eigen::VectorXd Y_interp(n_samples);
     for (int i = 0; i < n_samples; ++i) {
         int idx = idx_interp(i);
-
-        // // Ensure idx is within bounds
-        // if (idx >= N) {
-        //     idx = N - 1;
-        // }
 
         double t = t_interp(i);
         double t2 = t * t;
@@ -353,12 +335,6 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
         Y_interp(i) =
             coeffs_Y(idx, 0) + coeffs_Y(idx, 1) * t + coeffs_Y(idx, 2) * t2 + coeffs_Y(idx, 3) * t3;
     }
-
-    // Add the last point
-    X_interp(n_samples) =
-        coeffs_X(N - 1, 0) + coeffs_X(N - 1, 1) + coeffs_X(N - 1, 2) + coeffs_X(N - 1, 3);
-    Y_interp(n_samples) =
-        coeffs_Y(N - 1, 0) + coeffs_Y(N - 1, 1) + coeffs_Y(N - 1, 2) + coeffs_Y(N - 1, 3);
 
     return std::make_tuple(X_interp, Y_interp, idx_interp, t_interp, s_interp);
 }
