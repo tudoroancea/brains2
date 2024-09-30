@@ -1,7 +1,8 @@
 // Copyright (c) 2024, Tudor Oancea, Matteo Berthet
 #include "brains2/sim/sim.hpp"
+#include "acados_c/sim_interface.h"
 #include "brains2/common/math.hpp"
-#include "brains2/external/icecream.hpp"
+#include "generated/acados_sim_solver_kin6.h"
 #include "models.h"
 
 using namespace brains2::sim;
@@ -19,7 +20,8 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
         params.C_r1,
         params.C_r2,
         params.t_T,
-        params.t_delta},
+        params.t_delta,
+        params.dt},
       x_next{0.0},
       a{0.0},
       limits(limits),
@@ -39,7 +41,6 @@ Sim::~Sim() {
 std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
                                                  const Sim::Control &control,
                                                  double dt) {
-    mem->arg[3] = &dt;
     x[0] = state.X;
     x[1] = state.Y;
     x[2] = state.phi;
@@ -51,6 +52,7 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
     x[8] = state.tau_FR;
     x[9] = state.tau_RL;
     x[10] = state.tau_RR;
+    // set the current control inputs
     const double ddelta_max = dt * limits.delta_dot_max;
     u[0] = clip(clip(control.u_delta, state.delta - ddelta_max, state.delta + ddelta_max),
                 -limits.delta_max,
@@ -59,6 +61,7 @@ std::pair<Sim::State, Sim::Accels> Sim::simulate(const Sim::State &state,
     u[2] = clip(control.u_tau_FR, -limits.tau_max, limits.tau_max);
     u[3] = clip(control.u_tau_RL, -limits.tau_max, limits.tau_max);
     u[4] = clip(control.u_tau_RR, -limits.tau_max, limits.tau_max);
+    p[Sim::Parameters::dim] = dt;
 
     int exit_code = casadi_eval(mem);
 

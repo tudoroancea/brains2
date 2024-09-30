@@ -35,10 +35,10 @@ const casadi_int* kin6_model_sparsity_in(casadi_int i);
 const casadi_int* kin6_model_sparsity_out(casadi_int i);
 int kin6_model_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
 int kin6_model_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define kin6_model_SZ_ARG 4
+#define kin6_model_SZ_ARG 3
 #define kin6_model_SZ_RES 2
 #define kin6_model_SZ_IW 0
-#define kin6_model_SZ_W 184
+#define kin6_model_SZ_W 1257
 casadi_functions* kin6_model_functions(void);
 #ifdef __cplusplus
 } /* extern "C" */

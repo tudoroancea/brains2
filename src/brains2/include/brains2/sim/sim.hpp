@@ -19,8 +19,8 @@ public:
         double u_delta, u_tau_FL, u_tau_FR, u_tau_RL, u_tau_RR;
     };
     struct Parameters {
-        static constexpr int dim = 10;
-        double m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_T, t_delta;
+        static constexpr int dim = 11;
+        double m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_T, t_delta, dt;
     };
     struct Limits {
         double tau_max, delta_max, delta_dot_max;

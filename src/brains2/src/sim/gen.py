@@ -1,7 +1,8 @@
 # Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+import shutil
 import numpy as np
 import casadi as ca
-from icecream import ic
+from acados_template import AcadosSimOptions, AcadosModel, AcadosSim, AcadosSimSolver
 
 sym_t = ca.SX | ca.MX
 
@@ -33,7 +34,7 @@ def smooth_abs_nonzero(x: sym_t, min_val: float = 1e-6) -> sym_t:
 ####################################################################################################
 
 
-def kin_model(rk_steps: int = 1) -> ca.Function:
+def kin_model(rk_steps: int = 1):
     """
     create a function with inputs current state, parameters, and sampling time, and output the next state and a_x, a_y
 
@@ -106,7 +107,8 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
     C_r2 = ca.SX.sym("C_r2")
     t_tau = ca.SX.sym("t_tau")
     t_delta = ca.SX.sym("t_delta")
-    p = ca.vertcat(m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta)
+    dt = ca.SX.sym("dt")
+    p = ca.vertcat(m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta, dt)
     p_name = (
         "["
         + ", ".join(
@@ -121,6 +123,7 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
                 C_r2.name(),
                 t_tau.name(),
                 t_delta.name(),
+                dt.name(),
             ]
         )
         + "]"
@@ -133,7 +136,7 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
     tau_RL_dot = (u_tau_RL - tau_RL) / t_tau
     tau_RR_dot = (u_tau_RR - tau_RR) / t_tau
 
-    # longitudinal dynamics
+    # drivetrain
     T = tau_FL + tau_FR + tau_RL + tau_RR  # total torque
     F_motor = C_m0 * T  # the traction force
     F_drag = -(C_r0 + C_r1 * v_x + C_r2 * v_x**2) * smooth_sgn(v_x)  # total drag force
@@ -141,34 +144,75 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
     F_Rx = 0.5 * F_motor + F_drag  # force applied at the rear wheels
     F_Fx = 0.5 * F_motor  # force applied at the front wheels
 
+    # accelerations
     a_x = (F_Rx + F_Fx * ca.cos(delta)) / m
     a_y = F_Fx * ca.sin(delta) / m
     accels = ca.Function("accels", [x, p], [ca.vertcat(a_x, a_y)], ["x", "p"], ["a"])
 
+    # assemble the continuous dynamics
+    xdot = (
+        ca.vertcat(
+            v_x * ca.cos(phi) - v_y * ca.sin(phi),
+            v_x * ca.sin(phi) + v_y * ca.cos(phi),
+            omega,
+            a_x + v_y * omega,
+            a_y - v_x * omega,
+            l_F * F_Fx * ca.sin(delta) / I_z,
+            delta_dot,
+            tau_FL_dot,
+            tau_FR_dot,
+            tau_RL_dot,
+            tau_RR_dot,
+        )
+        / dt
+    )
     cont_dynamics = ca.Function(
-        "kin6_model_cont",
+        "kin6_cont_dyn",
         [x, u, p],
-        [
-            ca.vertcat(
-                v_x * ca.cos(phi) - v_y * ca.sin(phi),
-                v_x * ca.sin(phi) + v_y * ca.cos(phi),
-                omega,
-                a_x + v_y * omega,
-                a_y - v_x * omega,
-                l_F * F_Fx * ca.sin(delta) / I_z,
-                delta_dot,
-                tau_FL_dot,
-                tau_FR_dot,
-                tau_RL_dot,
-                tau_RR_dot,
-            )
-        ],
+        [xdot],
         [x_name, u_name, p_name],
         ["x_dot"],
     )
 
-    dt = ca.SX.sym("dt")
-    scaled_dt = dt / rk_steps
+    model = AcadosModel()
+    model.name = "kin6"
+    model.x = x
+    model.u = u
+    model.p = p
+    model.f_expl_expr = xdot
+
+    sim_opts = AcadosSimOptions()
+    sim_opts.T = 0.01
+    sim_opts.num_stages = 4
+    sim_opts.num_steps = 10
+    sim_opts.integrator_type = "ERK"
+    sim_opts.collocation_type = "GAUSS_RADAU_IIA"
+
+    sim = AcadosSim()
+    sim.model = model
+    sim.solver_options = sim_opts
+    sim.code_export_directory = "generated"
+    sim.parameter_values = np.ones(model.p.shape)  # needed to have the right shape
+    sim.verbose = True
+    AcadosSimSolver.generate(sim, json_file="generated/kin6_model.json")
+
+    accels.generate(
+        "kin6_accels",
+        {
+            "main": False,
+            "mex": False,
+            "with_mem": True,
+            "verbose": True,
+            "with_header": True,
+            "indent": 4,
+        },
+    )
+    shutil.move("kin6_accels.c", "generated/kin6_accels.c")
+    shutil.move("kin6_accels.h", "generated/kin6_accels.h")
+    return
+
+    # discretize with RK4
+    scaled_dt = 1.0 / rk_steps
     x_next = x
     for _ in range(rk_steps):
         k1 = cont_dynamics(x_next, u, p)
@@ -178,25 +222,79 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
         x_next = x_next + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
     disc_dynamics = ca.Function(
-        "kin6_model",
-        [x, u, p, dt],
-        [x_next, accels(x_next, p)],
-        [x_name, u_name, p_name, "dt"],
-        ["x_next", "[a_x, a_y]"],
+        "kin6_disc_dyn",
+        [x, u, p],
+        [x_next],
+        # [x_name, u_name, p_name],
+        ["x0", "u", "p"],
+        ["xf"],
     )
 
-    # test with some data
-    x0 = ca.DM([0.0, 0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    u0 = ca.DM([0.0, 50.0, 50.0, 50.0, 50.0])
-    p0 = ca.DM(
-        [230.0, 137.583, 0.7853, 0.7853, 4.950, 297.030, 16.665, 0.6784, 0.001, 0.02]
+    kin6_model = ca.Function(
+        "kin6_model",
+        [x, u, p],
+        [disc_dynamics(x0=x, u=u, p=p)["xf"], accels(x_next, p)],
+        [x_name, u_name, p_name],
+        ["x_next", "a_next"],
     )
-    dt = 0.01
-    x1, a1 = disc_dynamics(x0, u0, p0, dt)
-    x2, a2 = disc_dynamics(x1, u0, p0, dt)
-    x3, a3 = disc_dynamics(x2, u0, p0, dt)
-    ic(x0, u0, p0, dt, x1, x2, x3, a1, a2, a3)
-    return disc_dynamics
+
+    disc_dynamics = ca.integrator(
+        "kin6_disc_dyn",
+        "collocation",
+        {"x": x, "u": u, "p": p, "ode": cont_dynamics(x, u, p)},
+    )
+    disc_dynamics.generate(
+        "bruh",
+        {
+            "main": True,
+            "mex": False,
+            "with_mem": True,
+            "verbose": True,
+            "with_header": True,
+            "indent": 4,
+        },
+    )
+
+    # disc_dynamics = ca.Function( "kin6_model",
+    #     [x, u, p, dt],
+    #     [x_next, accels(x_next, p)],
+    #     [x_name, u_name, p_name, "dt"],
+    #     ["x_next", "[a_x, a_y]"],
+    # )
+
+    # step response
+    x0 = ca.DM([0.0, 0.0, np.pi / 2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    u = ca.DM([0.0, 50.0, 50.0, 50.0, 50.0])
+    p = ca.DM(
+        [
+            230.0,
+            137.583,
+            0.7853,
+            0.7853,
+            4.950,
+            297.030,
+            16.665,
+            0.6784,
+            0.001,
+            0.02,
+            0.01,
+        ]
+    )
+    # alternative discrete dynamics based on casadi.integrator
+    # integrator = ca.integrator(
+    #     "rk4", "rk", {"x": x, "u": u, "p": p, "ode": xdot}, 0.0, dt, {}
+    # )
+    # ic(cont_dynamics, disc_dynamics)
+    # x1, a1 = disc_dynamics(x0, u0, p0, dt)
+    # x2, a2 = disc_dynamics(x1, u0, p0, dt)
+    # x3, a3 = disc_dynamics(x2, u0, p0, dt)
+    # ic(x0, u0, p0, dt, x1, x2, x3, a1, a2, a3)
+    # x1 = disc_dynamics(x0=x0, p=p, u=u)["xf"]
+    # x2 = disc_dynamics(x0=x1, p=p, u=u)["xf"]
+    # x3 = disc_dynamics(x0=x2, p=p, u=u)["xf"]
+    # ic(x0, u, p, x1, x2, x3)
+
+    return kin6_model
 
 
 # def dyn6_model(x: ca.SX, u: ca.SX, _: ca.SX) -> ca.SX:
@@ -349,20 +447,21 @@ def kin_model(rk_steps: int = 1) -> ca.Function:
 
 
 def main():
-    kin_model_fun = kin_model(10)
-    C = ca.CodeGenerator(
-        "models",
-        {
-            "main": True,
-            "mex": False,
-            "with_mem": True,
-            "verbose": True,
-            "with_header": True,
-            "indent": 4,
-        },
-    )
-    C.add(kin_model_fun)
-    C.generate()
+    kin_model()
+    # kin_model_fun = kin_model(100)
+    # C = ca.CodeGenerator(
+    #     "models",
+    #     {
+    #         "main": True,
+    #         "mex": False,
+    #         "with_mem": True,
+    #         "verbose": True,
+    #         "with_header": True,
+    #         "indent": 4,
+    #     },
+    # )
+    # C.add(kin_model_fun)
+    # C.generate()
 
 
 if __name__ == "__main__":

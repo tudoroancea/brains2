@@ -422,7 +422,7 @@ public:
             car_constants["drivetrain"]["C_r2"].as<double>(),
             car_constants["actuators"]["motor_time_constant"].as<double>(),
             car_constants["actuators"]["steering_time_constant"].as<double>(),
-        };
+            dt};
         const brains2::sim::Sim::Limits limits{
             car_constants["actuators"]["torque_max"].as<double>(),
             car_constants["actuators"]["steering_max"].as<double>(),
