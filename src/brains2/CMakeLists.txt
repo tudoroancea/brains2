@@ -33,7 +33,7 @@ ament_auto_find_build_dependencies()
 find_package(Eigen3 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(acados REQUIRED)
+find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
 include_directories(install/acados/include)  # hacky way to also find acados_c headers
 set(CMAKE_TESTING_ENABLED ON)
 if (CMAKE_TESTING_ENABLED)
@@ -90,9 +90,7 @@ file(GLOB_RECURSE generated_sources src/sim/generated/*.c)
 message(STATUS "Generated sources: ${generated_sources}")
 ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp ${generated_sources})
 target_link_libraries(brains2_sim Eigen3::Eigen acados)
-target_include_directories(brains2_sim PUBLIC src/sim 
-    # install/acados/include
-)
+target_include_directories(brains2_sim PUBLIC src/sim)
 
 ament_auto_add_executable(sim_node src/sim/sim_node.cpp)
 target_link_libraries(sim_node
@@ -100,6 +98,7 @@ target_link_libraries(sim_node
   yaml-cpp::yaml-cpp
   brains2_common
   brains2_sim
+  acados
 )
 
 # if (CMAKE_TESTING_ENABLED)

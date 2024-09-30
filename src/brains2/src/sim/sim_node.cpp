@@ -1,7 +1,7 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include <cmath>
 #include <fstream>
-#include <rclcpp/logging.hpp>
+#include <tuple>
 #include <unordered_map>
 #include "ament_index_cpp/get_package_share_directory.hpp"
 #include "brains2/common/cone_color.hpp"
@@ -37,7 +37,6 @@
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2_ros/transform_broadcaster.h"
-#include "tuple"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
