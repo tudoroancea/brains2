@@ -404,7 +404,14 @@ public:
             car_constants["drivetrain"]["C_r1"].as<double>(),
             car_constants["drivetrain"]["C_r2"].as<double>(),
             car_constants["actuators"]["motor_time_constant"].as<double>(),
-            car_constants["actuators"]["steering_time_constant"].as<double>()};
+            car_constants["actuators"]["steering_time_constant"].as<double>(),
+            car_constants["geometry"]["cog_height"].as<double>(),
+            car_constants["geometry"]["axle_track"].as<double>(),
+            car_constants["aero"]["C_downforce"].as<double>(),
+            car_constants["pacejka"]["constant"]["Ba"].as<double>(),
+            car_constants["pacejka"]["constant"]["Ca"].as<double>(),
+            car_constants["pacejka"]["constant"]["Da"].as<double>(),
+            car_constants["pacejka"]["constant"]["Ea"].as<double>()};
         const brains2::sim::Sim::Limits limits{
             car_constants["actuators"]["torque_max"].as<double>(),
             car_constants["actuators"]["steering_max"].as<double>(),
