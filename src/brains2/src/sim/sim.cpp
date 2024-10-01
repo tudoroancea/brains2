@@ -11,13 +11,6 @@
 using namespace brains2::sim;
 using namespace brains2::common;
 
-const std::array<std::string, 4> Sim::SimErrorStrings = {
-    "SAMPLING_TIME_UPDATE_ERROR",
-    "ACADOS_SOLVER_ERROR",
-    "ACCELS_FUNCTION_ERROR",
-    "NANS_IN_RESULT",
-};
-
 Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     : limits(limits),
       x{0.0},

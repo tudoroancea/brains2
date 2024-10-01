@@ -1,8 +1,5 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
-#include <cmath>
-#include <fstream>
 #include <tuple>
-#include <unordered_map>
 #include "ament_index_cpp/get_package_share_directory.hpp"
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
@@ -16,26 +13,13 @@
 #include "brains2/msg/velocity.hpp"
 #include "brains2/sim/sim.hpp"
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
-#include "diagnostic_msgs/msg/diagnostic_status.hpp"
-#include "diagnostic_msgs/msg/key_value.hpp"
 #include "Eigen/Dense"
-#include "geometry_msgs/msg/pose.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
-#include "geometry_msgs/msg/twist_stamped.hpp"
-#include "geometry_msgs/msg/vector3.hpp"
-#include "nlohmann/json.hpp"
-#include "rcl_interfaces/msg/set_parameters_result.hpp"
+#include "rclcpp/node.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/color_rgba.hpp"
-#include "std_msgs/msg/float64.hpp"
-#include "std_msgs/msg/header.hpp"
 #include "std_srvs/srv/empty.hpp"
-#include "tf2/LinearMath/Quaternion.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -159,8 +143,7 @@ private:
         auto expected_sim_result = sim->simulate(state, control, dt);
         if (!expected_sim_result) {
             throw std::runtime_error("Simulation error: " +
-                                     brains2::sim::Sim::SimErrorStrings[static_cast<std::uint8_t>(
-                                         expected_sim_result.error())]);
+                                     brains2::sim::Sim::to_string(expected_sim_result.error()));
         }
         std::tie(new_state, accels) = expected_sim_result.value();
         state = new_state;
@@ -233,11 +216,6 @@ private:
         this->diagnostics_pub->publish(diag_msg);
 
         // visualization_msgs::msg::MarkerArray markers_msg;
-        // std::vector<visualization_msgs::msg::Marker> car_markers = get_car_markers();
-        // for (const auto &marker : car_markers) {
-        //     markers_msg.markers.push_back(marker);
-        // }
-        // TODO: modify car_markers_msg
         this->update_tire_markers();
         this->viz_pub->publish(car_markers_msg);
     }

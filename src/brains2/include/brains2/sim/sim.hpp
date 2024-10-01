@@ -47,7 +47,21 @@ public:
         ACCELS_FUNCTION_ERROR = 2,
         NANS_IN_RESULT = 3,
     };
-    static const std::array<std::string, 4> SimErrorStrings;
+    static inline std::string to_string(SimError error) {
+        switch (error) {
+            case SimError::SAMPLING_TIME_UPDATE_ERROR:
+                return "SAMPLING_TIME_UPDATE_ERROR";
+            case SimError::ACADOS_SOLVER_ERROR:
+                return "ACADOS_SOLVER_ERROR";
+            case SimError::ACCELS_FUNCTION_ERROR:
+                return "ACCELS_FUNCTION_ERROR";
+            case SimError::NANS_IN_RESULT:
+                return "NANS_IN_RESULT";
+            default:
+                return "UNKNOWN_ERROR";
+        }
+    }
+    // static const std::array<std::string, 4> SimErrorStrings;
 
     // We remove the default constructor, copy constructor and assignment operator because this
     // class has to allocate data on the heap (for the acados simulation solver and the casadi
