@@ -1,0 +1,417 @@
+{
+  "configById": {
+    "3D!3mfo4f7": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 12.634999999641119,
+        "phi": 57.13137379588164,
+        "thetaOffset": 91.73373346255308,
+        "targetOffset": [
+          0.14575961453806646,
+          -0.07884313261524961,
+          -3.465000086675962e-14
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {
+        "ignoreColladaUpAxis": false,
+        "backgroundColor": "#565656",
+        "enableStats": true,
+        "syncCamera": false
+      },
+      "transforms": {
+        "frame:world": {
+          "visible": false
+        },
+        "frame:car": {
+          "visible": false
+        },
+        "frame:car_gt": {
+          "visible": false
+        },
+        "frame:": {
+          "visible": false
+        },
+        "frame:splashscreen": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/mesh": {
+          "visible": true,
+          "namespaces": {
+            "mesh": {
+              "visible": true
+            },
+            "cones": {
+              "visible": true
+            }
+          }
+        },
+        "/ihm2/pose": {
+          "visible": false
+        },
+        "/ihm2/viz": {
+          "visible": true
+        },
+        "/ihm2/viz/sim": {
+          "visible": true,
+          "namespaces": {
+            "car": {
+              "visible": true
+            }
+          }
+        },
+        "/hess_sim/viz": {
+          "visible": true,
+          "namespaces": {
+            "car": {
+              "visible": true
+            }
+          }
+        },
+        "/hess_sim/pose": {
+          "visible": true
+        },
+        "/brains/viz/control": {
+          "visible": true
+        },
+        "/brains/pose": {
+          "visible": true
+        },
+        "/brains/viz/localization": {
+          "visible": true
+        },
+        "/brains/splashscreen/camera_info": {
+          "visible": false,
+          "width": 0.0564,
+          "planarProjectionFactor": 1,
+          "distance": 0.01
+        },
+        "/brains/splashscreen": {
+          "visible": true,
+          "frameLocked": true,
+          "cameraInfoTopic": "/brains/splashscreen/camera_info",
+          "color": "#ffffffff",
+          "distance": 1,
+          "planarProjectionFactor": 0.01
+        },
+        "/brains/splashscreen/img": {
+          "visible": false,
+          "frameLocked": true,
+          "cameraInfoTopic": "/brains/splashscreen/camera_info",
+          "color": "#ffffff",
+          "distance": 0.01,
+          "planarProjectionFactor": 1
+        },
+        "/brains/splashscreen/text": {
+          "visible": false,
+          "showOutlines": true,
+          "color": "#0066ffff"
+        },
+        "/hess_sim/splashscreen_camera_info": {
+          "visible": false,
+          "width": 0.05,
+          "planarProjectionFactor": 1,
+          "distance": 0.01
+        },
+        "/hess_sim/splashscreen_image": {
+          "visible": true,
+          "frameLocked": true,
+          "cameraInfoTopic": "/hess_sim/splashscreen_camera_info",
+          "color": "#ffffffff",
+          "planarProjectionFactor": 1,
+          "distance": 0.01
+        },
+        "/hess_sim/splashscreen_text": {
+          "visible": true
+        },
+        "/brains2/viz/sim": {
+          "visible": true
+        }
+      },
+      "layers": {
+        "930c05e1-0b0c-4143-9344-a0747eea3846": {
+          "visible": true,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "930c05e1-0b0c-4143-9344-a0747eea3846",
+          "layerId": "foxglove.Grid",
+          "size": 200,
+          "lineWidth": 1,
+          "color": "#ffffff30",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "order": 1,
+          "divisions": 200,
+          "frameId": "world"
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "followTf": "car"
+    },
+    "virtual-joystick.Virtual Joystick!3gs8zo6": {
+      "publishRate": 100,
+      "maxLinearSpeed": 100,
+      "maxAngularSpeed": 0.5,
+      "topic": "/brains2/alternative_target_controls",
+      "messageSchema": "geometry_msgs/msg/Twist"
+    },
+    "DiagnosticStatusPanel!mvree4": {
+      "topicToRender": "/brains2/diagnostics"
+    },
+    "Plot!8r4ga1": {
+      "paths": [
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/acceleration.a_x",
+          "enabled": true,
+          "color": "#4e98e2"
+        }
+      ],
+      "minYValue": -10,
+      "maxYValue": 10,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "custom",
+      "sidebarDimension": 240,
+      "xAxisPath": {
+        "value": "/brains2/acceleration.a_y"
+      }
+    },
+    "RawMessages!1v5d1jj": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/brains2/acceleration.a_x"
+    },
+    "RawMessages!vcy4a6": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/brains2/acceleration.a_y"
+    },
+    "CallService!1zs06v0": {
+      "requestPayload": "{}",
+      "layout": "horizontal",
+      "foxglovePanelTitle": "reset",
+      "serviceName": "/brains2/reset",
+      "buttonText": "reset this bad boy",
+      "buttonTooltip": "",
+      "buttonColor": "#c32e2e",
+      "timeoutSeconds": 10
+    },
+    "CallService!10mxkor": {
+      "requestPayload": "{}",
+      "layout": "horizontal",
+      "buttonText": "publish them cones",
+      "serviceName": "/brains2/publish_cones_markers",
+      "foxglovePanelTitle": "publish cones",
+      "buttonTooltip": "",
+      "buttonColor": "#1b9300",
+      "timeoutSeconds": 10
+    },
+    "Plot!1xctq6s": {
+      "paths": [
+        {
+          "value": "/brains2/current_controls.tau_fr",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "label": "tau"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/alternative_target_controls.linear.x",
+          "enabled": true,
+          "label": "u_tau"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.tau_fl",
+          "enabled": true,
+          "label": "u_tau"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "followingViewWidth": 10,
+      "foxglovePanelTitle": "torque per wheel (Nm)"
+    },
+    "Plot!2sv84j4": {
+      "paths": [
+        {
+          "value": "/brains2/current_controls.delta",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "label": "delta"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/alternative_target_controls.angular.z",
+          "enabled": true,
+          "label": "u_delta"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.delta",
+          "enabled": true,
+          "label": "u_delta"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "steering angle (rad)",
+      "followingViewWidth": 10
+    },
+    "Plot!2bhy01b": {
+      "paths": [
+        {
+          "value": "/brains2/velocity.v_x",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "label": "v_x (m/s)"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/velocity.v_y",
+          "enabled": true,
+          "label": "v_y (m/s)"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/velocity.omega",
+          "enabled": true,
+          "label": "omega (rad/s)"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "followingViewWidth": 10,
+      "foxglovePanelTitle": "velocity"
+    },
+    "TopicGraph!1mts4d4": {},
+    "Tab!3yrtgon": {
+      "activeTabIdx": 0,
+      "tabs": [
+        {
+          "title": "main",
+          "layout": {
+            "first": {
+              "first": {
+                "first": "3D!3mfo4f7",
+                "second": {
+                  "first": "virtual-joystick.Virtual Joystick!3gs8zo6",
+                  "second": {
+                    "first": "DiagnosticStatusPanel!mvree4",
+                    "second": "Plot!8r4ga1",
+                    "direction": "column",
+                    "splitPercentage": 51.46831530139101
+                  },
+                  "direction": "column"
+                },
+                "direction": "row",
+                "splitPercentage": 68.94977168949772
+              },
+              "second": {
+                "first": {
+                  "first": {
+                    "first": "RawMessages!1v5d1jj",
+                    "second": "RawMessages!vcy4a6",
+                    "direction": "column"
+                  },
+                  "second": "CallService!1zs06v0",
+                  "direction": "column"
+                },
+                "second": "CallService!10mxkor",
+                "direction": "column",
+                "splitPercentage": 67.8516228748068
+              },
+              "direction": "row",
+              "splitPercentage": 74.48979591836735
+            },
+            "second": {
+              "first": {
+                "first": "Plot!1xctq6s",
+                "second": "Plot!2sv84j4",
+                "direction": "row"
+              },
+              "second": "Plot!2bhy01b",
+              "direction": "row",
+              "splitPercentage": 67.55102040816327
+            },
+            "direction": "column",
+            "splitPercentage": 76.56804733727812
+          }
+        },
+        {
+          "title": "topic graph",
+          "layout": "TopicGraph!1mts4d4"
+        }
+      ]
+    }
+  },
+  "globalVariables": {
+    "bruh": 3.6
+  },
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": "Tab!3yrtgon"
+}
