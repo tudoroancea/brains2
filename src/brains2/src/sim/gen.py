@@ -264,25 +264,25 @@ def gen_dyn6_model() -> ca.SX:
     front_weight_distribution = 0.5 * l_F / wheelbase
     rear_weight_distribution = 0.5 * l_R / wheelbase
     static_weight = m * g
-    F_downforce = 0.5 * C_downforce * v_x * v_x
-    longitudinal_weight_transfer = 0.5 * m * a_x * z_CG / wheelbase
-    lateral_weight_transfer = 0.5 * m * a_y * z_CG / axle_track
-    F_z_FL = -(
+    F_downforce = C_downforce * v_x * v_x
+    longitudinal_weight_transfer = m * a_x * z_CG / wheelbase
+    lateral_weight_transfer = m * a_y * z_CG / axle_track
+    F_z_FL = -0.5 * (
         front_weight_distribution * (static_weight + F_downforce)
         - longitudinal_weight_transfer
         + lateral_weight_transfer
     )
-    F_z_FR = -(
+    F_z_FR = -0.5 * (
         front_weight_distribution * (static_weight + F_downforce)
         - longitudinal_weight_transfer
         - lateral_weight_transfer
     )
-    F_z_RL = -(
+    F_z_RL = -0.5 * (
         rear_weight_distribution * (static_weight + F_downforce)
         + longitudinal_weight_transfer
         + lateral_weight_transfer
     )
-    F_z_RR = -(
+    F_z_RR = -0.5 * (
         rear_weight_distribution * (static_weight + F_downforce)
         + longitudinal_weight_transfer
         - lateral_weight_transfer
@@ -407,7 +407,7 @@ def gen_dyn6_model() -> ca.SX:
         + (F_x_FL + F_x_FR) * ca.cos(delta)
         + F_drag
         - mu_F * ca.sin(delta) * tpr
-    )
+    ) / (m * (1 + mu_F * ca.sin(delta) * z_CG / wheelbase))
     a_y_estimate = (
         (F_x_FL + F_x_FR) * ca.sin(delta)
         + (tpr - m * a_x_estimate * z_CG / wheelbase) * ca.cos(delta)
