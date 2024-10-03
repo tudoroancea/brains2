@@ -1,7 +1,7 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/common/math.hpp"
 #include <cmath>
-#include "tf2/LinearMath/Quaternion.h"
+// #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 double brains2::common::clip(double n, double lower, double upper) {
@@ -49,10 +49,14 @@ double brains2::common::deg2rad(double deg) {
     return deg * 0.017453292519943295;
 }
 
-geometry_msgs::msg::Quaternion brains2::common::rpy_to_quaternion(double roll,
-                                                                  double pitch,
-                                                                  double yaw) {
+tf2::Quaternion brains2::common::rpy_to_quaternion(double roll, double pitch, double yaw) {
     tf2::Quaternion q;
     q.setRPY(roll, pitch, yaw);
-    return tf2::toMsg(q);
+    return q;
+}
+
+geometry_msgs::msg::Quaternion brains2::common::rpy_to_quaternion_msg(double roll,
+                                                                      double pitch,
+                                                                      double yaw) {
+    return tf2::toMsg(brains2::common::rpy_to_quaternion(roll, pitch, yaw));
 }

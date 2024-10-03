@@ -1,0 +1,66 @@
+# Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+# All parameters are in SI units.
+
+inertia:
+  mass: 230.0
+  yaw_inertia: 137.583
+
+geometry:
+  car_length: 3.19
+  car_width: 1.55
+  axle_track: 1.24 # distance between the two wheels of a single axle
+  wheelbase: 1.5706 # distance between the two axles
+  cog_to_rear_axle: 0.7853
+  cog_height: 0.295
+
+drivetrain:
+  C_m0: 4.950
+  C_r0: 297.030
+  C_r1: 16.665
+  C_r2: 0.6784
+
+aero:
+  C_downforce: 3.96864
+
+pacejka:
+  base:
+    b1s: -6.75e-6
+    b2s: 1.35e-1
+    b3s: 1.2e-3
+    c1s: 1.86
+    d1s: 1.12e-4
+    d2s: 1.57
+    e1s: -5.38e-6
+    e2s: 1.11e-2
+    e3s: -4.26
+    b1a: 3.79e1
+    b2a: 5.28e2
+    c1a: 1.57
+    d1a: -2.03e-4
+    d2a: 1.77
+    e1a: -2.24e-3
+    e2a: 1.81
+  constant:
+    BCDs: 37.607654432152245
+    Bs: 12.380272608362585
+    Cs: 1.86
+    Ds: 1.6331764
+    Es: 0.2894208417375008
+    BCDa: 37.817376553445975
+    Ba: 14.550048996411983
+    Ca: 1.57
+    Da: 1.655492775
+    Ea: 0.5464720000000001
+
+wheels:
+  wheel_radius: 0.20809
+  wheel_inertia: 0.3
+  dynamic_friction: 0.17
+  static_friction: 15.0
+
+actuators:
+  torque_max: 276.75
+  steering_max: 0.5
+  steering_rate_max: 1.0
+  motor_time_constant: 1e-3
+  steering_time_constant: 0.02

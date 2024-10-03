@@ -5,9 +5,19 @@ if [ $(basename "$PWD") != "brains2" ]; then
     exit 1
 fi
 
+# build acados
+colcon build --packages-select acados --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev
+
 # makes sure that the correct python interpreter is called in CMake
 PYTHON_EXE=$(which python3)
 echo "Using python interpreter: $PYTHON_EXE"
 
-# run colcon build
-PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources colcon build --symlink-install --executor parallel --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=Release -Wno-dev
+# build brains2
+export PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources
+colcon build --packages-select brains2 --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev 
+
+# setup environment variables
+echo "export ACADOS_SOURCE_DIR=$(pwd)/src/acados" >> "install/setup.sh"
+echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:install/acados/lib" >> "install/setup.sh"
+echo "export DYLD_LIBRARY_PATH=\$DYLD_LIBRARY_PATH:install/acados/lib" >> "install/setup.sh"
+

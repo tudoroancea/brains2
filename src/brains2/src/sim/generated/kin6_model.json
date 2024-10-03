@@ -1,0 +1,124 @@
+{
+    "acados_include_path": "/Users/tudoroancea/Developer/brains2/src/acados/include",
+    "acados_lib_path": "/Users/tudoroancea/Developer/brains2/src/acados/lib",
+    "code_export_directory": "/Users/tudoroancea/Developer/brains2/src/brains2/src/sim/generated",
+    "cython_include_dirs": [
+        "/Users/tudoroancea/miniforge3/envs/brains2/lib/python3.11/site-packages/numpy/core/include",
+        "/Users/tudoroancea/miniforge3/envs/brains2/include/python3.11"
+    ],
+    "dims": {
+        "np": 10,
+        "nu": 5,
+        "nx": 11,
+        "nz": 0
+    },
+    "model": {
+        "con_h_expr": null,
+        "con_h_expr_0": null,
+        "con_h_expr_e": null,
+        "con_phi_expr": null,
+        "con_phi_expr_0": null,
+        "con_phi_expr_e": null,
+        "con_r_expr": null,
+        "con_r_expr_0": null,
+        "con_r_expr_e": null,
+        "con_r_in_phi": null,
+        "con_r_in_phi_0": null,
+        "con_r_in_phi_e": null,
+        "cost_conl_custom_outer_hess": null,
+        "cost_conl_custom_outer_hess_0": null,
+        "cost_conl_custom_outer_hess_e": null,
+        "cost_expr_ext_cost": null,
+        "cost_expr_ext_cost_0": null,
+        "cost_expr_ext_cost_custom_hess": null,
+        "cost_expr_ext_cost_custom_hess_0": null,
+        "cost_expr_ext_cost_custom_hess_e": null,
+        "cost_expr_ext_cost_e": null,
+        "cost_psi_expr": null,
+        "cost_psi_expr_0": null,
+        "cost_psi_expr_e": null,
+        "cost_r_in_psi_expr": null,
+        "cost_r_in_psi_expr_0": null,
+        "cost_r_in_psi_expr_e": null,
+        "cost_y_expr": null,
+        "cost_y_expr_0": null,
+        "cost_y_expr_e": null,
+        "disc_dyn_expr": null,
+        "dyn_disc_fun": null,
+        "dyn_disc_fun_jac": null,
+        "dyn_disc_fun_jac_hess": null,
+        "dyn_ext_fun_type": "casadi",
+        "dyn_generic_source": null,
+        "dyn_impl_dae_fun": null,
+        "dyn_impl_dae_fun_jac": null,
+        "dyn_impl_dae_jac": null,
+        "f_expl_expr": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegpaaaaaaaaaaaaaaalaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaacaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaeaaaaaaaaaaaaaaafaaaaaaaaaaaaaaagaaaaaaaaaaaaaaahaaaaaaaaaaaaaaaiaaaaaaaaaaaaaaajaaaaaaaaaaaaaaakaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaaghpfihegoaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaaahigjgegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaaghpfjhegnaaaaaaaaaaaaaaachcaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachbaaaaaaaaaaaaaaachgaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachfaaaaaaaaaaaaaaachdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaafaaaaaaapgngfghgbgegcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegoaaaaaaaaaaaaaaaegcbaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaamgpfcfegbaaaaaaaaaaaaaaachnaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaamgpfgeegpaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaafaaaaaaaegfgmgehbgegcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegmcaaaaaaaaaaaaaachaaaaaaaaaaaaaopdegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfngadegbaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfgemeegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfgecfegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfcfmeegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfcfcfegdaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfchadegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfchbdchbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfchcdeglaaaaaaaaaaaaaaachbaaaaaaaaaaaaaaaeghcaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegmcaaaaaaaaaaaaaajgkaaaaaaachbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegoaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaachbbaaaaaaaaaaaaaachebaaaaaaaaaaaaaachacaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaabaaaaaaangchfbaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachfaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachabaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaahaaaaaaafhpfegfgmgehbgchbbaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaahaaaaaaaehpfegfgmgehbgegbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachedaaaaaaaaaaaaaaegnaaaaaaaaaaaaaaachebaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachbaaaaaaaaaaaaaaachkdaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaachaeaaaaaaaaaaaaaachnaaaaaaaaaaaaaaachjdaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfgemechibaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaafaaaaaaaehpfehbgfhegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfgecfchjbaaaaaaaaaaaaaacheeaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfcfmechlbaaaaaaaaaaaaaacheeaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfcfcfchnbaaaaaaaaaaaaaacheeaaaaaaaaaaaaaa",
+        "f_impl_expr": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegpaaaaaaaaaaaaaaalaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaacaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaeaaaaaaaaaaaaaaafaaaaaaaaaaaaaaagaaaaaaaaaaaaaaahaaaaaaaaaaaaaaaiaaaaaaaaaaaaaaajaaaaaaaaaaaaaaakaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfadegcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaaghpfihegoaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaaahigjgegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaaghpfjhegnaaaaaaaaaaaaaaachdaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfbdegbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachcaaaaaaaaaaaaaaachhaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachgaaaaaaaaaaaaaaacheaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfcdegpcaaaaaaaaaaaaaafaaaaaaapgngfghgbgegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfddegcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegoaaaaaaaaaaaaaaaegcbaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaamgpfcfegbaaaaaaaaaaaaaaachebaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaadaaaaaaamgpfgeegpaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaafaaaaaaaegfgmgehbgegcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegmcaaaaaaaaaaaaaachaaaaaaaaaaaaaopdegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfngadegbaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfgemeegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfgecfegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfcfmeegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfcfcfegdaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegbaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfchadegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfchbdchcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaeaaaaaaadepfchcdeglaaaaaaaaaaaaaaachcaaaaaaaaaaaaaaaeghcaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegmcaaaaaaaaaaaaaajgkaaaaaaachcaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaegoaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaachibaaaaaaaaaaaaaachlbaaaaaaaaaaaaaachhcaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaabaaaaaaangchmbaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachgaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachhbaaaaaaaaaaaaaaegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaahaaaaaaafhpfegfgmgehbgchibaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaahaaaaaaaehpfegfgmgehbgegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfedegbaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachldaaaaaaaaaaaaaaegnaaaaaaaaaaaaaaachlbaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaachcaaaaaaaaaaaaaaachbeaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpffdegeaaaaaaaaaaaaaaachjeaaaaaaaaaaaaaachebaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfgdchaeaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfhdegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfgemechpbaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaafaaaaaaaehpfehbgfhegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfidegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfgecfchacaaaaaaaaaaaaaachdfaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfjdegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfcfmechccaaaaaaaaaaaaaachdfaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaahaaaaaaaihegpgehpfbdadegeaaaaaaaaaaaaaaaegcaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfcfcfchecaaaaaaaaaaaaaachdfaaaaaaaaaaaaaa",
+        "gnsf_nontrivial_f_LO": 1,
+        "gnsf_purely_linear": 0,
+        "name": "kin6",
+        "nu_original": null,
+        "p": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegoaaaaaaaaaaaaaaakaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaakaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaacaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaeaaaaaaaaaaaaaaafaaaaaaaaaaaaaaagaaaaaaaaaaaaaaahaaaaaaaaaaaaaaaiaaaaaaaaaaaaaaajaaaaaaaaaaaaaaakaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaabaaaaaaangegpcaaaaaaaaaaaaaadaaaaaaajepfkhegpcaaaaaaaaaaaaaadaaaaaaamgpfcfegpcaaaaaaaaaaaaaadaaaaaaamgpfgeegpcaaaaaaaaaaaaaaeaaaaaaadepfngadegpcaaaaaaaaaaaaaaeaaaaaaadepfchadegpcaaaaaaaaaaaaaaeaaaaaaadepfchbdegpcaaaaaaaaaaaaaaeaaaaaaadepfchcdegpcaaaaaaaaaaaaaafaaaaaaaehpfehbgfhegpcaaaaaaaaaaaaaahaaaaaaaehpfegfgmgehbg",
+        "p_global": null,
+        "t": [],
+        "t0": null,
+        "t_label": "t",
+        "u": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegjaaaaaaaaaaaaaaafaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaafaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaacaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaeaaaaaaaaaaaaaaafaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaahaaaaaaafhpfegfgmgehbgegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfgemeegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfgecfegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfcfmeegpcaaaaaaaaaaaaaaiaaaaaaafhpfehbgfhpfcfcf",
+        "u_labels": null,
+        "x": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegpaaaaaaaaaaaaaaalaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaacaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaeaaaaaaaaaaaaaaafaaaaaaaaaaaaaaagaaaaaaaaaaaaaaahaaaaaaaaaaaaaaaiaaaaaaaaaaaaaaajaaaaaaaaaaaaaaakaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaabaaaaaaaifegpcaaaaaaaaaaaaaabaaaaaaajfegpcaaaaaaaaaaaaaadaaaaaaaahigjgegpcaaaaaaaaaaaaaadaaaaaaaghpfihegpcaaaaaaaaaaaaaadaaaaaaaghpfjhegpcaaaaaaaaaaaaaafaaaaaaapgngfghgbgegpcaaaaaaaaaaaaaafaaaaaaaegfgmgehbgegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfgemeegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfgecfegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfcfmeegpcaaaaaaaaaaaaaagaaaaaaaehbgfhpfcfcf",
+        "x_labels": null,
+        "xdot": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegpaaaaaaaaaaaaaaalaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaacaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaeaaaaaaaaaaaaaaafaaaaaaaaaaaaaaagaaaaaaaaaaaaaaahaaaaaaaaaaaaaaaiaaaaaaaaaaaaaaajaaaaaaaaaaaaaaakaaaaaaaaaaaaaaalaaaaaaaaaaaaaaaegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfadegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfbdegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfcdegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfddegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfedegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpffdegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfgdegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfhdegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfidegpcaaaaaaaaaaaaaagaaaaaaaihegpgehpfjdegpcaaaaaaaaaaaaaahaaaaaaaihegpgehpfbdad",
+        "z": "jhpnnagiieahaaaadaaaaaaaaaaaaaaaaaegdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "parameter_values": [
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ],
+        [
+            1.0
+        ]
+    ],
+    "problem_class": "SIM",
+    "shared_lib_ext": ".dylib",
+    "solver_options": {
+        "Tsim": 0.01,
+        "collocation_type": "GAUSS_RADAU_IIA",
+        "ext_fun_compile_flags": "-O2",
+        "integrator_type": "IRK",
+        "num_threads_in_batch_solve": 1,
+        "output_z": true,
+        "sens_adj": false,
+        "sens_algebraic": false,
+        "sens_forw": true,
+        "sens_hess": false,
+        "sim_method_jac_reuse": 0,
+        "sim_method_newton_iter": 3,
+        "sim_method_newton_tol": 0.0,
+        "sim_method_num_stages": 4,
+        "sim_method_num_steps": 10
+    }
+}

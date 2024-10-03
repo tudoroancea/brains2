@@ -53,9 +53,8 @@ brains2::common::load_cones_from_track_database(const std::string& track_name) {
 }
 
 void brains2::common::save_cones(
-    const std::filesystem::path &track_path,
+    const std::filesystem::path& track_path,
     const std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>& cones_map) {
-
     std::ofstream f(track_path.string());
     f << "color,X,Y\n";
 
