@@ -17,7 +17,7 @@ tl::expected<SplineFitter, SplineFittingError> SplineFitter::create(const Eigen:
                                                                     bool verbose) {
     // Ensure the path has at least 3 points
     if (path.rows() < 3) {
-        return tl::make_unexpected(SplineFittingError::NotEnoughPoints);
+        return tl::make_unexpected(SplineFittingError::NOT_ENOUGH_POINTS);
     }
 
     return SplineFitter(path, curv_weight, verbose);
@@ -26,7 +26,7 @@ tl::expected<SplineFitter, SplineFittingError> SplineFitter::create(const Eigen:
 tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     // Ensure the path has shape (N+1, 2)
     if (path.cols() != 2) {
-        return tl::make_unexpected(SplineFittingError::PathShape);
+        return tl::make_unexpected(SplineFittingError::PATH_SHAPE);
     }
     int N = path.rows() - 1;  // path has N+1 points for N segments
 
@@ -161,22 +161,22 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
     solver.data()->setNumberOfConstraints(A_rows);
 
     if (!solver.data()->setHessianMatrix(P)) {
-        return tl::make_unexpected(SplineFittingError::SetHessian);
+        return tl::make_unexpected(SplineFittingError::SET_HESSIAN);
     }
     if (!solver.data()->setGradient(q.col(0))) {
-        return tl::make_unexpected(SplineFittingError::SetGradient);
+        return tl::make_unexpected(SplineFittingError::SET_GRADIENT);
     }
     if (!solver.data()->setLinearConstraintsMatrix(A)) {
-        return tl::make_unexpected(SplineFittingError::SetConstraints);
+        return tl::make_unexpected(SplineFittingError::SET_CONSTRAINTS);
     }
     solver.data()->setBounds(b_x, b_x);
     if (!solver.initSolver()) {
-        return tl::make_unexpected(SplineFittingError::InitSolver);
+        return tl::make_unexpected(SplineFittingError::INIT_SOLVER);
     }
 
     // Solve for X
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-        return tl::make_unexpected(SplineFittingError::SolveQP);
+        return tl::make_unexpected(SplineFittingError::SOLVE_QP);
     }
 
     // Eigen::VectorXd p_X_vec = solver.getSolution();
@@ -185,16 +185,16 @@ tl::expected<void, SplineFittingError> SplineFitter::fit_open_spline() {
         solver.getSolution();
 
     if (!solver.updateGradient(q.col(1))) {
-        return tl::make_unexpected(SplineFittingError::SetGradient);
+        return tl::make_unexpected(SplineFittingError::SET_GRADIENT);
     }
     if (!solver.updateLinearConstraintsMatrix(A)) {
-        return tl::make_unexpected(SplineFittingError::SetConstraints);
+        return tl::make_unexpected(SplineFittingError::SET_CONSTRAINTS);
     }
     solver.updateBounds(b_y, b_y);
 
     // Solve for Y
     if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) {
-        return tl::make_unexpected(SplineFittingError::SolveQP);
+        return tl::make_unexpected(SplineFittingError::SOLVE_QP);
     }
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> p_Y =
@@ -217,7 +217,7 @@ tl::expected<void, SplineFittingError> SplineFitter::compute_spline_interval_len
 
     // Check that coeffs_X and coeffs_Y have the same dimensions and are Nx4 matrices
     if (coeffs_X.rows() != coeffs_Y.rows() || coeffs_X.cols() != 4 || coeffs_Y.cols() != 4) {
-        return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
+        return tl::make_unexpected(SplineFittingError::COEFFICIENTS_DIMENSIONS);
     }
 
     int N = coeffs_X.rows();  // Number of spline segments
@@ -281,10 +281,10 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
     // Check that coeffs_X and coeffs_Y have shape (N, 4)
     int N = coeffs_X.rows();
     if (coeffs_X.rows() != coeffs_Y.rows() || coeffs_X.cols() != 4 || coeffs_Y.cols() != 4) {
-        return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
+        return tl::make_unexpected(SplineFittingError::COEFFICIENTS_DIMENSIONS);
     }
     if (delta_s.size() != N) {
-        return tl::make_unexpected(SplineFittingError::DeltaSLength);
+        return tl::make_unexpected(SplineFittingError::DELTA_S_LENGTH);
     }
 
     // Compute cumulative sum of delta_s_

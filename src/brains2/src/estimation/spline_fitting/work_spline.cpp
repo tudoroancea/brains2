@@ -9,12 +9,12 @@
 #include "brains2/external/rapidcsv.hpp"
 
 int main() {
-    // const std::string path_input = "src/brains2/src/estimation/alpha_cones.csv";
+    const std::string path_input = "src/brains2/src/estimation/alpha_cones.csv";
     // const std::string path_input = "src/brains2/src/estimation/test_cones.csv";
-    const std::string path_input = "src/brains2/src/estimation/circle_cones.csv";
-    // const std::string path_output = "src/brains2/src/estimation/interpolated_spline_alpha.csv";
+    // const std::string path_input = "src/brains2/src/estimation/circle_cones.csv";
+    const std::string path_output = "src/brains2/src/estimation/interpolated_spline_alpha.csv";
     // const std::string path_output = "src/brains2/src/estimation/interpolated_spline.csv";
-    const std::string path_output = "src/brains2/src/estimation/circle_spline.csv";
+    // const std::string path_output = "src/brains2/src/estimation/circle_spline.csv";
     const size_t resample_points = 30;
     const double curv_weight = 0.1;
 
@@ -58,7 +58,14 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
     // Blue cones
-    SplineFitter blue_spline_fitter = SplineFitter::create(blue_cones, curv_weight).value();
+    auto expected_blue_spline_fitter = SplineFitter::create(blue_cones, curv_weight);
+    if (!expected_blue_spline_fitter) {
+        std::cerr << "Error creating SplineFitter for yellow cones: "
+                  << static_cast<int>(expected_blue_spline_fitter.error()) << "\n";
+        return 1;
+    }
+
+    SplineFitter blue_spline_fitter = expected_blue_spline_fitter.value();
     auto fit_result_blue = blue_spline_fitter.fit_open_spline();
     if (!fit_result_blue) {
         std::cerr << "Error fitting spline for blue cones: "
@@ -84,31 +91,38 @@ int main() {
         sample_result_blue.value();
 
     // Yellow cones
-    // SplineFitter yellow_spline_fitter = SplineFitter::create(yellow_cones, curv_weight).value();
-    // auto fit_result_yellow = yellow_spline_fitter.fit_open_spline();
-    // if (!fit_result_yellow) {
-    //     std::cerr << "Error fitting spline for yellow cones: "
-    //               << static_cast<int>(fit_result_yellow.error()) << "\n";
-    //     return 1;
-    // }
+    auto expected_yellow_spline_fitter = SplineFitter::create(yellow_cones, curv_weight);
+    if (!expected_yellow_spline_fitter) {
+        std::cerr << "Error creating SplineFitter for yellow cones: "
+                  << static_cast<int>(expected_yellow_spline_fitter.error()) << "\n";
+        return 1;
+    }
 
-    // auto length_result_yellow = yellow_spline_fitter.compute_spline_interval_lengths();
-    // if (!length_result_yellow) {
-    //     std::cerr << "Error computing spline interval lengths for yellow cones: "
-    //               << static_cast<int>(length_result_yellow.error()) << "\n";
-    //     return 1;
-    // }
+    SplineFitter yellow_spline_fitter = expected_yellow_spline_fitter.value();
+    auto fit_result_yellow = yellow_spline_fitter.fit_open_spline();
 
-    // auto sample_result_yellow = yellow_spline_fitter.uniformly_sample_spline(resample_points);
-    // if (!sample_result_yellow) {
-    //     std::cerr << "Error sampling spline for yellow cones: "
-    //               << static_cast<int>(sample_result_yellow.error()) << "\n";
-    //     return 1;
-    // }
+    if (!fit_result_yellow) {
+        std::cerr << "Error fitting spline for yellow cones: "
+                  << static_cast<int>(fit_result_yellow.error()) << "\n";
+        return 1;
+    }
 
-    // auto [X_interp_yellow, Y_interp_yellow, idx_interp_yellow, t_interp_yellow, s_interp_yellow]
-    // =
-    //     sample_result_yellow.value();
+    auto length_result_yellow = yellow_spline_fitter.compute_spline_interval_lengths();
+    if (!length_result_yellow) {
+        std::cerr << "Error computing spline interval lengths for yellow cones: "
+                  << static_cast<int>(length_result_yellow.error()) << "\n";
+        return 1;
+    }
+
+    auto sample_result_yellow = yellow_spline_fitter.uniformly_sample_spline(resample_points);
+    if (!sample_result_yellow) {
+        std::cerr << "Error sampling spline for yellow cones: "
+                  << static_cast<int>(sample_result_yellow.error()) << "\n";
+        return 1;
+    }
+
+    auto [X_interp_yellow, Y_interp_yellow, idx_interp_yellow, t_interp_yellow, s_interp_yellow] =
+        sample_result_yellow.value();
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -122,9 +136,9 @@ int main() {
     for (int i = 0; i < X_interp_blue.size(); ++i) {
         file << "blue," << X_interp_blue(i) << "," << Y_interp_blue(i) << "\n";
     }
-    // for (int i = 0; i < X_interp_yellow.size(); ++i) {
-    //     file << "yellow," << X_interp_yellow(i) << "," << Y_interp_yellow(i) << "\n";
-    // }
+    for (int i = 0; i < X_interp_yellow.size(); ++i) {
+        file << "yellow," << X_interp_yellow(i) << "," << Y_interp_yellow(i) << "\n";
+    }
     file.close();
 
     return 0;

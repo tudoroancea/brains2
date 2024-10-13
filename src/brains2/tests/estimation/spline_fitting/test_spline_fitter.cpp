@@ -10,7 +10,7 @@ TEST(SplineFitterTest, EmptyPath) {
     Eigen::MatrixXd empty_path;
     auto result = SplineFitter::create(empty_path);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), SplineFittingError::NotEnoughPoints);
+    EXPECT_EQ(result.error(), SplineFittingError::NOT_ENOUGH_POINTS);
 }
 
 TEST(SplineFitterTest, SinglePointPath) {
@@ -18,7 +18,7 @@ TEST(SplineFitterTest, SinglePointPath) {
     single_point << 0.0, 0.0;
     auto result = SplineFitter::create(single_point);
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), SplineFittingError::NotEnoughPoints);
+    EXPECT_EQ(result.error(), SplineFittingError::NOT_ENOUGH_POINTS);
 }
 
 TEST(SplineFitterTest, StraightLine) {
@@ -51,7 +51,7 @@ TEST(SplineFitterTest, IdenticalPoints) {
     EXPECT_FALSE(fit_result.has_value());
     // Depending on the implementation, the specific error may vary
     // For this case, we might expect an error related to solver initialization or path shape
-    EXPECT_EQ(fit_result.error(), SplineFittingError::InitSolver);
+    EXPECT_EQ(fit_result.error(), SplineFittingError::INIT_SOLVER);
 }
 
 TEST(SplineFitterTest, CircularArc) {
