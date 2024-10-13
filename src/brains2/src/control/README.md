@@ -2,29 +2,54 @@
 
 ## Input/outputs
 
-- car state (X,Y,phi,v_x,v_y,omega,a_x,a_y)
-- track estimation (splines for local center line, track width and curvature)
-  > we always expect the same number of points on the center line to be able to use splines
+We receive from the estimation module (or the simulation in certain scenarios):
+
+- the car's pose $X,Y,\varphi$ in global cartesian coordinates
+- car accelerations $a_x,a_y$ in global cartesian coordinates
+- the car's linear and angular velocity $v_x,v_y,\omega$ in car local
+  coordinates
+- an estimate of the track around us in the form of splines of degree 1 for the
+  center line, its heading, its curvature, and the track width:
+
+  $$
+  X^\mathrm{cen}(s),Y^\mathrm{cen}(s),\varphi^\mathrm{cen}(s),\kappa^\mathrm{cen}(s),w^\mathrm{cen}(s)\,.
+  $$
+
+  These splines are represented by a set of values for the track progress
+  $\{s_i\}_{i=1,\dots,M}$ and corresponding values for each quantity. We always
+  expect the same number of points for this representations to facilitate the
+  usage of splines in the OCP implementation.
+
+  > Roughly 200 points should be enough for up to 15m of local track.
+
+  The track progress values $s_i$ are also supposed to be consistent throughout
+  the drive. This means that they should be extracted from the same global
+  representation of the track, in such a way that a certain position would have
+  the same projection $s$ on two consecutive local tracks.
 
 ## Concept
 
 #### V1
 
-- Inspired by the paper **_“NMPC for Racing Using a Singularity-Free Path-Parametric Model with Obstacle Avoidance”_** https://www.sciencedirect.com/science/article/pii/S2405896320317845
-- Curvilinear temporal model
-- racing objective implemented as a simple quadratic cost wrt a target progress variable $s$ slightly out of reach
-  ⇒ depending on the length of the actual center line (in the exploration phase), should we change the horizon size?
+- We only follow the center line with a certain target velocity.
+- We use a curvilinear temporal model.
+- We formulate the OCP by taking inspiration from the paper [**_"NMPC for
+  Racing Using a Singularity-Free Path-Parametric Model with Obstacle
+  Avoidance"_**](https://www.sciencedirect.com/science/article/pii/S2405896320317845),
+  where the 'racing objective' is implemented as a simple quadratic cost with
+  respect to a target progress variable $s^\mathrm{ref}_f$ slightly out of reach
+- The track constraints are simple bounds on the lateral deviation (we ignore
+  heading for the moment).
+- For the moment, we put high enough cost on lateral deviation such that we
+  track the center line instead of actually racing it.
 
-- Track constraints as simple bounds on the lateral deviation (ignore heading for the moment)
-- For the moment, put high enough cost on lateral deviation such that we track the center line instead of actually racing it.
+#### For later versions
 
-#### For later
-
-- Incorporate heading into track contraints
-- Retune to do racing instead of center-line tracking
-- **global race line optimization**
-  After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
-  we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
+- [ ] Incorporate heading into track contraints
+- [ ] Retune to do racing instead of center-line tracking
+- [ ] **global race line optimization**
+      After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
+      we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
 
   > !NOTE: during the first lap the first and last points will not be the same !!!!!
 
@@ -46,13 +71,13 @@ $$
 where $s$ is the progress along the center line, $n$ is the lateral deviation from the center line, $\psi$ is the heading deviation from the center line.
 These three variabels form the _Frenet pose_.
 
-Based on the center line data $X^\mathrm{cen}(s), Y^\mathrm{cen}(s), \phi^\mathrm{cen}(s)$ and the _cartesian pose_ $(X, Y, \phi)$, we can compute the
+Based on the center line data $X^\mathrm{cen}(s), Y^\mathrm{cen}(s), \varphi^\mathrm{cen}(s)$ and the _cartesian pose_ $(X, Y, \varphi)$, we can compute the
 Frenet pose with:
 
 $$
 s = \argmin_{\sigma} \sqrt{(X^\mathrm{cen}(\sigma) - X)^2 + (Y^\mathrm{cen}(\sigma) - Y)^2}, \\
-n = -(X-X^\mathrm{cen}(s)) \sin(\phi^\mathrm{cen}(s)) + (Y-Y^\mathrm{cen}(s)) \cos(\phi^\mathrm{cen}(s)), \\
-\psi = \phi - \phi^\mathrm{cen}(s)
+n = -(X-X^\mathrm{cen}(s)) \sin(\varphi^\mathrm{cen}(s)) + (Y-Y^\mathrm{cen}(s)) \cos(\varphi^\mathrm{cen}(s)), \\
+\psi = \varphi - \varphi^\mathrm{cen}(s)
 $$
 
 ### Dynamics
@@ -84,17 +109,27 @@ $$
 where we wrote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the reference states and controls are chosen as follows:
 
 - The reference states $x^\mathrm{ref}_k$ are chosen as
+
   $$
   x^\mathrm{ref}_k = (s_0 + \frac{k}{N}s^\mathrm{ref}_f, 0, 0, v^\mathrm{ref}_x, 0,0, 0, \tau^\mathrm{ref}_k)^T
   $$
-  where $v^\mathrm{ref}_x$ and $s^\mathrm{ref}_f$ are two tuning parameter that one should choose to be respectively _the expected velocity
-  throughout the horizon_ and _a length slightly larger than the expected progress over the horizon_.
-  > In practice we could choose $s^\mathrm{ref}_f \approx \frac{3}{2} T_f v^\mathrm{ref}_x$.
+
+  where $v^\mathrm{ref}_x$ and $s^\mathrm{ref}_f$ are two tuning parameter that
+  one should choose to be respectively _the expected velocity throughout the
+  horizon_ and _a length slightly larger than the expected progress over the
+  horizon_.
+
+  > In practice we could choose $s^\mathrm{ref}_f \approx \frac{3}{2} T_f
+  > v^\mathrm{ref}_x$.
+
 - The reference controls $u^\mathrm{ref}_k$ are chosen as
+
   $$
   u^\mathrm{ref}_k = (0, \tau^\mathrm{ref}_k)^T
   $$
-  where $\tau^\mathrm{ref}_k$ is the steady state torque to be applied for the velocity $v^\mathrm{ref}_x$.
+
+  where $\tau^\mathrm{ref}_k$ is the steady state torque to be applied for the
+  velocity $v^\mathrm{ref}_x$.
 
 ### Constraints
 
@@ -109,12 +144,4 @@ For the moment, we only impose:
 
 ## Implementation
 
-linearization of quantities depending on $s$ (such as $\kappa^{\mathrm{cen}},w^{\mathrm{cen}}$) outside of the MPC to simplify the problem
-
-#### Initial guess generation
-
-Receive first track estimation with s,X,Y,phi,kappa,track_width
-
-Compute first initial guess with a stanley and a PI controller (
-
-Evaluate curvatures
+TODO
