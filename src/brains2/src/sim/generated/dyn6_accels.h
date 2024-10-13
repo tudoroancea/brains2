@@ -38,7 +38,7 @@ int dyn6_accels_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *s
 #define dyn6_accels_SZ_ARG 2
 #define dyn6_accels_SZ_RES 1
 #define dyn6_accels_SZ_IW 0
-#define dyn6_accels_SZ_W 14
+#define dyn6_accels_SZ_W 19
 casadi_functions* dyn6_accels_functions(void);
 #ifdef __cplusplus
 } /* extern "C" */
