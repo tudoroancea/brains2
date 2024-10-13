@@ -116,6 +116,14 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
     u[3] = clip(control.u_tau_RL, -limits.tau_max, limits.tau_max);
     u[4] = clip(control.u_tau_RR, -limits.tau_max, limits.tau_max);
 
+    // Prohibit driving backwards by setting the control to zero if the car is going backwards.
+    // This will let the car naturally coast to a stop, but we cannot accelerate backwards.
+    if (state.v_x < 0.0) {
+        u[1] = std::max(u[1], 0.0);
+        u[2] = std::max(u[2], 0.0);
+        u[3] = std::max(u[3], 0.0);
+        u[4] = std::max(u[4], 0.0);
+    }
     // depending on the last velocity v=sqrt(v_x^2+v_y^2), decide which model to
     // use and set its inputs.
     if (std::hypot(state.v_x, state.v_y) > 0.1) {
@@ -220,13 +228,12 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
         return tl::make_unexpected(SimError::NANS_IN_RESULT);
     }
 
-    // Prohibit the car from going backwards
-    if (next_state.v_x < 0.0 or
-        (next_state.tau_FL <= 0.1 and next_state.tau_FR <= 0.1 and next_state.tau_RL <= 0.1 and
-         next_state.tau_RR <= 0.1 and next_state.v_x <= 0.01)) {
-        next_state.v_x = 0.0;
-        next_state.v_y = 0.0;
-        next_state.omega = 0.0;
-    }
+    // if (next_state.v_x < 0.0 or
+    //     (next_state.tau_FL <= 0.1 and next_state.tau_FR <= 0.1 and next_state.tau_RL <= 0.1 and
+    //      next_state.tau_RR <= 0.1 and next_state.v_x <= 0.01)) {
+    //     next_state.v_x = 0.0;
+    //     next_state.v_y = 0.0;
+    //     next_state.omega = 0.0;
+    // }
     return std::make_pair(next_state, next_accels);
 }
