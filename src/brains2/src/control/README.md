@@ -147,6 +147,8 @@ For the moment, we only impose:
 TODO
 
 ```math
-x = (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
-u = (u_\delta, u_\tau)^T
+\begin{aligned}
+x &= (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
+u &= (u_\delta, u_\tau)^T
+\end{aligned}
 ```
