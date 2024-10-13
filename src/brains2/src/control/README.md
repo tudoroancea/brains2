@@ -11,9 +11,9 @@ We receive from the estimation module (or the simulation in certain scenarios):
 - an estimate of the track around us in the form of splines of degree 1 for the
   center line, its heading, its curvature, and the track width:
 
-  $$
+  ```math
   X^\mathrm{cen}(s),Y^\mathrm{cen}(s),\varphi^\mathrm{cen}(s),\kappa^\mathrm{cen}(s),w^\mathrm{cen}(s)\,.
-  $$
+  ```
 
   These splines are represented by a set of values for the track progress
   $\{s_i\}_{i=1,\dots,M}$ and corresponding values for each quantity. We always
@@ -63,10 +63,12 @@ We receive from the estimation module (or the simulation in certain scenarios):
 
 ### State and control variables
 
-$$
-x = (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
-u = (u_\delta, u_\tau)^T
-$$
+```math
+\begin{aligned}
+x &= (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
+u &= (u_\delta, u_\tau)^T
+\end{aligned}
+```
 
 where $s$ is the progress along the center line, $n$ is the lateral deviation from the center line, $\psi$ is the heading deviation from the center line.
 These three variabels form the _Frenet pose_.
@@ -74,24 +76,28 @@ These three variabels form the _Frenet pose_.
 Based on the center line data $X^\mathrm{cen}(s), Y^\mathrm{cen}(s), \varphi^\mathrm{cen}(s)$ and the _cartesian pose_ $(X, Y, \varphi)$, we can compute the
 Frenet pose with:
 
-$$
-s = \argmin_{\sigma} \sqrt{(X^\mathrm{cen}(\sigma) - X)^2 + (Y^\mathrm{cen}(\sigma) - Y)^2}, \\
-n = -(X-X^\mathrm{cen}(s)) \sin(\varphi^\mathrm{cen}(s)) + (Y-Y^\mathrm{cen}(s)) \cos(\varphi^\mathrm{cen}(s)), \\
-\psi = \varphi - \varphi^\mathrm{cen}(s)
-$$
+```math
+\begin{aligned}
+s &= \argmin_{\sigma} \sqrt{(X^\mathrm{cen}(\sigma) - X)^2 + (Y^\mathrm{cen}(\sigma) - Y)^2}, \\
+n &= -(X-X^\mathrm{cen}(s)) \sin(\varphi^\mathrm{cen}(s)) + (Y-Y^\mathrm{cen}(s)) \cos(\varphi^\mathrm{cen}(s)), \\
+\psi &= \varphi - \varphi^\mathrm{cen}(s)
+\end{aligned}
+```
 
 ### Dynamics
 
-$$
-\dot{s} = \frac{v_x \cos(\psi) - v_y \sin(\psi)}{1-n \kappa^\mathrm{cen}(s)}, \\
-\dot{n} = v_x \sin(\psi) + v_y \cos(\psi), \\
-\dot{\psi} = \omega - \kappa^\mathrm{cen}(s) \dot{s} \\
-\dot{v}_x = \dot{v} \cos(\beta) - v_y \dot{\beta}, \\
-\dot{v}_y = \dot{v} \sin(\beta) + v_x \dot{\beta}, \\
-\dot{\omega} = \frac{1}{l_R}(\dot{v} \sin(\beta) + v_x \dot{\beta}), \\
-\dot{\delta} = \frac{1}{t_\delta}(u_\delta - \delta), \\
-\dot{\tau} = \frac{1}{t_\tau}(u_\tau - \tau)
-$$
+```math
+\begin{aligned}
+\dot{s} &= \frac{v_x \cos(\psi) - v_y \sin(\psi)}{1-n \kappa^\mathrm{cen}(s)}, \\
+\dot{n} &= v_x \sin(\psi) + v_y \cos(\psi), \\
+\dot{\psi} &= \omega - \kappa^\mathrm{cen}(s) \dot{s} \\
+\dot{v}_x &= \dot{v} \cos(\beta) - v_y \dot{\beta}, \\
+\dot{v}_y &= \dot{v} \sin(\beta) + v_x \dot{\beta}, \\
+\dot{\omega} &= \frac{1}{l_R}(\dot{v} \sin(\beta) + v_x \dot{\beta}), \\
+\dot{\delta} &= \frac{1}{t_\delta}(u_\delta - \delta), \\
+\dot{\tau} &= \frac{1}{t_\tau}(u_\tau - \tau)
+\end{aligned}
+```
 
 where $\beta = \frac{l_R}{l_R + l_F}\delta$ is the slip angle, $\dot{\beta} = \frac{l_R}{l_R + l_F} \dot{\delta}$ its derivative,
 $\dot{v}=\frac{1}{m}(\cos(\beta) (\frac{1}{2}F_\mathrm{motor}+F_\mathrm{drag}) + \frac{1}{2}\sin(\beta)F_\mathrm{motor})$ is the
@@ -102,17 +108,17 @@ and finally $F_\mathrm{drag}=-C_\mathrm{r0} - C_\mathrm{r1} v_x - C_\mathrm{r2} 
 
 We formulate a quadratic objective function as follows:
 
-$$
+```math
 J(\mathbf{x},\mathbf{u}) = \|x_N-x^\mathrm{ref}_N\|^2_{Q_f} + \sum_{k=0}^{N-1} \|x_k-x^\mathrm{ref}_k\|^2_Q + \|u_k-u^\mathrm{ref}_k\|^2_{R_u} + \|\dot{u}_k\|^2_{R_{du}}
-$$
+```
 
 where we wrote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the reference states and controls are chosen as follows:
 
 - The reference states $x^\mathrm{ref}_k$ are chosen as
 
-  $$
+  ```math
   x^\mathrm{ref}_k = (s_0 + \frac{k}{N}s^\mathrm{ref}_f, 0, 0, v^\mathrm{ref}_x, 0,0, 0, \tau^\mathrm{ref}_k)^T
-  $$
+  ```
 
   where $v^\mathrm{ref}_x$ and $s^\mathrm{ref}_f$ are two tuning parameter that
   one should choose to be respectively _the expected velocity throughout the
@@ -124,9 +130,9 @@ where we wrote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the
 
 - The reference controls $u^\mathrm{ref}_k$ are chosen as
 
-  $$
+  ```math
   u^\mathrm{ref}_k = (0, \tau^\mathrm{ref}_k)^T
-  $$
+  ```
 
   where $\tau^\mathrm{ref}_k$ is the steady state torque to be applied for the
   velocity $v^\mathrm{ref}_x$.
@@ -145,10 +151,3 @@ For the moment, we only impose:
 ## Implementation
 
 TODO
-
-```math
-\begin{aligned}
-x &= (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
-u &= (u_\delta, u_\tau)^T
-\end{aligned}
-```
