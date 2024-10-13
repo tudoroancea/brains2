@@ -145,3 +145,8 @@ For the moment, we only impose:
 ## Implementation
 
 TODO
+
+```math
+x = (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
+u = (u_\delta, u_\tau)^T
+```
