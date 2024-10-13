@@ -228,12 +228,5 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
         return tl::make_unexpected(SimError::NANS_IN_RESULT);
     }
 
-    // if (next_state.v_x < 0.0 or
-    //     (next_state.tau_FL <= 0.1 and next_state.tau_FR <= 0.1 and next_state.tau_RL <= 0.1 and
-    //      next_state.tau_RR <= 0.1 and next_state.v_x <= 0.01)) {
-    //     next_state.v_x = 0.0;
-    //     next_state.v_y = 0.0;
-    //     next_state.omega = 0.0;
-    // }
     return std::make_pair(next_state, next_accels);
 }
