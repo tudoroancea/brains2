@@ -15,8 +15,9 @@ int main() {
     const std::string path_output = "src/brains2/src/estimation/interpolated_spline_alpha.csv";
     // const std::string path_output = "src/brains2/src/estimation/interpolated_spline.csv";
     // const std::string path_output = "src/brains2/src/estimation/circle_spline.csv";
-    const size_t resample_points = 30;
+    const size_t resample_points = 50;
     const double curv_weight = 0.1;
+    const bool verbose = false;
 
     rapidcsv::Document cones(path_input);
 
@@ -61,7 +62,7 @@ int main() {
     auto expected_blue_spline_fitter = SplineFitter::create(blue_cones, curv_weight);
     if (!expected_blue_spline_fitter) {
         std::cerr << "Error creating SplineFitter for yellow cones: "
-                  << static_cast<int>(expected_blue_spline_fitter.error()) << "\n";
+                  << SplineFitter::to_string(expected_blue_spline_fitter.error()) << "\n";
         return 1;
     }
 
@@ -69,21 +70,21 @@ int main() {
     auto fit_result_blue = blue_spline_fitter.fit_open_spline();
     if (!fit_result_blue) {
         std::cerr << "Error fitting spline for blue cones: "
-                  << static_cast<int>(fit_result_blue.error()) << "\n";
+                  << SplineFitter::to_string(fit_result_blue.error()) << "\n";
         return 1;
     }
 
     auto length_result_blue = blue_spline_fitter.compute_spline_interval_lengths();
     if (!length_result_blue) {
         std::cerr << "Error computing spline interval lengths for blue cones: "
-                  << static_cast<int>(length_result_blue.error()) << "\n";
+                  << SplineFitter::to_string(length_result_blue.error()) << "\n";
         return 1;
     }
 
     auto sample_result_blue = blue_spline_fitter.uniformly_sample_spline(resample_points);
     if (!sample_result_blue) {
         std::cerr << "Error sampling spline for blue cones: "
-                  << static_cast<int>(sample_result_blue.error()) << "\n";
+                  << SplineFitter::to_string(sample_result_blue.error()) << "\n";
         return 1;
     }
 
@@ -94,7 +95,7 @@ int main() {
     auto expected_yellow_spline_fitter = SplineFitter::create(yellow_cones, curv_weight);
     if (!expected_yellow_spline_fitter) {
         std::cerr << "Error creating SplineFitter for yellow cones: "
-                  << static_cast<int>(expected_yellow_spline_fitter.error()) << "\n";
+                  << SplineFitter::to_string(expected_yellow_spline_fitter.error()) << "\n";
         return 1;
     }
 
@@ -103,26 +104,75 @@ int main() {
 
     if (!fit_result_yellow) {
         std::cerr << "Error fitting spline for yellow cones: "
-                  << static_cast<int>(fit_result_yellow.error()) << "\n";
+                  << SplineFitter::to_string(fit_result_yellow.error()) << "\n";
         return 1;
     }
 
     auto length_result_yellow = yellow_spline_fitter.compute_spline_interval_lengths();
     if (!length_result_yellow) {
         std::cerr << "Error computing spline interval lengths for yellow cones: "
-                  << static_cast<int>(length_result_yellow.error()) << "\n";
+                  << SplineFitter::to_string(length_result_yellow.error()) << "\n";
         return 1;
     }
 
     auto sample_result_yellow = yellow_spline_fitter.uniformly_sample_spline(resample_points);
     if (!sample_result_yellow) {
         std::cerr << "Error sampling spline for yellow cones: "
-                  << static_cast<int>(sample_result_yellow.error()) << "\n";
+                  << SplineFitter::to_string(sample_result_yellow.error()) << "\n";
         return 1;
     }
 
     auto [X_interp_yellow, Y_interp_yellow, idx_interp_yellow, t_interp_yellow, s_interp_yellow] =
         sample_result_yellow.value();
+
+    auto expected_center_line = SplineFitter::compute_center_line(X_interp_blue,
+                                                                  Y_interp_blue,
+                                                                  X_interp_yellow,
+                                                                  Y_interp_yellow,
+                                                                  curv_weight,
+                                                                  verbose);
+    if (!expected_center_line) {
+        std::cerr << "Error computing center line: "
+                  << SplineFitter::to_string(expected_center_line.error()) << "\n";
+        return 1;
+    }
+
+    VectorPair center_line = expected_center_line.value();
+
+    auto excpected_heading_blue = blue_spline_fitter.get_heading(idx_interp_blue, t_interp_blue);
+
+    if (!excpected_heading_blue) {
+        std::cerr << "Error computing heading for blue cones: "
+                  << SplineFitter::to_string(excpected_heading_blue.error()) << "\n";
+        return 1;
+    }
+
+    auto excpected_heading_yellow =
+        yellow_spline_fitter.get_heading(idx_interp_yellow, t_interp_yellow);
+
+    if (!excpected_heading_yellow) {
+        std::cerr << "Error computing heading for yellow cones: "
+                  << SplineFitter::to_string(excpected_heading_yellow.error()) << "\n";
+        return 1;
+    }
+
+    auto excpected_curvature_blue =
+        blue_spline_fitter.get_curvature(idx_interp_blue, t_interp_blue);
+
+    if (!excpected_curvature_blue) {
+        std::cerr << "Error computing curvature for blue cones: "
+                  << SplineFitter::to_string(excpected_curvature_blue.error()) << "\n";
+        return 1;
+    }
+
+    auto excpected_curvature_yellow =
+        yellow_spline_fitter.get_curvature(idx_interp_yellow, t_interp_yellow);
+
+    if (!excpected_curvature_yellow) {
+        std::cerr << "Error computing curvature for yellow cones: "
+                  << SplineFitter::to_string(excpected_curvature_yellow.error()) << "\n";
+        return 1;
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -138,6 +188,9 @@ int main() {
     }
     for (int i = 0; i < X_interp_yellow.size(); ++i) {
         file << "yellow," << X_interp_yellow(i) << "," << Y_interp_yellow(i) << "\n";
+    }
+    for (int i = 0; i < center_line.first.size(); ++i) {
+        file << "center," << center_line.first(i) << "," << center_line.second(i) << "\n";
     }
     file.close();
 

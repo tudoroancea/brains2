@@ -12,8 +12,8 @@
 #include <unsupported/Eigen/KroneckerProduct>
 #include "brains2/external/expected.hpp"
 
-// Define a pair of matrices to hold the result
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;
+typedef std::pair<Eigen::VectorXd, Eigen::VectorXd> VectorPair;
 
 enum class SplineFittingError {
     PATH_SHAPE,
@@ -24,7 +24,11 @@ enum class SplineFittingError {
     SET_HESSIAN,
     INIT_SOLVER,
     SOLVE_QP,
-    NOT_ENOUGH_POINTS
+    NOT_ENOUGH_POINTS,
+    SIZE_MISMATCH,
+    INDEX_OUT_OF_BOUNDS,
+    ZERO_DENOMINATOR,
+    EMPTY_INPUT
 };
 
 class SplineFitter {
@@ -54,10 +58,32 @@ public:
                 return "SOLVE_QP";
             case SplineFittingError::NOT_ENOUGH_POINTS:
                 return "NOT_ENOUGH_POINTS";
+            case SplineFittingError::SIZE_MISMATCH:
+                return "SIZE_MISMATCH";
+            case SplineFittingError::INDEX_OUT_OF_BOUNDS:
+                return "INDEX_OUT_OF_BOUNDS";
+            case SplineFittingError::ZERO_DENOMINATOR:
+                return "ZERO_DENOMINATOR";
+            case SplineFittingError::EMPTY_INPUT:
+                return "EMPTY_INPUT";
             default:
                 return "UNKNOWN_ERROR";
         }
     }
+
+    tl::expected<Eigen::VectorXd, SplineFittingError> get_heading(const Eigen::VectorXi& idx_interp,
+                                                                  const Eigen::VectorXd& t_interp);
+
+    tl::expected<Eigen::VectorXd, SplineFittingError> get_curvature(
+        const Eigen::VectorXi& idx_interp, const Eigen::VectorXd& t_interp);
+
+    static tl::expected<VectorPair, SplineFittingError> compute_center_line(
+        const Eigen::VectorXd& X_blue,
+        const Eigen::VectorXd& Y_blue,
+        const Eigen::VectorXd& X_yellow,
+        const Eigen::VectorXd& Y_yellow,
+        double curv_weight = 1.0,
+        bool verbose = false);
 
     // Method to fit the open spline
     tl::expected<void, SplineFittingError> fit_open_spline();

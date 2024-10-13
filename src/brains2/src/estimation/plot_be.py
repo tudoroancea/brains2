@@ -35,6 +35,14 @@ plt.scatter(
     label="yellow cone",
     s=100,
 )
+
+plt.scatter(
+    cones[cones["color"] == "center"]["X"],
+    cones[cones["color"] == "center"]["Y"],
+    c="red",
+    label="alpha cone",
+)
+
 plt.legend()
 # set the aspect ratio to be equal
 plt.axis("equal")

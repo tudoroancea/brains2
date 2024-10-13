@@ -3,6 +3,8 @@
 #include "brains2/estimation/spline_fitting/spline_fitter.h"
 #include <cmath>
 #include <numeric>
+#include <set>
+#include <vector>
 #include "brains2/external/icecream.hpp"
 
 SplineFitter::SplineFitter(const Eigen::MatrixXd& path, double curv_weight, bool verbose)
@@ -337,6 +339,262 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
     }
 
     return std::make_tuple(X_interp, Y_interp, idx_interp, t_interp, s_interp);
+}
+
+// Function to compute heading (phi)
+tl::expected<Eigen::VectorXd, SplineFittingError> SplineFitter::get_heading(
+    const Eigen::VectorXi& idx_interp, const Eigen::VectorXd& t_interp) {
+    auto coeffs_X = spline_coefficients.first;
+    auto coeffs_Y = spline_coefficients.second;
+    // Ensure idx_interp and t_interp have the same size
+    if (idx_interp.size() != t_interp.size()) {
+        return tl::unexpected(SplineFittingError::SIZE_MISMATCH);
+    }
+
+    // Check index bounds
+    if ((idx_interp.array() < 0).any() || (idx_interp.array() >= coeffs_X.rows()).any()) {
+        return tl::unexpected(SplineFittingError::INDEX_OUT_OF_BOUNDS);
+    }
+
+    int n_samples = idx_interp.size();
+    Eigen::VectorXd c1x(n_samples), c2x(n_samples), c3x(n_samples);
+    Eigen::VectorXd c1y(n_samples), c2y(n_samples), c3y(n_samples);
+
+    // Extract coefficients based on idx_interp
+    for (int i = 0; i < n_samples; ++i) {
+        int idx = idx_interp(i);
+        c1x(i) = coeffs_X(idx, 1);
+        c2x(i) = coeffs_X(idx, 2);
+        c3x(i) = coeffs_X(idx, 3);
+        c1y(i) = coeffs_Y(idx, 1);
+        c2y(i) = coeffs_Y(idx, 2);
+        c3y(i) = coeffs_Y(idx, 3);
+    }
+
+    Eigen::VectorXd t_sq = t_interp.array().square();
+
+    // Compute first derivatives x_d and y_d
+    Eigen::VectorXd x_d =
+        c1x.array() + 2.0 * c2x.array() * t_interp.array() + 3.0 * c3x.array() * t_sq.array();
+    Eigen::VectorXd y_d =
+        c1y.array() + 2.0 * c2y.array() * t_interp.array() + 3.0 * c3y.array() * t_sq.array();
+
+    // Compute heading phi
+    Eigen::VectorXd phi(n_samples);
+    for (int i = 0; i < n_samples; ++i) {
+        phi(i) = std::atan2(y_d(i), x_d(i));
+    }
+
+    return phi;
+}
+
+// Function to compute curvature (kappa)
+tl::expected<Eigen::VectorXd, SplineFittingError> SplineFitter::get_curvature(
+    const Eigen::VectorXi& idx_interp, const Eigen::VectorXd& t_interp) {
+    auto coeffs_X = spline_coefficients.first;
+    auto coeffs_Y = spline_coefficients.second;
+
+    // Ensure idx_interp and t_interp have the same size
+    if (idx_interp.size() != t_interp.size()) {
+        return tl::unexpected(SplineFittingError::SIZE_MISMATCH);
+    }
+
+    // Check index bounds
+    if ((idx_interp.array() < 0).any() ||
+        (idx_interp.array() >= spline_coefficients.first.rows()).any()) {
+        return tl::unexpected(SplineFittingError::INDEX_OUT_OF_BOUNDS);
+    }
+
+    int n_samples = idx_interp.size();
+    Eigen::VectorXd c1x(n_samples), c2x(n_samples), c3x(n_samples);
+    Eigen::VectorXd c1y(n_samples), c2y(n_samples), c3y(n_samples);
+
+    // Extract coefficients based on idx_interp
+    for (int i = 0; i < n_samples; ++i) {
+        int idx = idx_interp(i);
+        c1x(i) = coeffs_X(idx, 1);
+        c2x(i) = coeffs_X(idx, 2);
+        c3x(i) = coeffs_X(idx, 3);
+        c1y(i) = coeffs_Y(idx, 1);
+        c2y(i) = coeffs_Y(idx, 2);
+        c3y(i) = coeffs_Y(idx, 3);
+    }
+
+    Eigen::VectorXd t_sq = t_interp.array().square();
+
+    // Compute first derivatives x_d and y_d
+    Eigen::VectorXd x_d =
+        c1x.array() + 2.0 * c2x.array() * t_interp.array() + 3.0 * c3x.array() * t_sq.array();
+    Eigen::VectorXd y_d =
+        c1y.array() + 2.0 * c2y.array() * t_interp.array() + 3.0 * c3y.array() * t_sq.array();
+
+    // Compute second derivatives x_dd and y_dd
+    Eigen::VectorXd x_dd = 2.0 * c2x.array() + 6.0 * c3x.array() * t_interp.array();
+    Eigen::VectorXd y_dd = 2.0 * c2y.array() + 6.0 * c3y.array() * t_interp.array();
+
+    // Compute numerator and denominator for curvature formula
+    Eigen::VectorXd numerator = x_d.array() * y_dd.array() - y_d.array() * x_dd.array();
+    Eigen::VectorXd denominator = (x_d.array().square() + y_d.array().square()).array().pow(1.5);
+
+    // Handle potential zero denominators
+    const double epsilon = 1e-8;
+    if ((denominator.array().abs() < epsilon).any()) {
+        return tl::unexpected(SplineFittingError::ZERO_DENOMINATOR);
+    }
+
+    // Compute curvature kappa
+    Eigen::VectorXd kappa = numerator.array() / denominator.array();
+
+    return kappa;
+}
+
+// tl::expected<VectorPair, SplineFittingError> SplineFitter::compute_center_line(
+//     Eigen::VectorXd X_blue,
+//     Eigen::VectorXd Y_blue,
+//     Eigen::VectorXd X_yellow,
+//     Eigen::VectorXd Y_yellow) {
+//     long sizes[4] = {X_blue.size(), Y_blue.size(), X_yellow.size(), Y_yellow.size()};
+//     // check if all sizes are equal
+//     if (not std::all_of(std::begin(sizes), std::end(sizes), [&](long size) {
+//             return size == sizes[0];
+//         })) {
+//         return tl::make_unexpected(SplineFittingError::SIZE_MISMATCH);
+//     }
+
+//     Eigen::VectorXd X_center = (X_blue + X_yellow) / 2;
+//     Eigen::VectorXd Y_center = (Y_blue + Y_yellow) / 2;
+
+//     return std::make_pair(X_center, Y_center);
+// }
+
+tl::expected<VectorPair, SplineFittingError> SplineFitter::compute_center_line(
+    const Eigen::VectorXd& X_blue,
+    const Eigen::VectorXd& Y_blue,
+    const Eigen::VectorXd& X_yellow,
+    const Eigen::VectorXd& Y_yellow,
+    double curv_weight,
+    bool verbose) {
+    // Check that sizes of X and Y are equal for each boundary
+    if (X_blue.size() != Y_blue.size() || X_yellow.size() != Y_yellow.size()) {
+        return tl::make_unexpected(SplineFittingError::SIZE_MISMATCH);
+    }
+
+    using IndexPair = std::pair<int, int>;
+    std::set<IndexPair> matched_pairs;
+
+    // Find closest points from blue to yellow boundary
+    for (int i = 0; i < X_blue.size(); ++i) {
+        Eigen::Vector2d blue_point(X_blue[i], Y_blue[i]);
+
+        double min_dist_sq = std::numeric_limits<double>::max();
+        int min_index = -1;
+        for (int j = 0; j < X_yellow.size(); ++j) {
+            Eigen::Vector2d yellow_point(X_yellow[j], Y_yellow[j]);
+            double dist_sq = (blue_point - yellow_point).squaredNorm();
+            if (dist_sq < min_dist_sq) {
+                min_dist_sq = dist_sq;
+                min_index = j;
+            }
+        }
+
+        matched_pairs.insert({i, min_index});
+    }
+
+    // Find closest points from yellow to blue boundary
+    for (int j = 0; j < X_yellow.size(); ++j) {
+        Eigen::Vector2d yellow_point(X_yellow[j], Y_yellow[j]);
+
+        double min_dist_sq = std::numeric_limits<double>::max();
+        int min_index = -1;
+        for (int i = 0; i < X_blue.size(); ++i) {
+            Eigen::Vector2d blue_point(X_blue[i], Y_blue[i]);
+            double dist_sq = (yellow_point - blue_point).squaredNorm();
+            if (dist_sq < min_dist_sq) {
+                min_dist_sq = dist_sq;
+                min_index = i;
+            }
+        }
+
+        matched_pairs.insert({min_index, j});
+    }
+
+    // Precompute cumulative distances along blue and yellow boundaries
+    std::vector<double> cumulative_distances_blue(X_blue.size(), 0.0);
+    for (int i = 1; i < X_blue.size(); ++i) {
+        Eigen::Vector2d prev_point(X_blue[i - 1], Y_blue[i - 1]);
+        Eigen::Vector2d curr_point(X_blue[i], Y_blue[i]);
+        cumulative_distances_blue[i] =
+            cumulative_distances_blue[i - 1] + (curr_point - prev_point).norm();
+    }
+
+    std::vector<double> cumulative_distances_yellow(X_yellow.size(), 0.0);
+    for (int j = 1; j < X_yellow.size(); ++j) {
+        Eigen::Vector2d prev_point(X_yellow[j - 1], Y_yellow[j - 1]);
+        Eigen::Vector2d curr_point(X_yellow[j], Y_yellow[j]);
+        cumulative_distances_yellow[j] =
+            cumulative_distances_yellow[j - 1] + (curr_point - prev_point).norm();
+    }
+
+    // Compute middle points and parameters for ordering
+    std::vector<std::pair<Eigen::Vector2d, double>> center_points_with_param;
+    for (const auto& [i, j] : matched_pairs) {
+        Eigen::Vector2d blue_point(X_blue[i], Y_blue[i]);
+        Eigen::Vector2d yellow_point(X_yellow[j], Y_yellow[j]);
+        Eigen::Vector2d center_point = (blue_point + yellow_point) / 2.0;
+
+        // Average cumulative distance for ordering
+        double param = (cumulative_distances_blue[i] + cumulative_distances_yellow[j]) / 2.0;
+        center_points_with_param.emplace_back(center_point, param);
+    }
+
+    // Sort center points based on the computed parameter
+    std::sort(center_points_with_param.begin(),
+              center_points_with_param.end(),
+              [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    // Extract X_center and Y_center
+
+    Eigen::MatrixXd path = Eigen::MatrixXd(center_points_with_param.size(), 2);
+    for (size_t idx = 0; idx < center_points_with_param.size(); ++idx) {
+        path(idx, 0) = center_points_with_param[idx].first.x();
+        path(idx, 1) = center_points_with_param[idx].first.y();
+    }
+
+    // Eigen::VectorXd X_center(center_points_with_param.size());
+    // Eigen::VectorXd Y_center(center_points_with_param.size());
+    // for (size_t idx = 0; idx < center_points_with_param.size(); ++idx) {
+    //     X_center[idx] = center_points_with_param[idx].first.x();
+    //     Y_center[idx] = center_points_with_param[idx].first.y();
+    // }
+
+    // Fit a spline to the center points
+    auto expected_center_line = SplineFitter::create(path, curv_weight, verbose);
+    if (!expected_center_line) {
+        return tl::make_unexpected(expected_center_line.error());
+    }
+
+    SplineFitter center_line_fitter = expected_center_line.value();
+    auto fit_result = center_line_fitter.fit_open_spline();
+
+    if (!fit_result) {
+        return tl::make_unexpected(fit_result.error());
+    }
+
+    auto length_result = center_line_fitter.compute_spline_interval_lengths();
+
+    if (!length_result) {
+        return tl::make_unexpected(length_result.error());
+    }
+
+    auto sample_result = center_line_fitter.uniformly_sample_spline(300);
+
+    if (!sample_result) {
+        return tl::make_unexpected(sample_result.error());
+    }
+
+    auto [X_center, Y_center, idx_interp, t_interp, s_interp] = sample_result.value();
+
+    return std::make_pair(X_center, Y_center);
 }
 
 const MatrixPair& SplineFitter::get_spline_coefs() const {
