@@ -261,31 +261,31 @@ def gen_dyn6_model() -> ca.SX:
     a_y = v_y_dot + v_x * omega
 
     # vertical tire forces
-    front_weight_distribution = 0.5 * l_F / wheelbase
-    rear_weight_distribution = 0.5 * l_R / wheelbase
+    front_weight_distribution = l_F / wheelbase
+    rear_weight_distribution = l_R / wheelbase
     static_weight = m * g
     F_downforce = 0.5 * C_downforce * v_x * v_x
-    longitudinal_weight_transfer = 0.5 * m * a_x * z_CG / wheelbase
-    lateral_weight_transfer = 0.5 * m * a_y * z_CG / axle_track
-    F_z_FL = -(
-        front_weight_distribution * (static_weight + F_downforce)
-        - longitudinal_weight_transfer
-        + lateral_weight_transfer
-    )
-    F_z_FR = -(
+    longitudinal_weight_transfer = m * a_x * z_CG / wheelbase
+    lateral_weight_transfer = m * a_y * z_CG / axle_track
+    F_z_FL = 0.5 * (
         front_weight_distribution * (static_weight + F_downforce)
         - longitudinal_weight_transfer
         - lateral_weight_transfer
     )
-    F_z_RL = -(
-        rear_weight_distribution * (static_weight + F_downforce)
-        + longitudinal_weight_transfer
+    F_z_FR = 0.5 * (
+        front_weight_distribution * (static_weight + F_downforce)
+        - longitudinal_weight_transfer
         + lateral_weight_transfer
     )
-    F_z_RR = -(
+    F_z_RL = 0.5 * (
         rear_weight_distribution * (static_weight + F_downforce)
         + longitudinal_weight_transfer
         - lateral_weight_transfer
+    )
+    F_z_RR = 0.5 * (
+        rear_weight_distribution * (static_weight + F_downforce)
+        + longitudinal_weight_transfer
+        + lateral_weight_transfer
     )
 
     # longitudinal and lateral velocity of each wheel (in its own reference frame)
@@ -299,10 +299,10 @@ def gen_dyn6_model() -> ca.SX:
     v_y_RR = v_y - l_R * omega
 
     # lateral dynamics
-    alpha_FL = ca.atan2(v_y_FL, v_x_FL) - delta
-    alpha_FR = ca.atan2(v_y_FR, v_x_FR) - delta
-    alpha_RL = ca.atan2(v_y_RL, v_x_RL)
-    alpha_RR = ca.atan2(v_y_RR, v_x_RR)
+    alpha_FL = delta - ca.atan2(v_y_FL, v_x_FL)
+    alpha_FR = delta - ca.atan2(v_y_FR, v_x_FR)
+    alpha_RL = -ca.atan2(v_y_RL, v_x_RL)
+    alpha_RR = -ca.atan2(v_y_RR, v_x_RR)
     mu_y_FL = Da * ca.sin(
         Ca * ca.arctan(Ba * alpha_FL - Ea * (Ba * alpha_FL - ca.arctan(Ba * alpha_FL)))
     )
@@ -397,22 +397,25 @@ def gen_dyn6_model() -> ca.SX:
     os.remove("generated/acados_sim_solver.pxd")
 
     # accelerations
-    alpha_F = ca.atan2(v_y_FL, v_x) - delta
+    alpha_F = delta - ca.atan2(v_y_FL, v_x)
     mu_F = Da * ca.sin(
         Ca * ca.arctan(Ba * alpha_F - Ea * (Ba * alpha_F - ca.arctan(Ba * alpha_F)))
     )
-    tpr = (l_R * (static_weight + F_downforce) + z_CG * F_drag) / wheelbase
-    a_x_estimate = (
-        (F_x_RL + F_x_RR)
-        + (F_x_FL + F_x_FR) * ca.cos(delta)
-        + F_drag
-        - mu_F * ca.sin(delta) * tpr
+    alpha_R = -ca.atan2(v_y_RL, v_x)
+    mu_R = Da * ca.sin(
+        Ca * ca.arctan(Ba * alpha_R - Ea * (Ba * alpha_R - ca.arctan(Ba * alpha_R)))
     )
+    tpr = (static_weight + F_downforce) * front_weight_distribution
+    a_x_estimate = (
+        (F_x_FL + F_x_FR) * ca.cos(delta)
+        - mu_F * ca.sin(delta) * tpr
+        + (F_x_RL + F_x_RR)
+    ) / (m * (1 - mu_F * ca.sin(delta) * z_CG / wheelbase))
     a_y_estimate = (
         (F_x_FL + F_x_FR) * ca.sin(delta)
-        + (tpr - m * a_x_estimate * z_CG / wheelbase) * ca.cos(delta)
-        + (tpr + m * a_x_estimate * z_CG / wheelbase)
-    )
+        + mu_F * (tpr - m * a_x_estimate * z_CG / wheelbase) * ca.cos(delta)
+        + mu_R * (tpr + m * a_x_estimate * z_CG / wheelbase)
+    ) / m
     accels = ca.Function(
         "dyn6_accels",
         [x, p],
