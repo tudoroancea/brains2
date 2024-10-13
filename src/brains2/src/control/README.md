@@ -51,13 +51,13 @@ We receive from the estimation module (or the simulation in certain scenarios):
       After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
       we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
 
-  > !NOTE: during the first lap the first and last points will not be the same !!!!!
+    > [!NOTE]: during the first lap the first and last points will not be the same !!!!!
 
-  ⇒ we stitch the last prediction with the beginning of the lap
+    ⇒ we stitch the last prediction with the beginning of the lap
 
-  we compute the curvature values outside of the OCP, based on the initial guess, constructed based on the last prediction extended by the same control
+    we compute the curvature values outside of the OCP, based on the initial guess, constructed based on the last prediction extended by the same control
 
-  we could use this not as reference but as terminal target
+    we could use this not as reference but as terminal target
 
 ## OCP Description
 
