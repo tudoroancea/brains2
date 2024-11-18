@@ -30,6 +30,8 @@ extern "C" {
 
 /* Add prefix to internal symbols */
 #define casadi_f0 CASADI_PREFIX(f0)
+#define casadi_fabs CASADI_PREFIX(fabs)
+#define casadi_fmax CASADI_PREFIX(fmax)
 #define casadi_s0 CASADI_PREFIX(s0)
 #define casadi_s1 CASADI_PREFIX(s1)
 #define casadi_s2 CASADI_PREFIX(s2)
@@ -49,6 +51,24 @@ extern "C" {
     #define CASADI_SYMBOL_EXPORT
   #endif
 #endif
+
+casadi_real casadi_fabs(casadi_real x) {
+/* Pre-c99 compatibility */
+#if __STDC_VERSION__ < 199901L
+  return x>0 ? x : -x;
+#else
+  return fabs(x);
+#endif
+}
+
+casadi_real casadi_fmax(casadi_real x, casadi_real y) {
+/* Pre-c99 compatibility */
+#if __STDC_VERSION__ < 199901L
+  return x>y ? x : y;
+#else
+  return fmax(x, y);
+#endif
+}
 
 static const casadi_int casadi_s0[15] = {11, 1, 0, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 static const casadi_int casadi_s1[9] = {5, 1, 0, 5, 0, 1, 2, 3, 4};
@@ -127,28 +147,33 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a28=(a14*a22);
   a28=(a28*a2);
   a29=(a1+a28);
-  a30=atan2(a27,a29);
-  a30=(a11-a30);
-  a30=(a26*a30);
-  a31=arg[5]? arg[5][16] : 0;
-  a32=atan(a30);
-  a32=(a30-a32);
-  a32=(a31*a32);
-  a30=(a30-a32);
-  a30=atan(a30);
-  a30=(a25*a30);
-  a30=sin(a30);
-  a30=(a24*a30);
-  a23=(a23*a30);
+  a29=casadi_fabs(a29);
+  a30=1.0000000000000000e-03;
+  a29=casadi_fmax(a29,a30);
+  a31=atan2(a27,a29);
+  a31=(a11-a31);
+  a31=(a26*a31);
+  a32=arg[5]? arg[5][16] : 0;
+  a33=atan(a31);
+  a33=(a31-a33);
+  a33=(a32*a33);
+  a31=(a31-a33);
+  a31=atan(a31);
+  a31=(a25*a31);
+  a31=sin(a31);
+  a31=(a24*a31);
+  a23=(a23*a31);
   a18=(a18-a20);
   a18=(a14*a18);
   a28=(a1-a28);
+  a28=casadi_fabs(a28);
+  a28=casadi_fmax(a28,a30);
   a27=atan2(a27,a28);
   a27=(a11-a27);
   a27=(a26*a27);
   a30=atan(a27);
   a30=(a27-a30);
-  a30=(a31*a30);
+  a30=(a32*a30);
   a27=(a27-a30);
   a27=atan(a27);
   a27=(a25*a27);
@@ -157,10 +182,10 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a18=(a18*a27);
   a27=(a23+a18);
   a30=sin(a11);
-  a32=(a27*a30);
-  a13=(a13-a32);
-  a32=arg[0]? arg[0][10] : 0;
-  a33=(a4*a32);
+  a31=(a27*a30);
+  a13=(a13-a31);
+  a31=arg[0]? arg[0][10] : 0;
+  a33=(a4*a31);
   a13=(a13+a33);
   a34=arg[0]? arg[0][9] : 0;
   a4=(a4*a34);
@@ -195,7 +220,7 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a2=(-a29);
   a2=atan(a2);
   a2=(a29+a2);
-  a2=(a31*a2);
+  a2=(a32*a2);
   a2=(a2-a29);
   a2=atan(a2);
   a2=(a25*a2);
@@ -210,10 +235,10 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a5=(-a26);
   a5=atan(a5);
   a5=(a26+a5);
-  a31=(a31*a5);
-  a31=(a31-a26);
-  a31=atan(a31);
-  a25=(a25*a31);
+  a32=(a32*a5);
+  a32=(a32-a26);
+  a32=atan(a32);
+  a25=(a25*a32);
   a25=sin(a25);
   a24=(a24*a25);
   a14=(a14*a24);
@@ -285,7 +310,7 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   if (res[0]!=0) res[0][9]=a0;
   a0=arg[1]? arg[1][10] : 0;
   a10=arg[2]? arg[2][4] : 0;
-  a10=(a10-a32);
+  a10=(a10-a31);
   a10=(a10/a8);
   a0=(a0-a10);
   if (res[0]!=0) res[0][10]=a0;

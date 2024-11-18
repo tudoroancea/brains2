@@ -293,20 +293,17 @@ def gen_dyn6_model() -> ca.SX:
     )
 
     # longitudinal and lateral velocity of each wheel (in its own reference frame)
-    v_x_FL = v_x - 0.5 * axle_track * omega
-    v_x_FR = v_x + 0.5 * axle_track * omega
-    v_x_RL = v_x - 0.5 * axle_track * omega
-    v_x_RR = v_x + 0.5 * axle_track * omega
-    v_y_FL = v_y + l_F * omega
-    v_y_FR = v_y + l_F * omega
-    v_y_RL = v_y - l_R * omega
-    v_y_RR = v_y - l_R * omega
+    v_x_FL = v_x_RL = v_x - 0.5 * axle_track * omega
+    v_x_FR = v_x_RR = v_x + 0.5 * axle_track * omega
+    v_y_Fj = v_y_FL = v_y_FR = v_y + l_F * omega
+    v_y_Rj = v_y_RL = v_y_RR = v_y - l_R * omega
 
     # lateral dynamics
-    alpha_FL = delta - ca.atan2(v_y_FL, v_x_FL)
-    alpha_FR = delta - ca.atan2(v_y_FR, v_x_FR)
-    alpha_RL = -ca.atan2(v_y_RL, v_x_RL)
-    alpha_RR = -ca.atan2(v_y_RR, v_x_RR)
+    cutoff = 0.001
+    alpha_FL = delta - ca.atan2(v_y_FL, ca.fmax(ca.fabs(v_x_FL), cutoff))
+    alpha_FR = delta - ca.atan2(v_y_FR, ca.fmax(ca.fabs(v_x_FR), cutoff))
+    alpha_RL = -ca.atan2(v_y_RL, ca.fmax(ca.fabs(v_x_RL), cutoff))
+    alpha_RR = -ca.atan2(v_y_RR, ca.fmax(ca.fabs(v_x_RR), cutoff))
     mu_y_FL = Da * ca.sin(
         Ca * ca.arctan(Ba * alpha_FL - Ea * (Ba * alpha_FL - ca.arctan(Ba * alpha_FL)))
     )
@@ -401,11 +398,11 @@ def gen_dyn6_model() -> ca.SX:
     os.remove("generated/acados_sim_solver.pxd")
 
     # accelerations
-    alpha_F = delta - ca.atan2(v_y_FL, v_x)
+    alpha_F = delta - ca.atan2(v_y_Fj, ca.fmax(ca.fabs(v_x), cutoff))
     mu_F = Da * ca.sin(
         Ca * ca.arctan(Ba * alpha_F - Ea * (Ba * alpha_F - ca.arctan(Ba * alpha_F)))
     )
-    alpha_R = -ca.atan2(v_y_RL, v_x)
+    alpha_R = -ca.atan2(v_y_Rj, ca.fmax(ca.fabs(v_x), cutoff))
     mu_R = Da * ca.sin(
         Ca * ca.arctan(Ba * alpha_R - Ea * (Ba * alpha_R - ca.arctan(Ba * alpha_R)))
     )
