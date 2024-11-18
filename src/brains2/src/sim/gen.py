@@ -270,22 +270,22 @@ def gen_dyn6_model() -> ca.SX:
     F_z_FL = -(
         front_weight_distribution * (static_weight + F_downforce)
         - longitudinal_weight_transfer
-        + lateral_weight_transfer
+        - lateral_weight_transfer
     )
     F_z_FR = -(
         front_weight_distribution * (static_weight + F_downforce)
         - longitudinal_weight_transfer
-        - lateral_weight_transfer
+        + lateral_weight_transfer
     )
     F_z_RL = -(
         rear_weight_distribution * (static_weight + F_downforce)
         + longitudinal_weight_transfer
-        + lateral_weight_transfer
+        - lateral_weight_transfer
     )
     F_z_RR = -(
         rear_weight_distribution * (static_weight + F_downforce)
         + longitudinal_weight_transfer
-        - lateral_weight_transfer
+        + lateral_weight_transfer
     )
 
     # longitudinal and lateral velocity of each wheel (in its own reference frame)
