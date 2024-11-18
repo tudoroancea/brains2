@@ -1,9 +1,10 @@
 # Copyright (c) 2024. Tudor Oancea, Matteo Berthet
-import shutil
 import os
-import numpy as np
+import shutil
+
 import casadi as ca
-from acados_template import AcadosSimOptions, AcadosModel, AcadosSim, AcadosSimSolver
+import numpy as np
+from acados_template import AcadosModel, AcadosSim, AcadosSimOptions, AcadosSimSolver
 
 sym_t = ca.SX | ca.MX
 
@@ -111,6 +112,9 @@ def gen_kin6_model(rk_steps: int = 1):
             v_dot * ca.cos(beta) - v_y * beta_dot,
             v_dot * ca.sin(beta) + v_x * beta_dot,
             (v_dot * ca.sin(beta) + v_x * beta_dot) / l_R,
+            # (F_Rx + F_Fx * ca.cos(delta)) / m + v_y * omega,
+            # F_Fx * ca.sin(delta) / m - v_x * omega,
+            # l_F * F_Fx * ca.sin(delta) / I_z,
             delta_dot,
             tau_FL_dot,
             tau_FR_dot,
