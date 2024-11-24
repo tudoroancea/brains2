@@ -61,7 +61,6 @@ public:
                 return "UNKNOWN_ERROR";
         }
     }
-    // static const std::array<std::string, 4> SimErrorStrings;
 
     // We remove the default constructor, copy constructor and assignment operator because this
     // class has to allocate data on the heap (for the acados simulation solver and the casadi
