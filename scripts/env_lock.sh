@@ -5,4 +5,4 @@ if [ $(basename "$PWD") != "brains2" ]; then
     exit 1
 fi
 # lock the environment
-conda-lock -f env.yml 
+conda-lock -f env.yml --mamba
