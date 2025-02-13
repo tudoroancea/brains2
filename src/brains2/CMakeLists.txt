@@ -36,7 +36,7 @@ find_package(osqp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # the following assumes acados has already been installed (automatically done in build.sh)
-find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake) 
+find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
 set(CMAKE_TESTING_ENABLED ON)
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
@@ -117,6 +117,16 @@ target_link_libraries(sim_node
 ####################################################################################################
 ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_test.cpp)
 target_link_libraries(brains2_be_spline_test brains2_common OsqpEigen::OsqpEigen osqp::osqp)
+
+####################################################################################################
+# SLAM
+####################################################################################################
+ament_auto_add_executable(fake_slam_node src/slam/fake_slam_node.cpp)
+target_link_libraries(fake_slam_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  yaml-cpp::yaml-cpp
+  brains2_common
+)
 
 ####################################################################################################
 # create package
