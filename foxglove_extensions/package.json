@@ -21,6 +21,7 @@
   "devDependencies": {
     "@foxglove/eslint-plugin": "2.0.0",
     "@foxglove/extension": "2.21.0",
+    "@foxglove/studio": "^2.4.0",
     "@microlink/react-json-view": "1.23.4",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
@@ -31,6 +32,7 @@
     "prettier": "3.5.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-joystick-component": "^6.2.1",
     "typescript": "5.7.3"
   }
 }
