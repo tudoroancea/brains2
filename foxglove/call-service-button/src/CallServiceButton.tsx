@@ -7,32 +7,23 @@ type State = {
 };
 
 function CallServiceButton({ context }: { context: PanelExtensionContext }): ReactElement {
-  // const [topics, setTopics] = useState<undefined | Immutable<Topic[]>>();
-  // const [messages, setMessages] = useState<undefined | Immutable<MessageEvent[]>>();
   const [renderDone, setRenderDone] = useState<(() => void) | undefined>();
 
   // Build our panel state from the context's initialState, filling in any possibly missing values.
-  // const [state, _setState] = useState<State>(() => {
-  //   const partialState = context.initialState as Partial<State>;
-  //   return {
-  //     service: partialState.service ?? null,
-  //   };
-  // });
-  const [state, _setState] = useState<State>({ service: "/brains2/reset" });
+  const [state, setState] = useState<State>(() => {
+    const partialState = context.initialState as Partial<State>;
+    return {
+      service: partialState.service ?? null,
+    };
+  });
 
   // Respond to actions from the settings editor to update our state.
   const actionHandler = useCallback(
     (action: SettingsTreeAction) => {
-      switch (action.action) {
-        case "perform-node-action":
-          // Handle user-defined actions for nodes in the settings tree
-          break;
-        case "update":
-          if (action.payload.path[0] === "general" && action.payload.path[1] === "Service") {
-            // setState({ ...state, service: action.payload.value as string });
-            state.service = action.payload.value as string;
-          }
-          break;
+      if (action.action === "update") {
+        if (action.payload.path[0] === "general" && action.payload.path[1] === "service") {
+          setState({ ...state, service: action.payload.value as string });
+        }
       }
     },
     [state],
@@ -50,7 +41,8 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
             service: {
               label: "Service",
               input: "string",
-              value: state.service ?? "bruh",
+              value: state.service ?? undefined,
+              placeholder: "Enter a valid service name",
             },
           },
         },
@@ -123,7 +115,7 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
       }}
     >
       <button className="" onClick={handleClick}>
-        Call Service
+        Call Service {state.service}
       </button>
     </div>
   );
