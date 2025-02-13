@@ -4,7 +4,7 @@
 
 ## setup
 
-First, install [miniforge3](https://github.com/conda-forge/miniforge), which on Linux and macOS should amout to 
+First, install [miniforge3](https://github.com/conda-forge/miniforge), which on Linux and macOS should amount to 
 ```shell
 curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
 bash Miniforge3-$(uname)-$(uname -m).sh
@@ -66,7 +66,7 @@ submodule in `src` and is built by `colcon`.
 
 You can now lock the environment with:
 ```shell
-conda-lock -f env.yml 
+conda-lock -f env.yml --mamba
 ```
 and update it with:
 ```shell
