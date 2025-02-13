@@ -5,9 +5,8 @@
 We receive from the estimation module (or the simulation in certain scenarios):
 
 - the car's pose $X,Y,\varphi$ in global cartesian coordinates
-- car accelerations $a_x,a_y$ in global cartesian coordinates
-- the car's linear and angular velocity $v_x,v_y,\omega$ in car local
-  coordinates
+- the car's longitudinal and lateral accelerations $a_x,a_y$ (in local coordinates)
+- the car's longitudinal, lateral and angular velocity $v_x,v_y,\omega$ (in local coordinates)
 - an estimate of the track around us in the form of splines of degree 1 for the
   center line, its heading, its curvature, and the track width:
 
@@ -20,7 +19,7 @@ We receive from the estimation module (or the simulation in certain scenarios):
   expect the same number of points for this representations to facilitate the
   usage of splines in the OCP implementation.
 
-  > Roughly 200 points should be enough for up to 15m of local track.
+  > [!NOTE] Roughly 200 points should be enough for up to 15m of local track.
 
   The track progress values $s_i$ are also supposed to be consistent throughout
   the drive. This means that they should be extracted from the same global
@@ -33,17 +32,17 @@ We receive from the estimation module (or the simulation in certain scenarios):
 
 - We only follow the center line with a certain target velocity.
 - We use a curvilinear temporal model.
-- We formulate the OCP by taking inspiration from the paper [**_"NMPC for
+- We formulate an OCP by taking inspiration from the paper [**_"NMPC for
   Racing Using a Singularity-Free Path-Parametric Model with Obstacle
   Avoidance"_**](https://www.sciencedirect.com/science/article/pii/S2405896320317845),
   where the 'racing objective' is implemented as a simple quadratic cost with
-  respect to a target progress variable $s^\mathrm{ref}_f$ slightly out of reach
+  respect to a target progress variable $s^\mathrm{ref}_f$ slightly out of reach.
 - The track constraints are simple bounds on the lateral deviation (we ignore
   heading for the moment).
-- For the moment, we put high enough cost on lateral deviation such that we
+- For the moment, we put a high enough cost on lateral deviation such that we
   track the center line instead of actually racing it.
 
-#### For later versions
+#### Later versions
 
 - [ ] Incorporate heading into track contraints
 - [ ] Retune to do racing instead of center-line tracking
@@ -51,7 +50,7 @@ We receive from the estimation module (or the simulation in certain scenarios):
       After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
       we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
 
-    > [!NOTE]: during the first lap the first and last points will not be the same !!!!!
+    > [!WARNING]: during the first lap the first and last points will not be the same !!!!!
 
     ⇒ we stitch the last prediction with the beginning of the lap
 
@@ -112,7 +111,7 @@ We formulate a quadratic objective function as follows:
 J(\mathbf{x},\mathbf{u}) = \|x_N-x^\mathrm{ref}_N\|^2_{Q_f} + \sum_{k=0}^{N-1} \|x_k-x^\mathrm{ref}_k\|^2_Q + \|u_k-u^\mathrm{ref}_k\|^2_{R_u} + \|\dot{u}_k\|^2_{R_{du}}
 ```
 
-where we wrote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the reference states and controls are chosen as follows:
+where we denote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the reference states and controls are chosen as follows:
 
 - The reference states $x^\mathrm{ref}_k$ are chosen as
 
@@ -125,8 +124,10 @@ where we wrote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the
   horizon_ and _a length slightly larger than the expected progress over the
   horizon_.
 
-  > In practice we could choose $s^\mathrm{ref}_f \approx \frac{3}{2} T_f
-  > v^\mathrm{ref}_x$.
+  In practice we could choose 
+  ```math
+  s^\mathrm{ref}_f \approx \frac{3}{2} T_f v^\mathrm{ref}_x .
+  ```
 
 - The reference controls $u^\mathrm{ref}_k$ are chosen as
 
@@ -147,7 +148,3 @@ For the moment, we only impose:
 - **control rate constrains**: $\dot{\delta}_\mathrm{max} \leq \dot{\delta} \leq \dot{\delta}_\mathrm{max}$ and $\dot{\tau}_\mathrm{max} \leq \dot{\tau} \leq \dot{\tau}_\mathrm{max}$ .
 
 > In the future, we may also incoporate the heading in the track contraints.
-
-## Implementation
-
-TODO
