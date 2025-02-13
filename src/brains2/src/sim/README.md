@@ -53,15 +53,15 @@ The kinematic bicycle model is given by the following system of explicit ODEs:
 
 where $\beta = \frac{l_\mathrm{R}}{l_\mathrm{R} + l_\mathrm{F}}\delta$ is the slip angle,
 $\dot{\beta} = \frac{l_\mathrm{R}}{l_\mathrm{R} + l_\mathrm{F}} \dot{\delta}$ its derivative,
-$\dot{v}=\frac{1}{m}(\cos(\beta) F_{\mathrm{R},x} + \sin(\beta)F_{\mathrm{R},x})$ is the
+$\dot{v}=\frac{1}{m}(\cos(\beta) F_{x,\mathrm{R}} + \sin(\beta)F_{x,\mathrm{R}})$ is the
 derivative of the absolute velocity $v=\sqrt{v_x^2+v_y^2}$ composed of the longitudinal forces
 applied on the rear and front axles $F_{\mathrm{R},x} = \frac{1}{2}C_\mathrm{m0}\tau - C_\mathrm{r0} - C_\mathrm{r1} v_x - C_\mathrm{r2} v_x^2$ and $F_{\mathrm{F},x} = \frac{1}{2}C_\mathrm{m0}\tau$ (themselves composed of the drivetrain and the drag forces).
 
 In this case, the linear and lateral accelerations are given by
 ```math
 \begin{aligned}
-a_x &= \frac{1}{m} (F_{\mathrm{R},x} + \cos(\delta) F_{\mathrm{F},x}), \\
-a_y &=  \frac{1}{m}  \sin(\delta) F_{\mathrm{F},y}. \\
+a_x &= \frac{1}{m} (F_{x, \mathrm{R}} + \cos(\delta) F_{x, \mathrm{F}}), \\
+a_y &=  \frac{1}{m}  \sin(\delta) F_{y, \mathrm{F}}. \\
 \end{aligned}
 ```
 
@@ -80,36 +80,54 @@ a_y &= \dot{v}_y + v_x \omega. \\
 Then the velocity dynamics read
 ```math
 \begin{aligned}
-m a_x & = (F_{\mathrm{FL}, x} + F_{\mathrm{FR}, x}) \cos(\delta) - (F_{\mathrm{FL}, y} + F_{\mathrm{FR}, y}) \sin(\delta) + F_{\mathrm{RL}, x} + F_{\mathrm{RR}, x} + F_\mathrm{drag} , \\
-m a_y & =  (F_{\mathrm{FL}, x} + F_{\mathrm{FR}, x}) \sin(\delta) + (F_{\mathrm{FL}, y} + F_{\mathrm{FR}, y}) \cos(\delta) + F_{\mathrm{RL},y} + F_{\mathrm{RR},y}, \\ 
-I_z \omega & =  \big(F_{\mathrm{FR}, x} \cos(\delta) - F_{\mathrm{FR}, y} \sin(\delta) \big) \frac{W}{2}  
-              + \big(F_{\mathrm{FR}, x} \sin(\delta) + F_{\mathrm{FR}, y} \cos(\delta) \big) l_\mathrm{F} \\
-           & \quad - \big(F_{\mathrm{FL}, x} \cos(\delta) - F_{\mathrm{FL}, y} \sin(\delta) \big) \frac{W}{2} 
-              + \big(F_{\mathrm{FL}, x} \sin(\delta) + F_{\mathrm{FL}, y} \cos(\delta) \big) l_\mathrm{F} \\
-           & \quad + F_{\mathrm{RR}, x} \frac{W}{2} - F_{\mathrm{RR}, y} l_\mathrm{R} \\
-           & \quad - F_{\mathrm{RL}, x} \frac{W}{2} - F_{\mathrm{RL}, y} l_\mathrm{R},  
+m a_x & = (F_{x, \mathrm{FL}} + F_{x, \mathrm{FR}}) \cos(\delta) - (F_{y, \mathrm{FL}} + F_{y, \mathrm{FR}}) \sin(\delta) + F_{x, \mathrm{RL}} + F_{x, \mathrm{RR}} + F_\mathrm{drag} , \\
+m a_y & =  (F_{x, \mathrm{FL}} + F_{x, \mathrm{FR}}) \sin(\delta) + (F_{y, \mathrm{FL}} + F_{y, \mathrm{FR}}) \cos(\delta) + F_{\mathrm{RL},y} + F_{\mathrm{RR},y}, \\ 
+I_z \omega & =  \big(F_{x, \mathrm{FR}} \cos(\delta) - F_{y, \mathrm{FR}} \sin(\delta) \big) \frac{W}{2}  
+              + \big(F_{x, \mathrm{FR}} \sin(\delta) + F_{y, \mathrm{FR}} \cos(\delta) \big) l_\mathrm{F} \\
+           & \quad - \big(F_{x, \mathrm{FL}} \cos(\delta) - F_{y, \mathrm{FL}} \sin(\delta) \big) \frac{W}{2} 
+              + \big(F_{x, \mathrm{FL}} \sin(\delta) + F_{y, \mathrm{FL}} \cos(\delta) \big) l_\mathrm{F} \\
+           & \quad + F_{x, \mathrm{RR}} \frac{W}{2} - F_{y, \mathrm{RR}} l_\mathrm{R} \\
+           & \quad - F_{x, \mathrm{RL}} \frac{W}{2} - F_{y, \mathrm{RL}} l_\mathrm{R},  
 \end{aligned}
 ```
 where the force produced by the drivetrain at each wheel is given by
 ```math
-F_{ij, x}  = C_{m0} \tau_{ij}, \\
+F_{x, ij}  = C_{m0} \tau_{ij}, \\
 ```
-the vertical wheel loads are given by
+and the lateral forces produced by the tires are given by
+```math
+F_{y, ij} = F_{z, ij} \mu_{ij}.
+```
+
+The latter are computed based on the vertical wheel loads given by
 ```math
 \begin{aligned}
-F_{\mathrm{FL}, z} & = \frac{1}{2} \left(  \frac{l_\mathrm{F}}{L} (mg + F_\mathrm{down}) - m a_x \frac{z_\mathrm{CG}}{L} - m a_y \frac {z_\mathrm{CG}}{W} \right), \\
-F_{\mathrm{FR}, z} & = \frac{1}{2} \left(  \frac{l_\mathrm{F}}{L} (mg + F_\mathrm{down}) - m a_x \frac{z_\mathrm{CG}}{L} + m a_y \frac {z_\mathrm{CG}}{W} \right), \\
-F_{\mathrm{RL}, z} & = \frac{1}{2} \left(  \frac{l_\mathrm{R}}{L} (mg + F_\mathrm{down}) + m a_x \frac{z_\mathrm{CG}}{L} - m a_y \frac {z_\mathrm{CG}}{W} \right), \\
-F_{\mathrm{RR}, z} & = \frac{1}{2} \left(  \frac{l_\mathrm{R}}{L} (mg + F_\mathrm{down}) + m a_x \frac{z_\mathrm{CG}}{L} + m a_y \frac {z_\mathrm{CG}}{W} \right), \\
+F_{z, \mathrm{FL}} & = \frac{1}{2} \left(  \frac{l_\mathrm{F}}{L} (mg + F_\mathrm{down}) - m a_x \frac{z_\mathrm{CG}}{L} - m a_y \frac {z_\mathrm{CG}}{W} \right), \\
+F_{z, \mathrm{FR}} & = \frac{1}{2} \left(  \frac{l_\mathrm{F}}{L} (mg + F_\mathrm{down}) - m a_x \frac{z_\mathrm{CG}}{L} + m a_y \frac {z_\mathrm{CG}}{W} \right), \\
+F_{z, \mathrm{RL}} & = \frac{1}{2} \left(  \frac{l_\mathrm{R}}{L} (mg + F_\mathrm{down}) + m a_x \frac{z_\mathrm{CG}}{L} - m a_y \frac {z_\mathrm{CG}}{W} \right), \\
+F_{z, \mathrm{RR}} & = \frac{1}{2} \left(  \frac{l_\mathrm{R}}{L} (mg + F_\mathrm{down}) + m a_x \frac{z_\mathrm{CG}}{L} + m a_y \frac {z_\mathrm{CG}}{W} \right), \\
 \end{aligned}
 ```
-the slip angles of each wheel are given by
+and the variable friction coefficient computed using the Pacejka's magic formula
+```math
+\mu_{ij}  = D_a \sin(C_a \arctan(B_a \alpha_{ij} - E_a ( B_a \alpha_{ij} - \arctan(B_a \alpha_{ij})))),
+```
+which is based on the slip angles 
 ```math
 \begin{aligned}
-\alpha_\mathrm{FL} & = \delta - \arctan\left(\frac{v_{\mathrm{FL},y}}{v_{\mathrm{FL},x}}\right), \\ 
-\alpha_\mathrm{FR} & = \delta - \arctan\left(\frac{v_{\mathrm{FR},y}}{v_{\mathrm{FR},x}}\right), \\ 
-\alpha_\mathrm{RL} & = - \arctan\left(\frac{v_{\mathrm{RL},y}}{v_{\mathrm{RL},x}}\right), \\ 
-\alpha_\mathrm{RR} & = - \arctan\left(\frac{v_{\mathrm{RR},y}}{v_{\mathrm{RR},x}}\right), \\ 
+\alpha_\mathrm{FL} & = \delta - \arctan\left(\frac{v_{y, \mathrm{FL}}}{v_{x, \mathrm{FL}}}\right), \\ 
+\alpha_\mathrm{FR} & = \delta - \arctan\left(\frac{v_{y, \mathrm{FR}}}{v_{x, \mathrm{FR}}}\right), \\ 
+\alpha_\mathrm{RL} & = - \arctan\left(\frac{v_{y, \mathrm{RL}}}{v_{x, \mathrm{RL}}}\right), \\ 
+\alpha_\mathrm{RR} & = - \arctan\left(\frac{v_{y, \mathrm{RR}}}{v_{x, \mathrm{RR}}}\right), \\ 
+\end{aligned}
+```
+and the longitudinal and lateral velocities of each wheel
+```math
+\begin{aligned}
+v_{x, \mathrm{FL}} & = v_{x, \mathrm{RL}} & = v_x - \frac{w}{2} \omega \\
+v_{x, \mathrm{FR}} & = v_{x, \mathrm{RR}} & = v_x + \frac{w}{2} \omega \\
+v_{y, \mathrm{FL}} & = v_{y, \mathrm{FR}} & = v_y + l_\mathrm{F} \omega \\
+v_{y, \mathrm{RL}} & = v_{y, \mathrm{RR}} & = v_y - l_\mathrm{F} \omega \\
 \end{aligned}
 ```
 
