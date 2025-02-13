@@ -3,7 +3,7 @@
 
 inertia:
   mass: 230.0
-  yaw_inertia: 137.583
+  yaw_inertia: 200.0
 
 geometry:
   car_length: 3.19
