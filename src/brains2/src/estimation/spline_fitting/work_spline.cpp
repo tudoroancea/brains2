@@ -15,7 +15,7 @@ int main() {
     const std::string path_output = "src/brains2/src/estimation/interpolated_spline_alpha.csv";
     // const std::string path_output = "src/brains2/src/estimation/interpolated_spline.csv";
     // const std::string path_output = "src/brains2/src/estimation/circle_spline.csv";
-    const size_t resample_points = 50;
+    const size_t resample_points = 100;
     const double curv_weight = 0.1;
     const bool verbose = false;
 

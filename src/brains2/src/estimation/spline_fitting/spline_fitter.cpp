@@ -4,7 +4,6 @@
 #include <cmath>
 #include <numeric>
 #include <set>
-#include <vector>
 #include "brains2/external/icecream.hpp"
 
 SplineFitter::SplineFitter(const Eigen::MatrixXd& path, double curv_weight, bool verbose)
