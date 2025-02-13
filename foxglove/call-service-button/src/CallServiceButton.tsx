@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 
 type State = {
   service: string | null;
+  buttonLabel: string;
+  buttonColor: string;
 };
 
 function CallServiceButton({ context }: { context: PanelExtensionContext }): ReactElement {
@@ -14,6 +16,8 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
     const partialState = context.initialState as Partial<State>;
     return {
       service: partialState.service ?? null,
+      buttonLabel: partialState.buttonLabel ?? "Call Service",
+      buttonColor: partialState.buttonColor ?? "#007bff",
     };
   });
 
@@ -21,8 +25,8 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
   const actionHandler = useCallback(
     (action: SettingsTreeAction) => {
       if (action.action === "update") {
-        if (action.payload.path[0] === "general" && action.payload.path[1] === "service") {
-          setState({ ...state, service: action.payload.value as string });
+        if (action.payload.path[0] === "general") {
+          setState({ ...state, [action.payload.path[1]!]: action.payload.value });
         }
       }
     },
@@ -43,6 +47,18 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
               input: "string",
               value: state.service ?? undefined,
               placeholder: "Enter a valid service name",
+            },
+            buttonLabel: {
+              label: "Button Label",
+              input: "string",
+              value: state.buttonLabel,
+              placeholder: "Enter a valid label",
+            },
+            buttonColor: {
+              label: "Button Color",
+              input: "rgb",
+              value: state.buttonColor,
+              placeholder: "Enter a valid color",
             },
           },
         },
@@ -65,24 +81,11 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
       // render call, Foxglove shows a notification to the user that your panel is delayed.  Set the
       // done callback into a state variable to trigger a re-render.
       setRenderDone(() => done);
-
-      // We may have new topics - since we are also watching for messages in the current frame,
-      // topics may not have changed It is up to you to determine the correct action when state has
-      // not changed.
-      // setTopics(renderState.topics);
-
-      // currentFrame has messages on subscribed topics since the last render call
-      // if (renderState.currentFrame) {
-      //   setMessages(renderState.currentFrame);
-      // }
     };
 
     // After adding a render handler, you must indicate which fields from RenderState will trigger
     // updates. If you do not watch any fields then your panel will never render since the panel
     // context will assume you do not want any updates.
-
-    // tell the panel context that we care about any update to the _topic_ field of RenderState
-    // context.watch("topics");
 
     // tell the panel context we want messages for the current frame for topics we've subscribed to
     // This corresponds to the _currentFrame_ field of render state.
@@ -94,16 +97,6 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
     renderDone?.();
   }, [renderDone]);
 
-  const handleClick = () => {
-    if (!state.service || !context.callService) {
-      return;
-    }
-    // Handle the button click event
-    context.callService(state.service, {}).catch((r: unknown) => {
-      console.error("Service call failed for reason:", r);
-    });
-  };
-
   return (
     <div
       style={{
@@ -114,8 +107,26 @@ function CallServiceButton({ context }: { context: PanelExtensionContext }): Rea
         height: "100%",
       }}
     >
-      <button className="" onClick={handleClick}>
-        Call Service {state.service}
+      <button
+        style={{
+          padding: "12px 24px",
+          backgroundColor: state.buttonColor,
+          color: "white",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+        onClick={() => {
+          if (!state.service || !context.callService) {
+            return;
+          }
+          // Handle the button click event
+          context.callService(state.service, {}).catch((r: unknown) => {
+            console.error("Service call failed for reason:", r);
+          });
+        }}
+      >
+        {state.buttonLabel}
       </button>
     </div>
   );
