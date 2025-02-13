@@ -189,17 +189,17 @@
       "topic": "/brains2/alternative_target_controls",
       "messageSchema": "geometry_msgs/msg/Twist"
     },
-    "call-service-button.Call Service Button!pdyzz7": {
+    "Brains2 Extensions.Call Service Button!1lial39": {
       "service": "/brains2/reset",
-      "foxglovePanelTitle": "Reset simulation",
       "buttonLabel": "reset",
-      "buttonColor": "#ff005e"
+      "buttonColor": "#ff0087",
+      "foxglovePanelTitle": "Reset simulation"
     },
-    "call-service-button.Call Service Button!1jf5xh5": {
+    "Brains2 Extensions.Call Service Button!17ia8gj": {
       "service": "/brains2/publish_cones_markers",
-      "foxglovePanelTitle": "publish cones",
-      "buttonLabel": "publish cones",
-      "buttonColor": "#3f86d2"
+      "buttonLabel": "publish",
+      "buttonColor": "#007bff",
+      "foxglovePanelTitle": "Publish cones"
     },
     "3D!4bkb5sl": {
       "cameraState": {
@@ -559,16 +559,15 @@
             "second": {
               "first": "virtual-joystick.Virtual Joystick!3gs8zo6",
               "second": {
-                "first": "call-service-button.Call Service Button!pdyzz7",
-                "second": "call-service-button.Call Service Button!1jf5xh5",
-                "direction": "column",
-                "splitPercentage": 45.09803921568632
+                "first": "Brains2 Extensions.Call Service Button!1lial39",
+                "second": "Brains2 Extensions.Call Service Button!17ia8gj",
+                "direction": "column"
               },
               "direction": "row",
-              "splitPercentage": 82.29329173166927
+              "splitPercentage": 79.28653624856156
             },
             "direction": "column",
-            "splitPercentage": 84.81012658227847
+            "splitPercentage": 78.70439314966492
           }
         },
         {
