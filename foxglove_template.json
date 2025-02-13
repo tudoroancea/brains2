@@ -3,12 +3,12 @@
     "3D!3mfo4f7": {
       "cameraState": {
         "perspective": true,
-        "distance": 5.018802913570762,
+        "distance": 5.018802913570741,
         "phi": 85,
         "thetaOffset": 90,
         "targetOffset": [
-          4.5,
-          0,
+          4.487143679271978,
+          0.005153709910343682,
           0.5
         ],
         "target": [
@@ -182,12 +182,49 @@
       "imageMode": {},
       "followTf": "car"
     },
-    "virtual-joystick.Virtual Joystick!3gs8zo6": {
-      "publishRate": 100,
-      "maxLinearSpeed": 100,
-      "maxAngularSpeed": 0.5,
-      "topic": "/brains2/alternative_target_controls",
-      "messageSchema": "geometry_msgs/msg/Twist"
+    "Plot!x58usv": {
+      "paths": [
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/acceleration.a_x",
+          "enabled": true,
+          "color": "#4e98e2"
+        }
+      ],
+      "minYValue": -10,
+      "maxYValue": 10,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "custom",
+      "sidebarDimension": 240,
+      "xAxisPath": {
+        "value": "/brains2/acceleration.a_y"
+      }
+    },
+    "Gauge!2l3wbfs": {
+      "path": "/brains2/velocity.v_x",
+      "minValue": 0,
+      "maxValue": 20,
+      "colorMap": "red-yellow-green",
+      "colorMode": "colormap",
+      "gradient": [
+        "#0000ff",
+        "#ff00ff"
+      ],
+      "reverse": false,
+      "foxglovePanelTitle": "Speed"
+    },
+    "Brains2 Extensions.Joystick Controller!3g13bpa": {
+      "topic": "/brains2/target_controls",
+      "enabled": false,
+      "freq": 100,
+      "tau_max": 100,
+      "delta_max": 0.5,
+      "foxglovePanelTitle": "Manual control"
     },
     "Brains2 Extensions.Call Service Button!1lial39": {
       "service": "/brains2/reset",
@@ -382,38 +419,8 @@
       "imageMode": {},
       "followTf": "car"
     },
-    "virtual-joystick.Virtual Joystick!4lcegke": {
-      "publishRate": 100,
-      "maxLinearSpeed": 100,
-      "maxAngularSpeed": 0.5,
-      "topic": "/brains2/alternative_target_controls",
-      "messageSchema": "geometry_msgs/msg/Twist"
-    },
     "DiagnosticStatusPanel!1u4b6x5": {
       "topicToRender": "/brains2/diagnostics"
-    },
-    "Plot!x58usv": {
-      "paths": [
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/acceleration.a_x",
-          "enabled": true,
-          "color": "#4e98e2"
-        }
-      ],
-      "minYValue": -10,
-      "maxYValue": 10,
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showLegend": false,
-      "legendDisplay": "floating",
-      "showPlotValuesInLegend": false,
-      "isSynced": true,
-      "xAxisVal": "custom",
-      "sidebarDimension": 240,
-      "xAxisPath": {
-        "value": "/brains2/acceleration.a_y"
-      }
     },
     "RawMessages!2ijdo78": {
       "diffEnabled": false,
@@ -557,17 +564,26 @@
           "layout": {
             "first": "3D!3mfo4f7",
             "second": {
-              "first": "virtual-joystick.Virtual Joystick!3gs8zo6",
+              "first": {
+                "first": {
+                  "first": "Plot!x58usv",
+                  "second": "Gauge!2l3wbfs",
+                  "direction": "row"
+                },
+                "second": "Brains2 Extensions.Joystick Controller!3g13bpa",
+                "direction": "row",
+                "splitPercentage": 72.8909952606635
+              },
               "second": {
                 "first": "Brains2 Extensions.Call Service Button!1lial39",
                 "second": "Brains2 Extensions.Call Service Button!17ia8gj",
                 "direction": "column"
               },
               "direction": "row",
-              "splitPercentage": 79.28653624856156
+              "splitPercentage": 82.29329173166927
             },
             "direction": "column",
-            "splitPercentage": 78.70439314966492
+            "splitPercentage": 77.06626954579299
           }
         },
         {
@@ -576,16 +592,7 @@
             "first": {
               "first": {
                 "first": "3D!4bkb5sl",
-                "second": {
-                  "first": "virtual-joystick.Virtual Joystick!4lcegke",
-                  "second": {
-                    "first": "DiagnosticStatusPanel!1u4b6x5",
-                    "second": "Plot!x58usv",
-                    "direction": "column",
-                    "splitPercentage": 51.46831530139101
-                  },
-                  "direction": "column"
-                },
+                "second": "DiagnosticStatusPanel!1u4b6x5",
                 "direction": "row",
                 "splitPercentage": 68.94977168949772
               },
