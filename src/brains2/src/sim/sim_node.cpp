@@ -341,16 +341,16 @@ private:
     }
 
     void update_tire_markers() {
-        car_markers_msg.markers[0].header.stamp = this->now();
-        car_markers_msg.markers[1].header.stamp = this->now();
-        car_markers_msg.markers[2].header.stamp = this->now();
-        car_markers_msg.markers[3].header.stamp = this->now();
-        car_markers_msg.markers[4].header.stamp = this->now();
+        car_markers_msg.markers[0].header.stamp = this->transform.header.stamp;
+        car_markers_msg.markers[1].header.stamp = this->transform.header.stamp;
+        car_markers_msg.markers[2].header.stamp = this->transform.header.stamp;
+        car_markers_msg.markers[3].header.stamp = this->transform.header.stamp;
+        car_markers_msg.markers[4].header.stamp = this->transform.header.stamp;
 
         car_markers_msg.markers[1].pose.orientation =
-            brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.delta);
-        car_markers_msg.markers[2].pose.orientation =
             brains2::common::rpy_to_quaternion_msg(0.0, 0.0, M_PI + state.delta);
+        car_markers_msg.markers[2].pose.orientation =
+            brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.delta);
     }
 
     inline std::string get_local_mesh_path(std::string mesh_file) {
