@@ -4,7 +4,7 @@
 
 ## setup
 
-First, install [miniforge3](https://github.com/conda-forge/miniforge), which on Linux and macOS should amount to 
+First, install [miniforge3](https://github.com/conda-forge/miniforge), which on Linux and macOS should amount to
 ```shell
 curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
 bash Miniforge3-$(uname)-$(uname -m).sh
@@ -32,6 +32,16 @@ conda activate brains2
 pip3 install -e $ACADOS_SOURCE_DIR/interfaces/acados_template
 ```
 
+This should be enough to run the code. To further use the visualization tools using [Foxglove](https://foxglove.dev/),
+make sure you have installed `npm` and run the following:
+```shell
+cd foxglove_extensions
+npm install
+npm run local-install
+```
+You can install [Foxglove Desktop](https://foxglove.dev/download), open it and import the provided template json file:
+[`foxglove_template.json`](foxglove_template.json).
+
 ## howto
 
 ### Build the workspace
@@ -57,7 +67,7 @@ available on [anaconda.org](https://anaconda.org/) and if it is, you can add it
 to the `env.yml` file.
 
 When it is not, still try to prioritize reproducible solutions such as git submodules
-**pinned at a specific commit** (and not a branch), and simple to install solutions 
+**pinned at a specific commit** (and not a branch), and simple to install solutions
 (that ideally do not require manual installation steps).
 
 > [!NOTE]
@@ -70,12 +80,12 @@ conda-lock -f env.yml --mamba
 ```
 and update it with:
 ```shell
-conda-lock install -n brains2 
+conda-lock install -n brains2
 ```
 You can also accomplish the same with the scripts [`scripts/env_lock.sh`](scripts/env_lock.sh)
 and [`scripts/env_sync.sh`](scripts/env_sync.sh), or [`scripts/env_lock_sync.sh`](scripts/env_lock_sync.sh).
 
 > [!NOTE]
-> Locking the environment will automatically update all the dependencies to the 
+> Locking the environment will automatically update all the dependencies to the
 > latest compatible versions, because `conda-lock` does not take into account
 > the old lock file.
