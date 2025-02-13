@@ -15,9 +15,9 @@ geometry:
 
 drivetrain:
   C_m0: 4.950
-  C_r0: 297.030
-  C_r1: 16.665
-  C_r2: 0.6784
+  C_r0: 350.0
+  C_r1: 20.0
+  C_r2: 3.0
 
 aero:
   C_downforce: 3.96864
