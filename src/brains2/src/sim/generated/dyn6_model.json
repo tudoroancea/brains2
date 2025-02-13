@@ -1,7 +1,7 @@
 {
-    "acados_include_path": "/Users/tudoroancea/Developer/brains2/src/acados/include",
-    "acados_lib_path": "/Users/tudoroancea/Developer/brains2/src/acados/lib",
-    "code_export_directory": "/Users/tudoroancea/Developer/brains2/src/brains2/src/sim/generated",
+    "acados_include_path": "/Users/tudoroancea/dev/brains2/src/acados/include",
+    "acados_lib_path": "/Users/tudoroancea/dev/brains2/src/acados/lib",
+    "code_export_directory": "/Users/tudoroancea/dev/brains2/src/brains2/src/sim/generated",
     "cython_include_dirs": [
         "/Users/tudoroancea/miniforge3/envs/brains2/lib/python3.11/site-packages/numpy/core/include",
         "/Users/tudoroancea/miniforge3/envs/brains2/include/python3.11"
