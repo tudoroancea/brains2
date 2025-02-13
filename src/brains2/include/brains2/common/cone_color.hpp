@@ -7,9 +7,9 @@ namespace brains2 {
 namespace common {
 
 enum class ConeColor : uint8_t {
-    BLUE,
-    YELLOW,
-    ORANGE,
+    BLUE = 0,
+    YELLOW = 1,
+    ORANGE = 2,
 };
 
 ConeColor cone_color_from_string(const std::string &s);
