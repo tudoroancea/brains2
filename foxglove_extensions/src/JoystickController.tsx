@@ -24,6 +24,10 @@ type Control = {
   tau_rr: number;
 };
 
+function now(): Time {
+  return { sec: Math.round(Date.now() / 1000), nsec: 0 };
+}
+
 function JoystickController({ context }: { context: PanelExtensionContext }): ReactElement {
   const [renderDone, setRenderDone] = useState<(() => void) | undefined>();
 
@@ -40,7 +44,7 @@ function JoystickController({ context }: { context: PanelExtensionContext }): Re
   });
 
   const [control, setControl] = useState<Control>({
-    header: { stamp: { sec: 0, nsec: 0 }, frame_id: "" },
+    header: { stamp: now(), frame_id: "" },
     delta: 0,
     tau_fl: 0,
     tau_fr: 0,
@@ -117,16 +121,6 @@ function JoystickController({ context }: { context: PanelExtensionContext }): Re
   }, [context, actionHandler, state]);
 
   // Publish control message
-  const resetControl = useCallback(() => {
-    setControl({ ...control, delta: 0.0, tau_fl: 0.0, tau_fr: 0.0, tau_rl: 0.0, tau_rr: 0.0 });
-  }, [control]);
-  const updateControl = useCallback(
-    (delta: number, tau: number) => {
-      setControl({ ...control, delta, tau_fl: tau, tau_fr: tau, tau_rl: tau, tau_rr: tau });
-    },
-    [control],
-  );
-
   useEffect(() => {
     if (!context.advertise || !state.topic) {
       return;
@@ -200,26 +194,63 @@ function JoystickController({ context }: { context: PanelExtensionContext }): Re
         height: "100%",
       }}
     >
+      <button
+        onClick={() => {
+          setState({ ...state, enabled: !state.enabled });
+        }}
+        style={{
+          position: "absolute",
+          top: "40px",
+          right: "10px",
+          padding: "8px 12px",
+          border: "none",
+          borderRadius: "4px",
+          backgroundColor: state.enabled ? "#4CAF50" : "#f44336",
+          color: "white",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          fontSize: "14px",
+        }}
+      >
+        {state.enabled ? "✅" : "❌"}
+      </button>
       <Joystick
         throttle={100}
         size={200}
         stickSize={100}
         sticky={false}
-        baseColor="gray"
-        stickColor="black"
+        baseColor={state.enabled ? "gray" : "#e0e0e0"}
+        stickColor={state.enabled ? "black" : "#b0b0b0"}
+        disabled={!state.enabled}
         move={(e) => {
           if (e.type !== "move") {
             return;
           }
           const delta = -(e.x ?? 0) * state.delta_max;
           const tau = (e.y ?? 0) * state.tau_max;
-          updateControl(delta, tau);
+          setControl({
+            header: { stamp: now(), frame_id: "" },
+            delta,
+            tau_fl: tau,
+            tau_fr: tau,
+            tau_rl: tau,
+            tau_rr: tau,
+          });
         }}
         stop={(e) => {
           if (e.type !== "stop") {
             return;
           }
-          resetControl();
+          setControl({
+            header: { stamp: now(), frame_id: "" },
+            delta: 0.0,
+            tau_fl: 0.0,
+            tau_fr: 0.0,
+            tau_rl: 0.0,
+            tau_rr: 0.0,
+          });
         }}
       ></Joystick>
       <span
