@@ -126,8 +126,8 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
     }
     // depending on the last velocity v=sqrt(v_x^2+v_y^2), decide which model to
     // use and set its inputs.
-    // if (std::hypot(state.v_x, state.v_y) > 0.1) {
-    if (true) {
+    if (std::hypot(state.v_x, state.v_y) > 0.1) {
+        // if (true) {
         // We use the dynamic model
         // Set simulation solver inputs
         sim_in_set(dyn6_workspace._sim_config,
