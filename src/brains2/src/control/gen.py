@@ -4,8 +4,6 @@ import shutil
 from typing import Literal
 
 import casadi as ca
-import numpy as np
-from acados_template import AcadosModel, AcadosSim, AcadosSimOptions, AcadosSimSolver
 
 sym_t = ca.SX | ca.MX
 
@@ -123,9 +121,9 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
     C_r0 = opti.parameter()
     C_r1 = opti.parameter()
     C_r2 = opti.parameter()
-    t_tau = opti.parameter()
     t_delta = opti.parameter()
-    model_params = ca.vertcat(dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta)
+    t_tau = opti.parameter()
+    model_params = ca.vertcat(dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta, t_tau)
 
     # constraints parameters
     w_cen = opti.parameter(Nf)  # stages 1 to Nf
@@ -226,20 +224,22 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
             states,
             controls,
             x0,
-            ca.vertcat(kappa_cen, w_cen),
+            kappa_cen,
+            w_cen,
             model_params,
-            ca.vertcat(v_x_ref, delta_s_ref, Q_diag, R_diag, Q_f_diag),
             ca.vertcat(v_x_max, delta_max, tau_max),
+            ca.vertcat(v_x_ref, delta_s_ref, Q_diag, R_diag, Q_f_diag),
         ],
         [states, controls],
         [
             "x_guess",
             "u_guess",
             "x0",
-            "track_params",
+            "kappa_cen",
+            "w_cen",
             "model_params",
+            "limits",
             "cost_params",
-            "bounds",
         ],
         ["x_opt", "u_opt"],
     )
@@ -262,5 +262,4 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
 
 
 if __name__ == "__main__":
-    generate_controller(Nf=10, solver="ipopt")
     generate_controller(Nf=10, solver="fatrop")

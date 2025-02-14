@@ -33,10 +33,6 @@ public:
     struct Accels {
         double a_x, a_y;
     };
-    static constexpr int nx = State::dim;
-    static constexpr int nu = Control::dim;
-    static constexpr int np_kin6 = Parameters::dim_kin6;
-    static constexpr int np_dyn6 = Parameters::dim_dyn6;
 
     /*
      * @brief Possible errors that can occur during a simulation step.
@@ -98,14 +94,14 @@ private:
     // Arrays for the current state, target controls, next state and accelerations. These are used
     // for both the simulation solver and the CasADi function evaluation (for the accelerations).
     // x = [X, Y, phi, v_x, v_y, omega, delta, tau_FL, tau_FR, tau_RL, tau_RR]
-    std::array<double, nx> x;
+    std::array<double, State::dim> x;
     // u = [u_delta, u_tau_FL, u_tau_FR, u_tau_RL, u_tau_RR]
-    std::array<double, nu> u;
+    std::array<double, Control::dim> u;
     // p = [m, I_z, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_T, t_delta]
-    std::array<double, np_dyn6> p;
+    std::array<double, Parameters::dim_dyn6> p;
     // x_next = [X_next, Y_next, phi_next, v_x_next, v_y_next, omega_next, delta_next, tau_FL_next,
     // tau_FR_next, tau_RL_next, tau_RR_next]
-    std::array<double, nx> x_next;
+    std::array<double, State::dim> x_next;
     // a = [a_x, a_y]
     std::array<double, 2> a;
 
