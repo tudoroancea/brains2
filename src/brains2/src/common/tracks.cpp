@@ -1,104 +1,35 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/common/tracks.hpp"
 #include <cmath>
-#include <filesystem>
 #include <vector>
 #include "brains2/common/math.hpp"
+#include "brains2/external/icecream.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
-// functions to load/save cones and center line from the track_database package
-// ===========================================
-tl::optional<std::string> validate_track_name(const std::string& track_name) {
-#ifdef TRACK_DATABASE_PATH
-    std::filesystem::path track_file(TRACK_DATABASE_PATH);
-    track_file /= (track_name + ".csv");
-    if (std::filesystem::exists(track_file)) {
-        return track_file.string();
-    } else {
-        std::cerr << "Track " << track_name << " not found in TRACK_DATABASE_PATH" << std::endl;
-        return tl::nullopt;
+
+brains2::common::Track::Track(const std::vector<double>& s_ref,
+                              const std::vector<double>& X_ref,
+                              const std::vector<double>& Y_ref,
+                              const std::vector<double>& phi_ref,
+                              const std::vector<double>& kappa_ref,
+                              const std::vector<double>& right_width,
+                              const std::vector<double>& left_width) {
+    // Check that all the vectors have the same size
+    if (s_ref.size() != X_ref.size() || s_ref.size() != Y_ref.size() ||
+        s_ref.size() != phi_ref.size() || s_ref.size() != kappa_ref.size() ||
+        s_ref.size() != right_width.size() || s_ref.size() != left_width.size()) {
+        throw std::invalid_argument("All vectors must have the same size");
     }
-#else
-#error TRACK_DATABASE_PATH not defined
-#endif
+    // Copy the data in the Eigen vectors
+    this->s_ref = Eigen::VectorXd::Map(s_ref.data(), s_ref.size());
+    this->X_ref = Eigen::VectorXd::Map(X_ref.data(), X_ref.size());
+    this->Y_ref = Eigen::VectorXd::Map(Y_ref.data(), Y_ref.size());
+    this->phi_ref = Eigen::VectorXd::Map(phi_ref.data(), phi_ref.size());
+    this->kappa_ref = Eigen::VectorXd::Map(kappa_ref.data(), kappa_ref.size());
+    this->right_width = Eigen::VectorXd::Map(right_width.data(), right_width.size());
+    this->left_width = Eigen::VectorXd::Map(left_width.data(), left_width.size());
+    IC(this->s_ref.data(), s_ref.data());
 }
-
-tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>>
-brains2::common::load_cones_from_file(const std::filesystem::path& track_path) {
-    rapidcsv::Document cones(track_path.string());
-    // get the positions of the cones in columns X and Y and the corresponding
-    // type in column cone_type
-    std::vector<double> cones_X = cones.GetColumn<double>("X");
-    std::vector<double> cones_Y = cones.GetColumn<double>("Y");
-    std::vector<std::string> cones_type = cones.GetColumn<std::string>("color");
-    std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d> cones_map;
-    for (size_t i = 0; i < cones_X.size(); ++i) {
-        brains2::common::ConeColor type = brains2::common::cone_color_from_string(cones_type[i]);
-        if (cones_map.find(type) == cones_map.end()) {
-            cones_map[type] = Eigen::MatrixX2d::Zero(0, 2);
-        }
-        cones_map[type].conservativeResize(cones_map[type].rows() + 1, 2);
-        cones_map[type].bottomRows<1>() << cones_X[i], cones_Y[i];
-    }
-    return cones_map;
-}
-
-tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>>
-brains2::common::load_cones_from_track_database(const std::string& track_name) {
-    tl::optional<std::string> track_name_opt = validate_track_name(track_name);
-    if (!track_name_opt) {
-        return tl::nullopt;
-    }
-    return brains2::common::load_cones_from_file(track_name_opt.value());
-}
-
-void brains2::common::save_cones(
-    const std::filesystem::path& track_path,
-    const std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>& cones_map) {
-    std::ofstream f(track_path.string());
-    f << "color,X,Y\n";
-
-    for (auto it = cones_map.begin(); it != cones_map.end(); ++it) {
-        for (Eigen::Index id(0); id < it->second.rows(); ++id) {
-            f << brains2::common::cone_color_to_string(it->first) << "," << it->second(id, 0) << ","
-              << it->second(id, 1) << "\n";
-        }
-    }
-    f.close();
-}
-
-// void brains2::common::load_center_line(const std::string& track_name,
-//                                        Eigen::MatrixX2d& center_line,
-//                                        Eigen::MatrixX2d& track_widths) {
-//     tl::optional<std::string> track_name_opt = validate_track_name(track_name);
-//     if (!track_name_opt) {
-//         return;
-//     }
-//     rapidcsv::Document center_line_csv(track_name_opt.value());
-//     size_t row_count = center_line_csv.GetRowCount();
-//     center_line.resize(row_count, 2);
-//     track_widths.resize(row_count, 2);
-//     for (size_t i = 0; i < row_count; ++i) {
-//         center_line(i, 0) = center_line_csv.GetCell<double>("x", i);
-//         center_line(i, 1) = center_line_csv.GetCell<double>("y", i);
-//         track_widths(i, 0) = center_line_csv.GetCell<double>("right_width", i);
-//         track_widths(i, 1) = center_line_csv.GetCell<double>("left_width", i);
-//     }
-// }
-//
-// void brains2::common::save_center_line(const std::string& filename,
-//                                        const Eigen::MatrixX2d& center_line,
-//                                        const Eigen::MatrixX2d& track_widths) {
-//     std::ofstream f(filename);
-//     f << "x,y,right_width,left_width\n";
-//     for (Eigen::Index i = 0; i < center_line.rows(); ++i) {
-//         f << center_line(i, 0) << "," << center_line(i, 1) << "," << track_widths(i, 0) << ","
-//           << track_widths(i, 1) << "\n";
-//     }
-// }
-
-// class used to wrap the track files generated in python
-// =================================================================
 
 brains2::common::Track::Track(const std::string& csv_file) {
     rapidcsv::Document doc(csv_file);

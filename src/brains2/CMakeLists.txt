@@ -72,17 +72,13 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-ament_auto_add_library(brains2_common SHARED
-    src/common/cone_color.cpp
-    src/common/marker_color.cpp
-    src/common/math.cpp
-    src/common/tracks.cpp
-)
+file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
+ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
 target_link_libraries(brains2_common Eigen3::Eigen)
 
 if (CMAKE_TESTING_ENABLED)
-  ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
-  target_link_libraries(test_tracks brains2_common)
+  ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
+  target_link_libraries(test_track_database brains2_common)
 endif()
 
 ####################################################################################################

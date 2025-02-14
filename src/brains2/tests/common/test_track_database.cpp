@@ -3,10 +3,10 @@
 // 2. create a tmp file and save the cones in it
 
 #include <filesystem>
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track_database.hpp"
 #include "gtest/gtest.h"
 
-TEST(TracksTestSuite, load_cones_track_database_test) {
+TEST(TrackDatabaseTestSuite, load_cones_track_database_test) {
     for (const std::string &track_name : {"alpha", "beta", "gamma"}) {
         tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> cones =
             brains2::common::load_cones_from_track_database(track_name);
@@ -14,7 +14,7 @@ TEST(TracksTestSuite, load_cones_track_database_test) {
     }
 }
 
-TEST(TracksTestSuite, load_cones_file_test) {
+TEST(TrackDatabaseTestSuite, load_cones_file_test) {
     for (const std::string &track_name : {"alpha", "beta", "gamma"}) {
         std::filesystem::path track_path = TRACK_DATABASE_PATH;
         track_path /= (track_name + ".csv");
@@ -24,7 +24,7 @@ TEST(TracksTestSuite, load_cones_file_test) {
     }
 }
 
-TEST(TracksTestSuite, save_cones_test) {
+TEST(TrackDatabaseTestSuite, save_cones_test) {
     // create tmp folder
     std::filesystem::path tmp_dir = std::filesystem::temp_directory_path();
     std::filesystem::create_directory(tmp_dir / "brains2_test");

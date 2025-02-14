@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include "brains2/common/cone_color.hpp"
 #include "brains2/external/optional.hpp"
@@ -12,49 +13,13 @@
 namespace brains2 {
 namespace common {
 
-// ============================================================================
-// functions to load/save cones and center line from the track_database package
-// ============================================================================
-
-/*
- * @brief Load cones from a CSV file with columns color, X, Y.
- *
- * @param track_path Path to the CSV file.
- * @return A map of cones with the color as key and the position as value.
- */
-tl::optional<std::unordered_map<ConeColor, Eigen::MatrixX2d>> load_cones_from_file(
-    const std::filesystem::path &track_path);
-
-/*
- * @brief Load cones from the track database with the name track_name.
- *
- * @param track_name Name of the track.
- * @return A map of cones with the color as key and the position as value.
- */
-tl::optional<std::unordered_map<ConeColor, Eigen::MatrixX2d>> load_cones_from_track_database(
-    const std::string &track_name);
-
-/*
- * @brief Save cones to a CSV file with columns color, X, Y.
- *
- * @param track_path Path to the CSV file.
- * @param cones_map Map of cones with the color as key and the position as value.
- */
-void save_cones(const std::filesystem::path &track_path,
-                const std::unordered_map<ConeColor, Eigen::MatrixX2d> &cones_map);
-
-// void load_center_line(const std::string &track_name_or_file,
-//                       Eigen::MatrixX2d &center_line,
-//                       Eigen::MatrixX2d &track_widths);
-//
-// void save_center_line(const std::string &filename,
-//                       const Eigen::MatrixX2d &center_line,
-//                       const Eigen::MatrixX2d &track_widths);
-
 // =================================================================
 // class used to wrap the track files generated in python
 // =================================================================
-
+// TODO: leave this class in track.hpp
+/*
+ * @brief Class representing a portion of the track
+ */
 class Track {
 private:
     // TODO(mattbrth): merge right_width and left_width into one vector track_width
@@ -69,6 +34,16 @@ private:
 public:
     explicit Track(const std::string &csv_file);
 
+    explicit Track(const std::vector<double> &s_ref,
+                   const std::vector<double> &X_ref,
+                   const std::vector<double> &Y_ref,
+                   const std::vector<double> &phi_ref,
+                   const std::vector<double> &kappa_ref,
+                   const std::vector<double> &right_width,
+                   const std::vector<double> &left_width);
+
+
+    // TODO: think of a better way to optionally return certain elements
     void project(const Eigen::Vector2d &car_pos,
                  double s_guess,
                  double s_tol,
