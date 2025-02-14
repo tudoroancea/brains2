@@ -14,30 +14,23 @@ g = 9.81  # gravity acceleration
 ####################################################################################################
 
 
-def smooth_dev(x: sym_t) -> sym_t:
-    return x + 1e-6 * ca.exp(-x * x)
-
-
 def smooth_sgn(x: sym_t) -> sym_t:
+    """Smooth sign function"""
     return ca.tanh(1e1 * x)
 
 
-def smooth_abs(x: sym_t) -> sym_t:
-    return smooth_sgn(x) * x
-
-
-def smooth_abs_nonzero(x: sym_t, min_val: float = 1e-6) -> sym_t:
-    return smooth_abs(x) + min_val * ca.exp(-x * x)
-
-
 ####################################################################################################
-# models
+# model
 ####################################################################################################
+
+nx = 8
+nu = 2
 
 
 def generate_model():
-    x = ca.SX.sym("x", 8)
-    u = ca.SX.sym("u", 2)
+    """Generate the discretized curvilinear kinematic bicycle model"""
+    x = ca.SX.sym("x", nx)
+    u = ca.SX.sym("u", nu)
     s, n, psi, v_x, v_y, omega, delta, tau = ca.vertsplit(x, 1)
     u_delta, u_tau = ca.vertsplit(u, 1)
 
@@ -92,20 +85,27 @@ def generate_model():
     return f_disc
 
 
-def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
-    nx = 8
-    nu = 2
+####################################################################################################
+# controller
+####################################################################################################
 
+
+def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
+    """Create the MPC solver and generate C code for it"""
+
+    ####################################################################################
+    # create optimization problem and variables
+    ####################################################################################
     opti = ca.Opti()
     x = []
     u = []
-    for i in range(Nf):
+    for _ in range(Nf):
         x.append(opti.variable(nx))
         u.append(opti.variable(nu))
     x.append(opti.variable(nx))
 
     ####################################################################################
-    # Optimization problem parameters
+    # create optimization problem parameters
     ####################################################################################
     all_params = []
     # current state
@@ -143,12 +143,14 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
 
     f_disc = generate_model()
 
+    ####################################################################################
     # construct cost function
+    ####################################################################################
     cost_function = 0.0
     # initial track progress
     s0 = x0[0]
     # steady-state torque
-    tau_ref = ca.tanh(10 * v_x_ref) * (C_r0 + C_r1 * v_x_ref + C_r2 * v_x_ref**2) / C_m0
+    tau_ref = smooth_sgn(v_x_ref) * (C_r0 + C_r1 * v_x_ref + C_r2 * v_x_ref**2) / C_m0
     for i in range(Nf):
         # stage control costs
         u_ref = ca.vertcat(0.0, tau_ref)
@@ -216,8 +218,7 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
     controls = ca.horzcat(*u)
     function_name = f"nmpc_solver_{solver}"
     # NOTE: we group and order the parameters differently than declared above
-    # to improve the external solver interface
-    # we order the parameters in such a way that we keep all the ones that are changed at every call at the beginning
+    # to improve the external solver interface.
     solver_function = opti.to_function(
         function_name,
         [
@@ -262,4 +263,5 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
 
 
 if __name__ == "__main__":
+    # TODO: change 10 to a reasonable value
     generate_controller(Nf=10, solver="fatrop")
