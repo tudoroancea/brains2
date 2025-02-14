@@ -15,20 +15,9 @@ g = 9.81  # gravity acceleration
 ####################################################################################################
 
 
-def smooth_dev(x: sym_t) -> sym_t:
-    return x + 1e-6 * ca.exp(-x * x)
-
-
 def smooth_sgn(x: sym_t) -> sym_t:
+    """Smooth sign function"""
     return ca.tanh(1e1 * x)
-
-
-def smooth_abs(x: sym_t) -> sym_t:
-    return smooth_sgn(x) * x
-
-
-def smooth_abs_nonzero(x: sym_t, min_val: float = 1e-6) -> sym_t:
-    return smooth_abs(x) + min_val * ca.exp(-x * x)
 
 
 ####################################################################################################
@@ -38,7 +27,8 @@ def smooth_abs_nonzero(x: sym_t, min_val: float = 1e-6) -> sym_t:
 
 def gen_kin6_model(rk_steps: int = 1):
     """
-    create a function with inputs current state, parameters, and sampling time, and output the next state and a_x, a_y
+    create a function with inputs current state, parameters, and sampling time,
+    and output the next state and a_x, a_y
 
     state: x = (X, Y, phi, v_x, v_y, omega, delta, tau_FL, tau_FR, tau_RL, tau_RR)
     control: u = (u_delta, u_tau_FL, u_tau_FR, u_tau_RL, u_tau_RR)
