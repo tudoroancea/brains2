@@ -1173,9 +1173,9 @@ static const casadi_int casadi_s15[938] = {108, 108, 0, 0, 9, 18, 27, 36, 45, 54
 static const casadi_int casadi_s16[102] = {8, 11, 0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7};
 static const casadi_int casadi_s17[33] = {2, 10, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
 static const casadi_int casadi_s18[12] = {8, 1, 0, 8, 0, 1, 2, 3, 4, 5, 6, 7};
-static const casadi_int casadi_s19[24] = {20, 1, 0, 20, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-static const casadi_int casadi_s20[14] = {10, 1, 0, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-static const casadi_int casadi_s21[7] = {3, 1, 0, 3, 0, 1, 2};
+static const casadi_int casadi_s19[14] = {10, 1, 0, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+static const casadi_int casadi_s20[7] = {3, 1, 0, 3, 0, 1, 2};
+static const casadi_int casadi_s21[24] = {20, 1, 0, 20, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
 
 /* nlp_grad:(x[108],p[61],lam_f,lam_g[128])->(f,g[128],grad_gamma_x[108],grad_gamma_p[61]) */
 static int casadi_f2(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
@@ -87694,11 +87694,11 @@ static int casadi_f8(const casadi_real** arg, casadi_real** res, casadi_int* iw,
     return 0;
 }
 
-/* nmpc_solver_fatrop:(x_guess[8x11],u_guess[2x10],x0[8],track_params[20],model_params[10],cost_params[20],bounds[3])->(x_opt[8x11],u_opt[2x10]) */
+/* nmpc_solver_fatrop:(x_guess[8x11],u_guess[2x10],x0[8],kappa_cen[10],w_cen[10],model_params[10],limits[3],cost_params[20])->(x_opt[8x11],u_opt[2x10]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_int i;
   casadi_real **res1=res+2, *rr, *ss;
-  const casadi_real **arg1=arg+7, *cs;
+  const casadi_real **arg1=arg+8, *cs;
   int flag, mid;
     casadi_real *w0=w+10472, *w1=w+10480, *w2=w+10482, *w3=w+10490, *w4=w+10492, *w5=w+10500, *w6=w+10502, *w7=w+10510, *w8=w+10512, *w9=w+10520, *w10=w+10522, *w11=w+10530, *w12=w+10532, *w13=w+10540, *w14=w+10542, *w15=w+10550, *w16=w+10552, *w17=w+10560, *w18=w+10562, *w19=w+10570, *w20=w+10572, *w21=w+10580, *w22=w+10688, w23, w24, w25, w26, w27, w28, w29, w30, w31, w32, *w33=w+10708, w34, w35, w36, w37, w38, *w39=w+10723, *w40=w+10784, *w41=w+10892, w42, w43, w44, w45, w46, w47, w48, w49, w50, w51, w52, w53, w54, w55, w56, w57, w58, w59, w60, w61, w62, w63, w64, w65, w66, w67, w68, w69, *w70=w+11028, *w71=w+11156, *w72=w+11284, *w73=w+11392, *w74=w+11520, *w75=w+11628, *w76=w+11756, *w77=w+11844;
     /* #0: @0 = input[0][0] */
@@ -87770,44 +87770,44 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
     casadi_copy(arg[2], 8, w0);
     /* #23: @22 = input[3][0] */
     casadi_copy(arg[3], 10, w22);
-    /* #24: @23 = input[4][0] */
-    w23 = arg[4] ? arg[4][0] : 0;
-    /* #25: @24 = input[4][1] */
-    w24 = arg[4] ? arg[4][1] : 0;
-    /* #26: @25 = input[4][2] */
-    w25 = arg[4] ? arg[4][2] : 0;
-    /* #27: @26 = input[4][3] */
-    w26 = arg[4] ? arg[4][3] : 0;
-    /* #28: @27 = input[4][4] */
-    w27 = arg[4] ? arg[4][4] : 0;
-    /* #29: @28 = input[4][5] */
-    w28 = arg[4] ? arg[4][5] : 0;
-    /* #30: @29 = input[4][6] */
-    w29 = arg[4] ? arg[4][6] : 0;
-    /* #31: @30 = input[4][7] */
-    w30 = arg[4] ? arg[4][7] : 0;
-    /* #32: @31 = input[4][8] */
-    w31 = arg[4] ? arg[4][8] : 0;
-    /* #33: @32 = input[4][9] */
-    w32 = arg[4] ? arg[4][9] : 0;
-    /* #34: @33 = input[3][1] */
-    casadi_copy(arg[3] ? arg[3]+10 : 0, 10, w33);
+    /* #24: @23 = input[5][0] */
+    w23 = arg[5] ? arg[5][0] : 0;
+    /* #25: @24 = input[5][1] */
+    w24 = arg[5] ? arg[5][1] : 0;
+    /* #26: @25 = input[5][2] */
+    w25 = arg[5] ? arg[5][2] : 0;
+    /* #27: @26 = input[5][3] */
+    w26 = arg[5] ? arg[5][3] : 0;
+    /* #28: @27 = input[5][4] */
+    w27 = arg[5] ? arg[5][4] : 0;
+    /* #29: @28 = input[5][5] */
+    w28 = arg[5] ? arg[5][5] : 0;
+    /* #30: @29 = input[5][6] */
+    w29 = arg[5] ? arg[5][6] : 0;
+    /* #31: @30 = input[5][7] */
+    w30 = arg[5] ? arg[5][7] : 0;
+    /* #32: @31 = input[5][8] */
+    w31 = arg[5] ? arg[5][8] : 0;
+    /* #33: @32 = input[5][9] */
+    w32 = arg[5] ? arg[5][9] : 0;
+    /* #34: @33 = input[4][0] */
+    casadi_copy(arg[4], 10, w33);
     /* #35: @34 = input[6][2] */
     w34 = arg[6] ? arg[6][2] : 0;
     /* #36: @35 = input[6][1] */
     w35 = arg[6] ? arg[6][1] : 0;
     /* #37: @36 = input[6][0] */
     w36 = arg[6] ? arg[6][0] : 0;
-    /* #38: @37 = input[5][0] */
-    w37 = arg[5] ? arg[5][0] : 0;
-    /* #39: @38 = input[5][1] */
-    w38 = arg[5] ? arg[5][1] : 0;
-    /* #40: @2 = input[5][2] */
-    casadi_copy(arg[5] ? arg[5]+2 : 0, 8, w2);
-    /* #41: @1 = input[5][3] */
-    casadi_copy(arg[5] ? arg[5]+10 : 0, 2, w1);
-    /* #42: @4 = input[5][4] */
-    casadi_copy(arg[5] ? arg[5]+12 : 0, 8, w4);
+    /* #38: @37 = input[7][0] */
+    w37 = arg[7] ? arg[7][0] : 0;
+    /* #39: @38 = input[7][1] */
+    w38 = arg[7] ? arg[7][1] : 0;
+    /* #40: @2 = input[7][2] */
+    casadi_copy(arg[7] ? arg[7]+2 : 0, 8, w2);
+    /* #41: @1 = input[7][3] */
+    casadi_copy(arg[7] ? arg[7]+10 : 0, 2, w1);
+    /* #42: @4 = input[7][4] */
+    casadi_copy(arg[7] ? arg[7]+12 : 0, 8, w4);
     /* #43: @39 = vertcat(@0, @22, @23, @24, @25, @26, @27, @28, @29, @30, @31, @32, @33, @34, @35, @36, @37, @38, @2, @1, @4) */
     rr=w39;
     for (i=0, cs=w0; i<8; ++i) *rr++ = *cs++;
@@ -88147,7 +88147,7 @@ CASADI_SYMBOL_EXPORT void nmpc_solver_fatrop_incref(void) {
 CASADI_SYMBOL_EXPORT void nmpc_solver_fatrop_decref(void) {
 }
 
-CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_fatrop_n_in(void) { return 7;}
+CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_fatrop_n_in(void) { return 8;}
 
 CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_fatrop_n_out(void) { return 2;}
 
@@ -88162,10 +88162,11 @@ CASADI_SYMBOL_EXPORT const char* nmpc_solver_fatrop_name_in(casadi_int i) {
         case 0: return "x_guess";
         case 1: return "u_guess";
         case 2: return "x0";
-        case 3: return "track_params";
-        case 4: return "model_params";
-        case 5: return "cost_params";
-        case 6: return "bounds";
+        case 3: return "kappa_cen";
+        case 4: return "w_cen";
+        case 5: return "model_params";
+        case 6: return "limits";
+        case 7: return "cost_params";
         default: return 0;
     }
 }
@@ -88184,9 +88185,10 @@ CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_fatrop_sparsity_in(casadi_int
         case 1: return casadi_s17;
         case 2: return casadi_s18;
         case 3: return casadi_s19;
-        case 4: return casadi_s20;
+        case 4: return casadi_s19;
         case 5: return casadi_s19;
-        case 6: return casadi_s21;
+        case 6: return casadi_s20;
+        case 7: return casadi_s21;
         default: return 0;
     }
 }
@@ -88200,7 +88202,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_fatrop_sparsity_out(casadi_in
 }
 
 CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
-    if (sz_arg) *sz_arg = 58;
+    if (sz_arg) *sz_arg = 59;
     if (sz_res) *sz_res = 12;
     if (sz_iw) *sz_iw = 520;
     if (sz_w) *sz_w = 11864;
@@ -88208,7 +88210,7 @@ CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work(casadi_int *sz_arg, casadi_int*
 }
 
 CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
-    if (sz_arg) *sz_arg = 58*sizeof(const casadi_real*);
+    if (sz_arg) *sz_arg = 59*sizeof(const casadi_real*);
     if (sz_res) *sz_res = 12*sizeof(casadi_real*);
     if (sz_iw) *sz_iw = 520*sizeof(casadi_int);
     if (sz_w) *sz_w = 11864*sizeof(casadi_real);
@@ -88222,15 +88224,16 @@ casadi_int main_nmpc_solver_fatrop(casadi_int argc, char* argv[]) {
     casadi_int flag;
     casadi_int iw[520];
     casadi_real w[12141];
-    const casadi_real* arg[58];
+    const casadi_real* arg[59];
     casadi_real* res[12];
     arg[0] = w+0;
     arg[1] = w+88;
     arg[2] = w+108;
     arg[3] = w+116;
-    arg[4] = w+136;
-    arg[5] = w+146;
-    arg[6] = w+166;
+    arg[4] = w+126;
+    arg[5] = w+136;
+    arg[6] = w+146;
+    arg[7] = w+149;
     res[0] = w+169;
     res[1] = w+257;
     a = w;

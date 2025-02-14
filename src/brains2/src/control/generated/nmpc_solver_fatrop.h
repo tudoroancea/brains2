@@ -35,7 +35,7 @@ const casadi_int* nmpc_solver_fatrop_sparsity_in(casadi_int i);
 const casadi_int* nmpc_solver_fatrop_sparsity_out(casadi_int i);
 int nmpc_solver_fatrop_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
 int nmpc_solver_fatrop_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define nmpc_solver_fatrop_SZ_ARG 58
+#define nmpc_solver_fatrop_SZ_ARG 59
 #define nmpc_solver_fatrop_SZ_RES 12
 #define nmpc_solver_fatrop_SZ_IW 520
 #define nmpc_solver_fatrop_SZ_W 11864
