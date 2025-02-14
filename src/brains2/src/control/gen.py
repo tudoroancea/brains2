@@ -29,11 +29,15 @@ nu = 2
 
 def generate_model():
     """Generate the discretized curvilinear kinematic bicycle model"""
+    # state variables
     x = ca.SX.sym("x", nx)
-    u = ca.SX.sym("u", nu)
     s, n, psi, v_x, v_y, omega, delta, tau = ca.vertsplit(x, 1)
+
+    # control variables
+    u = ca.SX.sym("u", nu)
     u_delta, u_tau = ca.vertsplit(u, 1)
 
+    # parameters
     kappa_cen = ca.SX.sym("kappa_cen")
     p = ca.SX.sym("p", 10)
     dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta = ca.vertsplit(p, 1)
@@ -42,7 +46,7 @@ def generate_model():
     delta_dot = (u_delta - delta) / t_delta
     tau_dot = (u_tau - tau) / t_tau
 
-    # drivetrain
+    # drivetrain dynamics
     F_motor = C_m0 * tau  # the traction force
     F_drag = -(C_r0 + C_r1 * v_x + C_r2 * v_x**2) * smooth_sgn(v_x)  # total drag force
     F_Rx = 0.5 * F_motor + F_drag  # force applied at the rear wheels
@@ -72,6 +76,7 @@ def generate_model():
         ],
     )
 
+    # discretize the dynamics with RK4
     k1 = f_cont(x, u, p, kappa_cen)
     k2 = f_cont(x + dt / 2 * k1, u, p, kappa_cen)
     k3 = f_cont(x + dt / 2 * k2, u, p, kappa_cen)
@@ -171,7 +176,9 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
     cost_function += x_diff.T @ Q_f @ x_diff
     opti.minimize(ca.cse(cost_function))
 
+    ####################################################################################
     # formulate OCP constraints
+    ####################################################################################
     # NOTE: the constraints have to be declared stage by stage for fatrop
     # to properly auto-detect the problem structure.
     for i in range(Nf):
@@ -193,7 +200,9 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
     opti.subject_to((-w_cen[Nf - 1] <= x[Nf][1]) <= w_cen[Nf - 1])
     opti.subject_to((0.0 <= x[Nf][3]) <= v_x_max)
 
-    # choose solver options and set the solver
+    ####################################################################################
+    # set solver and options
+    ####################################################################################
     if solver == "ipopt":
         options = {
             "print_time": 0,
@@ -213,10 +222,12 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
 
     opti.solver(solver, options)
 
+    ####################################################################################
     # convert to casadi Function and codegen
+    ####################################################################################
     states = ca.horzcat(*x)
     controls = ca.horzcat(*u)
-    function_name = f"nmpc_solver_{solver}"
+    function_name = "nmpc_solver"
     # NOTE: we group and order the parameters differently than declared above
     # to improve the external solver interface.
     solver_function = opti.to_function(
@@ -257,6 +268,7 @@ def generate_controller(Nf: int, solver: Literal["ipopt", "fatrop"] = "ipopt"):
     os.makedirs("generated", exist_ok=True)
     shutil.move(f"{function_name}.c", f"generated/{function_name}.c")
     shutil.move(f"{function_name}.h", f"generated/{function_name}.h")
+    # cleanup temporary files
     for file in os.listdir("."):
         if file.endswith(".mtx") or file.endswith(".casadi"):
             os.remove(file)

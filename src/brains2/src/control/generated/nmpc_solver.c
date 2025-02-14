@@ -15,7 +15,7 @@ extern "C" {
   #define _CASADI_NAMESPACE_CONCAT(NS, ID) NS ## ID
   #define CASADI_PREFIX(ID) CASADI_NAMESPACE_CONCAT(CODEGEN_PREFIX, ID)
 #else
-  #define CASADI_PREFIX(ID) nmpc_solver_fatrop_ ## ID
+  #define CASADI_PREFIX(ID) nmpc_solver_ ## ID
 #endif
 
 #include <math.h>
@@ -87694,7 +87694,7 @@ static int casadi_f8(const casadi_real** arg, casadi_real** res, casadi_int* iw,
     return 0;
 }
 
-/* nmpc_solver_fatrop:(x_guess[8x11],u_guess[2x10],x0[8],kappa_cen[10],w_cen[10],model_params[10],limits[3],cost_params[20])->(x_opt[8x11],u_opt[2x10]) */
+/* nmpc_solver:(x_guess[8x11],u_guess[2x10],x0[8],kappa_cen[10],w_cen[10],model_params[10],limits[3],cost_params[20])->(x_opt[8x11],u_opt[2x10]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_int i;
   casadi_real **res1=res+2, *rr, *ss;
@@ -88119,45 +88119,45 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
     return 0;
 }
 
-CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
+CASADI_SYMBOL_EXPORT int nmpc_solver(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
     return casadi_f0(arg, res, iw, w, mem);
 }
 
-CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_alloc_mem(void) {
+CASADI_SYMBOL_EXPORT int nmpc_solver_alloc_mem(void) {
     return 0;
 }
 
-CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_init_mem(int mem) {
+CASADI_SYMBOL_EXPORT int nmpc_solver_init_mem(int mem) {
     return 0;
 }
 
-CASADI_SYMBOL_EXPORT void nmpc_solver_fatrop_free_mem(int mem) {
+CASADI_SYMBOL_EXPORT void nmpc_solver_free_mem(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_checkout(void) {
+CASADI_SYMBOL_EXPORT int nmpc_solver_checkout(void) {
     return 0;
 }
 
-CASADI_SYMBOL_EXPORT void nmpc_solver_fatrop_release(int mem) {
+CASADI_SYMBOL_EXPORT void nmpc_solver_release(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT void nmpc_solver_fatrop_incref(void) {
+CASADI_SYMBOL_EXPORT void nmpc_solver_incref(void) {
 }
 
-CASADI_SYMBOL_EXPORT void nmpc_solver_fatrop_decref(void) {
+CASADI_SYMBOL_EXPORT void nmpc_solver_decref(void) {
 }
 
-CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_fatrop_n_in(void) { return 8;}
+CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_n_in(void) { return 8;}
 
-CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_fatrop_n_out(void) { return 2;}
+CASADI_SYMBOL_EXPORT casadi_int nmpc_solver_n_out(void) { return 2;}
 
-CASADI_SYMBOL_EXPORT casadi_real nmpc_solver_fatrop_default_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT casadi_real nmpc_solver_default_in(casadi_int i) {
     switch (i) {
         default: return 0;
     }
 }
 
-CASADI_SYMBOL_EXPORT const char* nmpc_solver_fatrop_name_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* nmpc_solver_name_in(casadi_int i) {
     switch (i) {
         case 0: return "x_guess";
         case 1: return "u_guess";
@@ -88171,7 +88171,7 @@ CASADI_SYMBOL_EXPORT const char* nmpc_solver_fatrop_name_in(casadi_int i) {
     }
 }
 
-CASADI_SYMBOL_EXPORT const char* nmpc_solver_fatrop_name_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* nmpc_solver_name_out(casadi_int i) {
     switch (i) {
         case 0: return "x_opt";
         case 1: return "u_opt";
@@ -88179,7 +88179,7 @@ CASADI_SYMBOL_EXPORT const char* nmpc_solver_fatrop_name_out(casadi_int i) {
     }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_fatrop_sparsity_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_sparsity_in(casadi_int i) {
     switch (i) {
         case 0: return casadi_s16;
         case 1: return casadi_s17;
@@ -88193,7 +88193,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_fatrop_sparsity_in(casadi_int
     }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_fatrop_sparsity_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_sparsity_out(casadi_int i) {
     switch (i) {
         case 0: return casadi_s16;
         case 1: return casadi_s17;
@@ -88201,7 +88201,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* nmpc_solver_fatrop_sparsity_out(casadi_in
     }
 }
 
-CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
+CASADI_SYMBOL_EXPORT int nmpc_solver_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
     if (sz_arg) *sz_arg = 59;
     if (sz_res) *sz_res = 12;
     if (sz_iw) *sz_iw = 520;
@@ -88209,7 +88209,7 @@ CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work(casadi_int *sz_arg, casadi_int*
     return 0;
 }
 
-CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
+CASADI_SYMBOL_EXPORT int nmpc_solver_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
     if (sz_arg) *sz_arg = 59*sizeof(const casadi_real*);
     if (sz_res) *sz_res = 12*sizeof(casadi_real*);
     if (sz_iw) *sz_iw = 520*sizeof(casadi_int);
@@ -88217,7 +88217,7 @@ CASADI_SYMBOL_EXPORT int nmpc_solver_fatrop_work_bytes(casadi_int *sz_arg, casad
     return 0;
 }
 
-casadi_int main_nmpc_solver_fatrop(casadi_int argc, char* argv[]) {
+casadi_int main_nmpc_solver(casadi_int argc, char* argv[]) {
     casadi_int j;
     casadi_real* a;
     const casadi_real* r;
@@ -88238,7 +88238,7 @@ casadi_int main_nmpc_solver_fatrop(casadi_int argc, char* argv[]) {
     res[1] = w+257;
     a = w;
     for (j=0; j<169; ++j) if (scanf("%lg", a++)<=0) return 2;
-    flag = nmpc_solver_fatrop(arg, res, iw, w+277, 0);
+    flag = nmpc_solver(arg, res, iw, w+277, 0);
     if (flag) return flag;
     r = w+169;
     for (j=0; j<108; ++j) CASADI_PRINTF("%g ", *r++);
@@ -88246,21 +88246,21 @@ casadi_int main_nmpc_solver_fatrop(casadi_int argc, char* argv[]) {
     return 0;
 }
 
-CASADI_SYMBOL_EXPORT casadi_functions* nmpc_solver_fatrop_functions(void) {
+CASADI_SYMBOL_EXPORT casadi_functions* nmpc_solver_functions(void) {
     static casadi_functions fun = {
-        nmpc_solver_fatrop_incref,
-        nmpc_solver_fatrop_decref,
-        nmpc_solver_fatrop_checkout,
-        nmpc_solver_fatrop_release,
-        nmpc_solver_fatrop_default_in,
-        nmpc_solver_fatrop_n_in,
-        nmpc_solver_fatrop_n_out,
-        nmpc_solver_fatrop_name_in,
-        nmpc_solver_fatrop_name_out,
-        nmpc_solver_fatrop_sparsity_in,
-        nmpc_solver_fatrop_sparsity_out,
-        nmpc_solver_fatrop_work,
-        nmpc_solver_fatrop
+        nmpc_solver_incref,
+        nmpc_solver_decref,
+        nmpc_solver_checkout,
+        nmpc_solver_release,
+        nmpc_solver_default_in,
+        nmpc_solver_n_in,
+        nmpc_solver_n_out,
+        nmpc_solver_name_in,
+        nmpc_solver_name_out,
+        nmpc_solver_sparsity_in,
+        nmpc_solver_sparsity_out,
+        nmpc_solver_work,
+        nmpc_solver
     };
     return &fun;
 }
@@ -88268,10 +88268,10 @@ CASADI_SYMBOL_EXPORT casadi_functions* nmpc_solver_fatrop_functions(void) {
 CASADI_SYMBOL_EXPORT int main(int argc, char* argv[]) {
   if (argc<2) {
     /* name error */
-  } else if (strcmp(argv[1], "nmpc_solver_fatrop")==0) {
-    return main_nmpc_solver_fatrop(argc-2, argv+2);
+  } else if (strcmp(argv[1], "nmpc_solver")==0) {
+    return main_nmpc_solver(argc-2, argv+2);
   }
-  fprintf(stderr, "First input should be a command string. Possible values: 'nmpc_solver_fatrop'\nNote: you may use function.generate_input to create a command string.\n");
+  fprintf(stderr, "First input should be a command string. Possible values: 'nmpc_solver'\nNote: you may use function.generate_input to create a command string.\n");
   return 1;
 }
 #ifdef __cplusplus
