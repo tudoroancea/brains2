@@ -89,7 +89,7 @@ n &= -(X-X^\mathrm{cen}(s)) \sin(\varphi^\mathrm{cen}(s)) + (Y-Y^\mathrm{cen}(s)
 \begin{aligned}
 \dot{s} &= \frac{v_x \cos(\psi) - v_y \sin(\psi)}{1-n \kappa^\mathrm{cen}(s)}, \\
 \dot{n} &= v_x \sin(\psi) + v_y \cos(\psi), \\
-\dot{\psi} &= \omega - \kappa^\mathrm{cen}(s) \dot{s} \\
+\dot{\psi} &= \omega - \kappa^\mathrm{cen}(s) \dot{s}, \\
 \dot{v}_x &= \dot{v} \cos(\beta) - v_y \dot{\beta}, \\
 \dot{v}_y &= \dot{v} \sin(\beta) + v_x \dot{\beta}, \\
 \dot{\omega} &= \frac{1}{l_R}(\dot{v} \sin(\beta) + v_x \dot{\beta}), \\
@@ -116,26 +116,26 @@ where we denote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and th
 - The reference states $x^\mathrm{ref}_k$ are chosen as
 
   ```math
-  x^\mathrm{ref}_k = (s_0 + \frac{k}{N}s^\mathrm{ref}_f, 0, 0, v^\mathrm{ref}_x, 0,0, 0, \tau^\mathrm{ref}_k)^T
+  x^\mathrm{ref}_k = (s_0 + \frac{k}{N}\Delta s^\mathrm{ref}, 0, 0, v^\mathrm{ref}_x, 0,0, 0, \tau^\mathrm{ref})^T
   ```
 
-  where $v^\mathrm{ref}_x$ and $s^\mathrm{ref}_f$ are two tuning parameter that
+  where $v^\mathrm{ref}_x$ and $\Delta s^\mathrm{ref}$ are two tuning parameters that
   one should choose to be respectively _the expected velocity throughout the
   horizon_ and _a length slightly larger than the expected progress over the
   horizon_.
 
-  In practice we could choose 
+  A simple practical choice for a sampling time of $\Delta t$ is 
   ```math
-  s^\mathrm{ref}_f \approx \frac{3}{2} T_f v^\mathrm{ref}_x .
+  \Delta s^\mathrm{ref} \approx \frac{3}{2} N_f \Delta t v^\mathrm{ref}_x .
   ```
 
 - The reference controls $u^\mathrm{ref}_k$ are chosen as
 
   ```math
-  u^\mathrm{ref}_k = (0, \tau^\mathrm{ref}_k)^T
+  u^\mathrm{ref}_k = (0, \tau^\mathrm{ref})^T
   ```
 
-  where $\tau^\mathrm{ref}_k$ is the steady state torque to be applied for the
+  where $\tau^\mathrm{ref}$ is the steady state torque to be applied for the
   velocity $v^\mathrm{ref}_x$.
 
 ### Constraints
