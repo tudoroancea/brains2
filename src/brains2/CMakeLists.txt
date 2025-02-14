@@ -37,6 +37,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # the following assumes acados has already been installed (automatically done in build.sh)
 find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
+find_package(fatrop REQUIRED)
 set(CMAKE_TESTING_ENABLED ON)
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
@@ -110,6 +111,12 @@ target_link_libraries(sim_node
 ####################################################################################################
 # control
 ####################################################################################################
+
+file(GLOB_RECURSE generated_sources src/control/generated/*.c)
+message(STATUS "Generated sources: ${generated_sources}")
+ament_auto_add_library(brains2_control SHARED src/control/controller.cpp ${generated_sources})
+target_link_libraries(brains2_control fatrop)
+target_include_directories(brains2_control PUBLIC src/control)
 
 ####################################################################################################
 # estimation
