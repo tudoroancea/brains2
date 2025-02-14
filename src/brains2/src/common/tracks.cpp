@@ -98,7 +98,8 @@ double brains2::common::Track::interp(const Eigen::MatrixXd& coeffs, double s, i
     return coeffs(ind, 0) + coeffs(ind, 1) * (s - vals_s(ind));
 }
 
-std::tuple<double, Eigen::Vector2d> Track::project(const Eigen::Vector2d& car_pos,
+std::tuple<double, Eigen::Vector2d> Track::project(double X,
+                                                   double Y,
                                                    double s_guess,
                                                    double s_tol) const {
     // extract all the points in X_ref, Y_ref associated with s_ref values
@@ -119,8 +120,7 @@ std::tuple<double, Eigen::Vector2d> Track::project(const Eigen::Vector2d& car_po
     local_traj.col(1) = vals_Y.segment(id_low, id_up - id_low + 1);
 
     // find the closest point to car_pos to find one segment extremity
-    Eigen::VectorXd sqdist =
-        (local_traj.col(0) - car_pos(0)).square() + (local_traj.col(1) - car_pos(1)).square();
+    Eigen::VectorXd sqdist = (local_traj.col(0) - X).square() + (local_traj.col(1) - Y).square();
     long long id_min, id_prev, id_next;
     sqdist.minCoeff(&id_min);
     id_prev = id_min - 1;
@@ -156,7 +156,7 @@ std::tuple<double, Eigen::Vector2d> Track::project(const Eigen::Vector2d& car_po
 
     // project car_pos on the segment and retrieve lambda
     double dx = b(0) - a(0), dy = b(1) - a(1);
-    double lambda = ((car_pos(0) - a(0)) * dx + (car_pos(1) - a(1)) * dy) / (dx * dx + dy * dy);
+    double lambda = ((X - a(0)) * dx + (Y - a(1)) * dy) / (dx * dx + dy * dy);
 
     // compute the interpolated values (with non null pointers) at lambda using
     // the index of the closest point
@@ -220,6 +220,10 @@ const Eigen::VectorXd& brains2::common::Track::get_vals_kappa() const {
 
 const Eigen::VectorXd& brains2::common::Track::get_vals_width() const {
     return this->vals_width;
+}
+
+double Track::s_min() const {
+    return vals_s(0);
 }
 
 }  // namespace brains2::common

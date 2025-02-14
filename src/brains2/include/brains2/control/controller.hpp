@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include "brains2/common/tracks.hpp"
 #include "brains2/external/expected.hpp"
 #include "casadi/mem.h"
 
@@ -13,10 +14,7 @@ namespace control {
 class Controller {
 public:
     static constexpr uint8_t Nf = 10;
-    struct TrackParams {
-        std::array<double, Nf> kappa_cen;
-        std::array<double, Nf> w_cen;
-    };
+
     struct ModelParams {
         static constexpr uint8_t dim = 10;
         double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta, t_tau;
@@ -62,7 +60,7 @@ public:
     }
 
     tl::expected<Control, ControllerError> compute_control(const State& current_state,
-                                                           const TrackParams& track_params);
+                                                           const brains2::common::Track& track);
 
 private:
     // Casadi solver function memory

@@ -45,16 +45,9 @@ public:
     double length() const;
 
     /*
-     * @brief Compute orthogonal projection of a point onto the track
-     * @param car_pos The position of the car
-     * @param s_guess An initial guess for the progress s
-     * @param s_tol A tolerance such that the point will be searched only
-                    within the range [s_guess - s_tol, s_guess + s_tol]
-     * @return A tuple containing the progress s and the projected position
+     *  @brief Returns the minimum progress s on the track
      */
-    std::tuple<double, Eigen::Vector2d> project(const Eigen::Vector2d &car_pos,
-                                                double s_guess,
-                                                double s_tol) const;
+    double s_min() const;
 
     /*
      *  @brief Evaluates the track's X coordinate at a progress s
@@ -77,15 +70,51 @@ public:
      */
     double eval_track_width(double s) const;
 
-    Eigen::Vector2d frenet_to_cartesian(const double &s, const double &n) const;
+    /*
+     * @brief Get a constant reference to the track's progress values
+     */
+    const Eigen::VectorXd &get_vals_s() const;
+    /*
+     * @brief Get a constant reference to the track's X coordinate values
+     */
+    const Eigen::VectorXd &get_vals_X() const;
+    /*
+     * @brief Get a constant reference to the track's Y coordinate values
+     */
+    const Eigen::VectorXd &get_vals_Y() const;
+    /*
+     * @brief Get a constant reference to the track's phi angle values
+     */
+    const Eigen::VectorXd &get_vals_phi() const;
+    /*
+     * @brief Get a constant reference to the track's curvature values
+     */
+    const Eigen::VectorXd &get_vals_kappa() const;
+    /*
+     * @brief Get a constant reference to the track's width values
+     */
+    const Eigen::VectorXd &get_vals_width() const;
 
     size_t find_interval(double s) const;
-    const Eigen::VectorXd &get_vals_s() const;
-    const Eigen::VectorXd &get_vals_X() const;
-    const Eigen::VectorXd &get_vals_Y() const;
-    const Eigen::VectorXd &get_vals_phi() const;
-    const Eigen::VectorXd &get_vals_kappa() const;
-    const Eigen::VectorXd &get_vals_width() const;
+
+    /*
+     *  @brief Converts a Frenet coordinate to a Cartesian coordinate
+     */
+    Eigen::Vector2d frenet_to_cartesian(const double &s, const double &n) const;
+
+    /*
+         * @brief Compute orthogonal projection of a point onto the track
+         * @param X The X coordinate of the point
+         * @param Y The Y coordinate of the point
+         * @param s_guess An initial guess for the progress s
+         * @param s_tol A tolerance such that the point will be searched only
+                        within the range [s_guess - s_tol, s_guess + s_tol]
+         * @return A tuple containing the progress s and the projected position
+         */
+    std::tuple<double, Eigen::Vector2d> project(double X,
+                                                double Y,
+                                                double s_guess,
+                                                double s_tol) const;
 };
 
 }  // namespace common

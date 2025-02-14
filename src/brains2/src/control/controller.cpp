@@ -1,5 +1,7 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/control/controller.hpp"
+#include <cmath>
+#include "brains2/common/tracks.hpp"
 #include "generated/nmpc_solver.h"
 
 using namespace brains2::control;
@@ -53,20 +55,27 @@ Controller::Controller(const Controller::ModelParams& model_params,
 }
 
 tl::expected<Controller::Control, Controller::ControllerError> Controller::compute_control(
-    const Controller::State& current_state, const Controller::TrackParams& track_params) {
-    // Copy track params and current state from velocity
+    const Controller::State& current_state, const brains2::common::Track& track) {
+    // Project current position
+    auto [s, pos_proj] =
+        track.project(current_state.X, current_state.Y, track.s_min(), track.length());
+
+    // Convert to Frenet pose
+    auto phi_proj = track.eval_phi(s);
+    double n = -(current_state.X - pos_proj(0)) * std::sin(phi_proj) +
+               (current_state.Y - pos_proj(1)) * std::cos(phi_proj),
+           psi = current_state.phi - phi_proj;
+
+    // Set current state
+    this->x0[0] = s;
+    this->x0[1] = n;
+    this->x0[2] = psi;
     this->x0[3] = current_state.v_x;
     this->x0[4] = current_state.v_y;
     this->x0[5] = current_state.omega;
     this->x0[6] = current_state.delta;
     this->x0[7] = current_state.tau;
-    std::copy(track_params.kappa_cen.begin(),
-              track_params.kappa_cen.end(),
-              this->kappa_cen.begin());
-    std::copy(track_params.w_cen.begin(), track_params.w_cen.end(), this->w_cen.begin());
 
-    // Project current position
-    // Convert to Frenet pose
     // Construct initial guess
     // Call solver
     // Check solver status
