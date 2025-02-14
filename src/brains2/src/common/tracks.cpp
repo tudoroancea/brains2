@@ -1,85 +1,88 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/common/tracks.hpp"
+#include <Eigen/src/Core/Matrix.h>
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 #include "brains2/common/math.hpp"
-#include "brains2/external/icecream.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
+namespace brains2::common {
 
-brains2::common::Track::Track(const std::vector<double>& s_ref,
-                              const std::vector<double>& X_ref,
-                              const std::vector<double>& Y_ref,
-                              const std::vector<double>& phi_ref,
-                              const std::vector<double>& kappa_ref,
-                              const std::vector<double>& right_width,
-                              const std::vector<double>& left_width) {
+Track::Track(const std::vector<double>& s,
+             const std::vector<double>& X,
+             const std::vector<double>& Y,
+             const std::vector<double>& phi,
+             const std::vector<double>& kappa,
+             const std::vector<double>& width) {
     // Check that all the vectors have the same size
-    if (s_ref.size() != X_ref.size() || s_ref.size() != Y_ref.size() ||
-        s_ref.size() != phi_ref.size() || s_ref.size() != kappa_ref.size() ||
-        s_ref.size() != right_width.size() || s_ref.size() != left_width.size()) {
+    const size_t size = s.size();
+    if (size != X.size() || size != Y.size() || size != phi.size() || size != kappa.size() ||
+        size != width.size()) {
         throw std::invalid_argument("All vectors must have the same size");
     }
     // Copy the data in the Eigen vectors
-    this->s_ref = Eigen::VectorXd::Map(s_ref.data(), s_ref.size());
-    this->X_ref = Eigen::VectorXd::Map(X_ref.data(), X_ref.size());
-    this->Y_ref = Eigen::VectorXd::Map(Y_ref.data(), Y_ref.size());
-    this->phi_ref = Eigen::VectorXd::Map(phi_ref.data(), phi_ref.size());
-    this->kappa_ref = Eigen::VectorXd::Map(kappa_ref.data(), kappa_ref.size());
-    this->right_width = Eigen::VectorXd::Map(right_width.data(), right_width.size());
-    this->left_width = Eigen::VectorXd::Map(left_width.data(), left_width.size());
-    IC(this->s_ref.data(), s_ref.data());
-}
+    // (the Eigen::Map object creates a view to the data in the std::vector,
+    //  but assigning it to an Eigen::Vector copies it)
+    this->vals_s = Eigen::VectorXd::Map(s.data(), s.size());
+    this->vals_X = Eigen::VectorXd::Map(X.data(), X.size());
+    this->vals_Y = Eigen::VectorXd::Map(Y.data(), Y.size());
+    this->vals_phi = Eigen::VectorXd::Map(phi.data(), phi.size());
+    this->vals_kappa = Eigen::VectorXd::Map(kappa.data(), kappa.size());
+    this->vals_width = Eigen::VectorXd::Map(width.data(), width.size());
 
-brains2::common::Track::Track(const std::string& csv_file) {
-    rapidcsv::Document doc(csv_file);
-    auto row_count = static_cast<long long>(doc.GetRowCount());
-    s_ref.resize(row_count);
-    X_ref.resize(row_count);
-    Y_ref.resize(row_count);
-    phi_ref.resize(row_count);
-    kappa_ref.resize(row_count);
-    right_width.resize(row_count);
-    left_width.resize(row_count);
-    for (long long i = 0; i < row_count; ++i) {
-        s_ref(i) = doc.GetCell<double>("s_ref", i);
-        X_ref(i) = doc.GetCell<double>("X_ref", i);
-        Y_ref(i) = doc.GetCell<double>("Y_ref", i);
-        phi_ref(i) = doc.GetCell<double>("phi_ref", i);
-        kappa_ref(i) = doc.GetCell<double>("kappa_ref", i);
-        right_width(i) = doc.GetCell<double>("right_width", i);
-        left_width(i) = doc.GetCell<double>("left_width", i);
-    }
-
-    delta_s = s_ref.tail(s_ref.size() - 1) - s_ref.head(s_ref.size() - 1);
+    // Compute the differences in progress s
+    auto delta_s =
+        this->vals_s.tail(this->vals_s.size() - 1) - this->vals_s.head(this->vals_s.size() - 1);
 
     // fit linear splines
-    coeffs_X.resize(row_count - 1, 2);
-    coeffs_Y.resize(row_count - 1, 2);
-    coeffs_phi.resize(row_count - 1, 2);
-    coeffs_kappa.resize(row_count - 1, 2);
-    coeffs_right_width.resize(row_count - 1, 2);
-    coeffs_left_width.resize(row_count - 1, 2);
+    this->coeffs_X.resize(size - 1, 2);
+    this->coeffs_Y.resize(size - 1, 2);
+    this->coeffs_phi.resize(size - 1, 2);
+    this->coeffs_kappa.resize(size - 1, 2);
+    this->coeffs_width.resize(size - 1, 2);
+    for (size_t i = 0; i < size - 1; ++i) {
+        this->coeffs_X(i, 0) = this->vals_X(i);
+        this->coeffs_X(i, 1) = (this->vals_X(i + 1) - this->vals_X(i)) / delta_s(i);
 
-    for (long long i = 0; i < row_count - 1; ++i) {
-        coeffs_X(i, 0) = X_ref(i);
-        coeffs_X(i, 1) = (X_ref(i + 1) - X_ref(i)) / delta_s(i);
+        this->coeffs_Y(i, 0) = this->vals_Y(i);
+        this->coeffs_Y(i, 1) = (this->vals_Y(i + 1) - this->vals_Y(i)) / delta_s(i);
 
-        coeffs_Y(i, 0) = Y_ref(i);
-        coeffs_Y(i, 1) = (Y_ref(i + 1) - Y_ref(i)) / delta_s(i);
+        this->coeffs_phi(i, 0) = this->vals_phi(i);
+        this->coeffs_phi(i, 1) = (this->vals_phi(i + 1) - this->vals_phi(i)) / delta_s(i);
 
-        coeffs_phi(i, 0) = phi_ref(i);
-        coeffs_phi(i, 1) = (phi_ref(i + 1) - phi_ref(i)) / delta_s(i);
+        this->coeffs_kappa(i, 0) = this->vals_kappa(i);
+        this->coeffs_kappa(i, 1) = (this->vals_kappa(i + 1) - this->vals_kappa(i)) / delta_s(i);
 
-        coeffs_kappa(i, 0) = kappa_ref(i);
-        coeffs_kappa(i, 1) = (kappa_ref(i + 1) - kappa_ref(i)) / delta_s(i);
-
-        coeffs_right_width(i, 0) = right_width(i);
-        coeffs_right_width(i, 1) = (right_width(i + 1) - right_width(i)) / delta_s(i);
-
-        coeffs_left_width(i, 0) = left_width(i);
-        coeffs_left_width(i, 1) = (left_width(i + 1) - left_width(i)) / delta_s(i);
+        this->coeffs_width(i, 0) = this->vals_width(i);
+        this->coeffs_width(i, 1) = (this->vals_width(i + 1) - this->vals_width(i)) / delta_s(i);
     }
+}
+
+brains2::common::Track::Track(const std::filesystem::path& csv_file) {
+    rapidcsv::Document doc(csv_file.string());
+    auto row_count = static_cast<long long>(doc.GetRowCount());
+    vals_s.resize(row_count);
+    vals_X.resize(row_count);
+    vals_Y.resize(row_count);
+    vals_phi.resize(row_count);
+    vals_kappa.resize(row_count);
+    vals_width.resize(row_count);
+    for (long long i = 0; i < row_count; ++i) {
+        vals_s(i) = doc.GetCell<double>("s_ref", i);
+        vals_X(i) = doc.GetCell<double>("X_ref", i);
+        vals_Y(i) = doc.GetCell<double>("Y_ref", i);
+        vals_phi(i) = doc.GetCell<double>("phi_ref", i);
+        vals_kappa(i) = doc.GetCell<double>("kappa_ref", i);
+        vals_width(i) = doc.GetCell<double>("track_width", i);
+    }
+}
+
+double brains2::common::Track::length() const {
+    return -vals_s(0);
+}
+size_t brains2::common::Track::size() const {
+    return vals_s.size();
 }
 
 static size_t locate_index(const Eigen::VectorXd& v, double x) {
@@ -93,45 +96,34 @@ static double angle3pt(const Eigen::Vector2d& a,
                                        std::atan2(a(1) - b(1), a(0) - b(0)));
 }
 
-void brains2::common::Track::interp(const Eigen::MatrixXd& coeffs,
-                                    double s,
-                                    double& value,
-                                    int ind) const {
+double brains2::common::Track::interp(const Eigen::MatrixXd& coeffs, double s, int ind) const {
     // find i such that s_ref[i] <= s < s_ref[i+1]
     if (ind < 0) {
-        ind = locate_index(s_ref, s);
+        ind = locate_index(vals_s, s);
     }
     // find the value of the spline at s
-    value = coeffs(ind, 0) + coeffs(ind, 1) * (s - s_ref(ind));
+    return coeffs(ind, 0) + coeffs(ind, 1) * (s - vals_s(ind));
 }
 
-void brains2::common::Track::project(const Eigen::Vector2d& car_pos,
-                                     double s_guess,
-                                     double s_tol,
-                                     double* s_proj,
-                                     double* X_ref_proj,
-                                     double* Y_ref_proj,
-                                     double* phi_ref_proj,
-                                     double* phi_ref_preview,
-                                     double* kappa_ref_proj,
-                                     double* right_width_proj,
-                                     double* left_width_proj) {
+std::tuple<double, Eigen::Vector2d> Track::project(const Eigen::Vector2d& car_pos,
+                                                   double s_guess,
+                                                   double s_tol) const {
     // extract all the points in X_ref, Y_ref associated with s_ref values
     // within s_guess +- s_tol
-    double s_low = std::max(s_guess - s_tol, s_ref(0)),
-           s_up = std::min(s_guess + s_tol, s_ref(s_ref.size() - 1));
-    long long id_low = locate_index(s_ref, s_low), id_up = locate_index(s_ref, s_up);
+    double s_low = std::max(s_guess - s_tol, vals_s(0)),
+           s_up = std::min(s_guess + s_tol, vals_s(vals_s.size() - 1));
+    long long id_low = locate_index(vals_s, s_low), id_up = locate_index(vals_s, s_up);
     if (id_low > 0) {
         --id_low;
     }
-    if (id_up < static_cast<long long>(s_ref.size()) - 1) {
+    if (id_up < static_cast<long long>(vals_s.size()) - 1) {
         ++id_up;
     }
     Eigen::ArrayX2d local_traj =
         Eigen::ArrayX2d::Zero(id_up - id_low + 1,
                               2);  // problem with difference of size_ints ?
-    local_traj.col(0) = X_ref.segment(id_low, id_up - id_low + 1);
-    local_traj.col(1) = Y_ref.segment(id_low, id_up - id_low + 1);
+    local_traj.col(0) = vals_X.segment(id_low, id_up - id_low + 1);
+    local_traj.col(1) = vals_Y.segment(id_low, id_up - id_low + 1);
 
     // find the closest point to car_pos to find one segment extremity
     Eigen::VectorXd sqdist =
@@ -160,13 +152,13 @@ void brains2::common::Track::project(const Eigen::Vector2d& car_pos,
     if (angle_prev > angle_next) {
         a = local_traj.row(id_prev);
         b = local_traj.row(id_min);
-        sa = s_ref(id_prev + id_low);
-        sb = s_ref(id_min + id_low);
+        sa = vals_s(id_prev + id_low);
+        sb = vals_s(id_min + id_low);
     } else {
         a = local_traj.row(id_min);
         b = local_traj.row(id_next);
-        sa = s_ref(id_min + id_low);
-        sb = s_ref(id_next + id_low);
+        sa = vals_s(id_min + id_low);
+        sb = vals_s(id_next + id_low);
     }
 
     // project car_pos on the segment and retrieve lambda
@@ -175,72 +167,38 @@ void brains2::common::Track::project(const Eigen::Vector2d& car_pos,
 
     // compute the interpolated values (with non null pointers) at lambda using
     // the index of the closest point
-    if (s_proj != nullptr) {
-        *s_proj = sa + lambda * (sb - sa);
-    }
-    if (X_ref_proj != nullptr) {
-        *X_ref_proj = a(0) + lambda * (b(0) - a(0));
-    }
-    if (Y_ref_proj != nullptr) {
-        *Y_ref_proj = a(1) + lambda * (b(1) - a(1));
-    }
-    if (phi_ref_proj != nullptr) {
-        if (phi_ref_preview != nullptr) {
-            interp(coeffs_phi, *s_proj + *phi_ref_preview, *phi_ref_proj, id_min + id_low);
-        } else {
-            interp(coeffs_phi, *s_proj, *phi_ref_proj, id_min + id_low);
-        }
-    }
-    if (kappa_ref_proj != nullptr) {
-        interp(coeffs_kappa, *s_proj, *kappa_ref_proj, id_min + id_low);
-    }
-    if (right_width_proj != nullptr) {
-        interp(coeffs_right_width, *s_proj, *right_width_proj, id_min + id_low);
-    }
-    if (left_width_proj != nullptr) {
-        interp(coeffs_left_width, *s_proj, *left_width_proj, id_min + id_low);
-    }
+    double s_proj = sa + lambda * (sb - sa);
+    double X_ref_proj = a(0) + lambda * (b(0) - a(0));
+    double Y_ref_proj = a(1) + lambda * (b(1) - a(1));
+    return std::make_tuple(s_proj, Eigen::Vector2d(X_ref_proj, Y_ref_proj));
 }
 
-void brains2::common::Track::frenet_to_cartesian(const double& s,
-                                                 const double& n,
-                                                 double& X,
-                                                 double& Y) const {
-    double X_ref, Y_ref, phi_ref;
-    this->interp(coeffs_phi, s, phi_ref);
-    this->interp(coeffs_X, s, X_ref);
-    this->interp(coeffs_Y, s, Y_ref);
+double Track::eval_X(double s) const {
+    return this->interp(this->coeffs_X, s);
+}
+
+double Track::eval_Y(double s) const {
+    return this->interp(this->coeffs_Y, s);
+}
+
+double Track::eval_phi(double s) const {
+    return this->interp(this->coeffs_phi, s);
+}
+
+double Track::eval_kappa(double s) const {
+    return this->interp(this->coeffs_kappa, s);
+}
+
+double Track::eval_track_width(double s) const {
+    return this->interp(this->coeffs_width, s);
+}
+
+Eigen::Vector2d Track::frenet_to_cartesian(const double& s, const double& n) const {
+    double X_ref = this->interp(this->coeffs_X, s);
+    double Y_ref = this->interp(this->coeffs_Y, s);
+    double phi_ref = this->interp(this->coeffs_phi, s);
     Eigen::Vector2d normal(-std::sin(phi_ref), std::cos(phi_ref));
-    X = X_ref + n * normal(0);
-    Y = Y_ref + n * normal(1);
+    return Eigen::Vector2d(X_ref + n * normal(0), Y_ref + n * normal(1));
 }
 
-void brains2::common::Track::frenet_to_cartesian(const Eigen::VectorXd& s,
-                                                 const Eigen::VectorXd& n,
-                                                 Eigen::VectorXd& X,
-                                                 Eigen::VectorXd& Y) const {
-    X.resize(s.size());
-    Y.resize(s.size());
-    for (Eigen::Index i = 0; i < s.size(); ++i) {
-        this->frenet_to_cartesian(s(i), n(i), X(i), Y(i));
-    }
-}
-
-double brains2::common::Track::length() const {
-    return -s_ref(0);
-}
-size_t brains2::common::Track::size() const {
-    return s_ref.size();
-}
-double* brains2::common::Track::get_s_ref() {
-    return s_ref.data();
-}
-double* brains2::common::Track::get_kappa_ref() {
-    return kappa_ref.data();
-}
-double* brains2::common::Track::get_X_ref() {
-    return X_ref.data();
-}
-double* brains2::common::Track::get_Y_ref() {
-    return Y_ref.data();
-}
+}  // namespace brains2::common
