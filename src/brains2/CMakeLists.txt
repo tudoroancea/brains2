@@ -79,6 +79,9 @@ target_link_libraries(brains2_common Eigen3::Eigen)
 if (CMAKE_TESTING_ENABLED)
   ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
   target_link_libraries(test_track_database brains2_common)
+
+  ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
+  target_link_libraries(test_tracks brains2_common)
 endif()
 
 ####################################################################################################
