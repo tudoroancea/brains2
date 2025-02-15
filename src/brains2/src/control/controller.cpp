@@ -2,6 +2,7 @@
 #include "brains2/control/controller.hpp"
 #include <cmath>
 #include "brains2/common/tracks.hpp"
+#include "brains2/external/icecream.hpp"
 #include "generated/nmpc_solver.h"
 
 using namespace brains2::control;
@@ -40,7 +41,9 @@ Controller::Controller(const Controller::ModelParams& model_params,
           cost_params.q_v_y_f, cost_params.q_omega_f,   cost_params.q_delta_f, cost_params.q_tau_f,
       },
       x_opt{0.0},
-      u_opt{0.0} {
+      u_opt{0.0},
+      dt(model_params.dt),
+      v_x_ref(cost_params.v_x_ref) {
     this->solver_fun_mem = casadi_alloc(nmpc_solver_functions());
     this->solver_fun_mem->arg[0] = this->x_guess.data();
     this->solver_fun_mem->arg[1] = this->u_guess.data();
@@ -77,8 +80,42 @@ tl::expected<Controller::Control, Controller::ControllerError> Controller::compu
     this->x0[7] = current_state.tau;
 
     // Construct initial guess
+    // Simplest way that does not depend on the previous call to the solver
+    // is to create the initial guess based on the points at every dt*v_x_ref
+    // TODO: optimize this by setting things in the constructor
+    for (size_t i = 0; i < Nf; ++i) {
+        x_guess[i * State::dim] = s + i * dt * v_x_ref;
+        x_guess[i * State::dim + 1] = 0.0;
+        x_guess[i * State::dim + 2] = 0.0;
+        x_guess[i * State::dim + 3] = v_x_ref;
+        x_guess[i * State::dim + 4] = 0.0;
+        x_guess[i * State::dim + 5] = 0.0;
+        x_guess[i * State::dim + 6] = 0.0;
+        x_guess[i * State::dim + 7] = 0.0;
+        u_guess[i * Control::dim] = 0.0;
+        u_guess[i * Control::dim + 1] = 0.0;
+        kappa_cen[i] = track.eval_kappa(x_guess[i * State::dim]);
+        if (i > 0) {
+            w_cen[i] = track.eval_width(x_guess[i * State::dim]);
+        }
+    }
+    x_guess[Nf * State::dim] = s + Nf * dt * v_x_ref;
+    x_guess[Nf * State::dim + 1] = 0.0;
+    x_guess[Nf * State::dim + 2] = 0.0;
+    x_guess[Nf * State::dim + 3] = v_x_ref;
+    x_guess[Nf * State::dim + 4] = 0.0;
+    x_guess[Nf * State::dim + 5] = 0.0;
+    x_guess[Nf * State::dim + 6] = 0.0;
+    x_guess[Nf * State::dim + 7] = 0.0;
+    w_cen[Nf - 1] = track.eval_width(x_guess[Nf * State::dim]);
+
     // Call solver
+    casadi_eval(this->solver_fun_mem);
+
     // Check solver status
+
     // Extract solution
+    IC(Eigen::MatrixXd::Map(x_opt.data(), State::dim, Nf + 1).transpose(),
+       Eigen::MatrixXd::Map(u_opt.data(), Control::dim, Nf).transpose());
     return tl::unexpected(Controller::ControllerError::MAX_ITER);
 }

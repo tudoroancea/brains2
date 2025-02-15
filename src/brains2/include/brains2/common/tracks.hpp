@@ -68,7 +68,7 @@ public:
     /*
      *  @brief Evaluates the track's width at a progress s
      */
-    double eval_track_width(double s) const;
+    double eval_width(double s) const;
 
     /*
      * @brief Get a constant reference to the track's progress values

@@ -77,6 +77,8 @@ private:
     // Function outputs
     std::array<double, State::dim*(Nf + 1)> x_opt;
     std::array<double, Control::dim * Nf> u_opt;
+    // Redundant variables that are simpler to access
+    double dt, v_x_ref;
 };
 
 }  // namespace control

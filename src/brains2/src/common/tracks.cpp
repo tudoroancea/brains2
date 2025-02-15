@@ -136,10 +136,10 @@ std::tuple<double, Eigen::Vector2d> Track::project(double X,
 
     // compute the angles between car_pos, the closest point and the next and
     // previous point to find the second segment extremity
-    double angle_prev =
-               std::fabs(angle3pt(local_traj.row(id_min), car_pos, local_traj.row(id_prev))),
-           angle_next =
-               std::fabs(angle3pt(local_traj.row(id_min), car_pos, local_traj.row(id_next)));
+    double angle_prev = std::fabs(
+               angle3pt(local_traj.row(id_min), Eigen::Vector2d(X, Y), local_traj.row(id_prev))),
+           angle_next = std::fabs(
+               angle3pt(local_traj.row(id_min), Eigen::Vector2d(X, Y), local_traj.row(id_next)));
     Eigen::Vector2d a, b;
     double sa, sb;
     if (angle_prev > angle_next) {
@@ -182,7 +182,7 @@ double Track::eval_kappa(double s) const {
     return this->interp(this->coeffs_kappa, s);
 }
 
-double Track::eval_track_width(double s) const {
+double Track::eval_width(double s) const {
     return this->interp(this->coeffs_width, s);
 }
 
