@@ -118,6 +118,14 @@ ament_auto_add_library(brains2_control SHARED src/control/controller.cpp ${gener
 target_link_libraries(brains2_control fatrop)
 target_include_directories(brains2_control PUBLIC src/control)
 
+ament_auto_add_executable(control_node src/control/control_node.cpp)
+target_link_libraries(control_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  yaml-cpp::yaml-cpp
+  brains2_common
+  brains2_control
+)
+
 if (CMAKE_TESTING_ENABLED)
   ament_add_gtest(test_controller tests/control/test_controller.cpp)
   target_link_libraries(test_controller brains2_common brains2_control)
