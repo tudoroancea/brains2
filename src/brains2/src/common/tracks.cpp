@@ -69,12 +69,12 @@ brains2::common::Track::Track(const std::filesystem::path& csv_file) {
     vals_kappa.resize(row_count);
     vals_width.resize(row_count);
     for (long long i = 0; i < row_count; ++i) {
-        vals_s(i) = doc.GetCell<double>("s_ref", i);
-        vals_X(i) = doc.GetCell<double>("X_ref", i);
-        vals_Y(i) = doc.GetCell<double>("Y_ref", i);
-        vals_phi(i) = doc.GetCell<double>("phi_ref", i);
-        vals_kappa(i) = doc.GetCell<double>("kappa_ref", i);
-        vals_width(i) = doc.GetCell<double>("track_width", i);
+        vals_s(i) = doc.GetCell<double>("s", i);
+        vals_X(i) = doc.GetCell<double>("X", i);
+        vals_Y(i) = doc.GetCell<double>("Y", i);
+        vals_phi(i) = doc.GetCell<double>("phi", i);
+        vals_kappa(i) = doc.GetCell<double>("kappa", i);
+        vals_width(i) = doc.GetCell<double>("w", i);
     }
 }
 
