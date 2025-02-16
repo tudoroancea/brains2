@@ -1,6 +1,6 @@
 # the method to isolate the center line is inspired by the following blog post
 # https://blogs.mathworks.com/student-lounge/2022/10/03/path-planning-for-formula-student-driverless-cars-using-delaunay-triangulation/
-
+import sys
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ from scipy.sparse import kron as spkron
 from qpsolvers import solve_qp
 from icecream import ic
 
-track_name = "alpha"
+track_name = len(sys.argv) > 1 and sys.argv[1] or "alpha"
 data = np.loadtxt(f"{track_name}.csv", delimiter=",", dtype=str, skiprows=1)
 # extract numpy arrays
 blue_cones = data[data[:, 0] == "blue", 1:].astype(float)
@@ -49,14 +49,18 @@ middle_points = [
 ]
 
 # order middle points to form a continuous line
-new_middle_points = [np.array([0, 0])]
+ordered_middle_points = [np.array([0, 0])]
 while len(middle_points) > 0:
-    min_idx = np.argmin(np.linalg.norm(middle_points - new_middle_points[-1], axis=1))
-    new_middle_points.append(middle_points[min_idx])
+    min_idx = np.argmin(
+        np.linalg.norm(middle_points - ordered_middle_points[-1], axis=1)
+    )
+    ordered_middle_points.append(middle_points[min_idx])
     middle_points = np.delete(middle_points, min_idx, axis=0)
-middle_points = np.array(new_middle_points)
 
-ic(middle_points[0], middle_points[-1])
+# technically, it may happen that we started in the wrong order, so reverse if it is the case
+if ordered_middle_points[1][1] < ordered_middle_points[0][1]:
+    ordered_middle_points = ordered_middle_points[::-1]
+center_line_points = np.array(ordered_middle_points)
 
 
 def fit_spline(
@@ -326,7 +330,7 @@ def unwrap_to_pi(x: np.ndarray) -> np.ndarray:
 
 
 # splines and stuff
-coeffs_X, coeffs_Y = fit_spline(path=middle_points, curv_weight=2.0)
+coeffs_X, coeffs_Y = fit_spline(center_line_points, curv_weight=2.0)
 delta_s = compute_spline_interval_lengths(coeffs_X=coeffs_X, coeffs_Y=coeffs_Y)
 X_cen, Y_cen, idx_interp, t_interp, s_cen = uniformly_sample_spline(
     coeffs_X=coeffs_X, coeffs_Y=coeffs_Y, delta_s=delta_s, n_samples=500
@@ -334,12 +338,12 @@ X_cen, Y_cen, idx_interp, t_interp, s_cen = uniformly_sample_spline(
 phi_cen = get_heading(coeffs_X, coeffs_Y, idx_interp, t_interp)
 kappa_cen = get_curvature(coeffs_X, coeffs_Y, idx_interp, t_interp)
 
-# lap_length = s_cen[-1] + np.hypot(X_cen[-1] - X_cen[0], Y_cen[-1] - Y_cen[0])
-# s_cen = np.concatenate((s_cen - lap_length, s_cen, s_cen + lap_length))
-# X_cen = np.concatenate((X_cen, X_cen, X_cen))
-# Y_cen = np.concatenate((Y_cen, Y_cen, Y_cen))
-# phi_cen = unwrap_to_pi(np.concatenate((phi_cen, phi_cen, phi_cen)))
-# kappa_cen = np.concatenate((kappa_cen, kappa_cen, kappa_cen))
+lap_length = s_cen[-1] + np.hypot(X_cen[-1] - X_cen[0], Y_cen[-1] - Y_cen[0])
+s_cen = np.concatenate((s_cen - lap_length, s_cen, s_cen + lap_length))
+X_cen = np.concatenate((X_cen, X_cen, X_cen))
+Y_cen = np.concatenate((Y_cen, Y_cen, Y_cen))
+phi_cen = unwrap_to_pi(np.concatenate((phi_cen, phi_cen, phi_cen)))
+kappa_cen = np.concatenate((kappa_cen, kappa_cen, kappa_cen))
 np.savetxt(
     f"{track_name}_center_line.csv",
     np.column_stack(

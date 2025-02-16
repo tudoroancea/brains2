@@ -34,14 +34,12 @@ private:
 
     void on_pose(const Pose::SharedPtr msg) {
         // Project pose onto track
-        auto [s_proj, _] = track->project(Eigen::Vector2d(msg->x, msg->y), this->last_s, 5.0);
+        auto [s_proj, _] = track->project(Eigen::Vector2d(msg->x, msg->y), this->last_s, 30.0);
         this->last_s = std::fmod(s_proj, this->track->length() / 3);
 
         // Take 5m behind and 10 in front
         size_t start_id = track->find_interval(s_proj - 5), proj_id = track->find_interval(s_proj),
                end_id = track->find_interval(s_proj + 10) + 1;
-
-        IC(s_proj, start_id, proj_id, end_id);
 
         // Update track estimate message
         track_estimate_msg.header.stamp = this->now();

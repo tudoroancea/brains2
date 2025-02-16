@@ -76,7 +76,7 @@ double brains2::common::Track::length() const {
     // This class usually represents 'open' tracks. When it is used to represent a closed track, the
     // length will be slightly off as we should add
     //  std::hypot(vals_X(size - 1) - vals_X(0), vals_Y(size - 1) - vals_Y(0))
-    return *vals_s.end() - *vals_s.begin();
+    return vals_s(vals_s.size() - 1) - vals_s(0);
 }
 size_t brains2::common::Track::size() const {
     return vals_s.size();
