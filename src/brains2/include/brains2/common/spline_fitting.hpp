@@ -28,6 +28,14 @@ enum class SplineFittingError {
     EMPTY_INPUT
 };
 
+/*
+ * @brief Struct to store the parametrization of a spline
+ *        X: x-coordinates of the spline
+ *        Y: y-coordinates of the spline
+ *        idx: indices of the spline coefficients
+ *        t: continuous parameter along the spline (0 <= t <= 1)
+ *        s: cumulative arc length
+ */
 struct SplineParametrization {
     Eigen::VectorXd X;
     Eigen::VectorXd Y;
@@ -35,6 +43,15 @@ struct SplineParametrization {
     Eigen::VectorXd t;
     Eigen::VectorXd s;
 };
+
+/*
+ * @brief Class to fit a cubic spline to a given path
+ *        The path is given as a matrix with shape (N, 2) where N is the number of points
+ *        Can get the heading of the tangent vector and the curvature of the spline
+ * @params: path: matrix with shape (N, 2) where N is the number of points
+ *          curv_weight: weight for the curvature term in the optimization problem
+ *          verbose: flag to print debug information
+ */
 
 class SplineFitter {
 public:

@@ -16,6 +16,19 @@ enum class CenterLineEstimationError {
     SPLINE_FITTING_ERROR
 };
 
+/*
+ * @brief Function to compute the center line between two boundaries
+ * @params X_blue: x-coordinates of the blue boundary
+ *         Y_blue: y-coordinates of the blue boundary
+ *         X_yellow: x-coordinates of the yellow boundary
+ *         Y_yellow: y-coordinates of the yellow boundary
+ *         curv_weight: weight for the curvature term in the optimization problem
+ *         no_interp_points: number of points to interpolate for the center line after spline
+ *         fitting
+           verbose: flag to print debug information
+ * @return A pair of vectors with the x and y coordinates of the center line
+ */
+
 tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
     const Eigen::VectorXd& X_blue,
     const Eigen::VectorXd& Y_blue,
