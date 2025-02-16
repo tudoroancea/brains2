@@ -10,7 +10,7 @@ from scipy.sparse import kron as spkron
 from qpsolvers import solve_qp
 from icecream import ic
 
-track_name = "gamma"
+track_name = "alpha"
 data = np.loadtxt(f"{track_name}.csv", delimiter=",", dtype=str, skiprows=1)
 # extract numpy arrays
 blue_cones = data[data[:, 0] == "blue", 1:].astype(float)
@@ -334,19 +334,20 @@ X_cen, Y_cen, idx_interp, t_interp, s_cen = uniformly_sample_spline(
 phi_cen = get_heading(coeffs_X, coeffs_Y, idx_interp, t_interp)
 kappa_cen = get_curvature(coeffs_X, coeffs_Y, idx_interp, t_interp)
 
-lap_length = s_cen[-1] + np.hypot(X_cen[-1] - X_cen[0], Y_cen[-1] - Y_cen[0])
-s_cen = np.concatenate((s_cen - lap_length, s_cen, s_cen + lap_length))
-X_cen = np.concatenate((X_cen, X_cen, X_cen))
-Y_cen = np.concatenate((Y_cen, Y_cen, Y_cen))
-phi_cen = unwrap_to_pi(np.concatenate((phi_cen, phi_cen, phi_cen)))
-kappa_cen = np.concatenate((kappa_cen, kappa_cen, kappa_cen))
+# lap_length = s_cen[-1] + np.hypot(X_cen[-1] - X_cen[0], Y_cen[-1] - Y_cen[0])
+# s_cen = np.concatenate((s_cen - lap_length, s_cen, s_cen + lap_length))
+# X_cen = np.concatenate((X_cen, X_cen, X_cen))
+# Y_cen = np.concatenate((Y_cen, Y_cen, Y_cen))
+# phi_cen = unwrap_to_pi(np.concatenate((phi_cen, phi_cen, phi_cen)))
+# kappa_cen = np.concatenate((kappa_cen, kappa_cen, kappa_cen))
 np.savetxt(
-    f"{track_name}_center_line.txt",
+    f"{track_name}_center_line.csv",
     np.column_stack(
         (s_cen, X_cen, Y_cen, phi_cen, kappa_cen, 1.5 * np.ones_like(s_cen))
     ),
     header="s,X,Y,phi,kappa,w",
     comments="",
+    delimiter=",",
 )
 
 # plot things
@@ -367,7 +368,8 @@ plt.triplot(
 plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color="blue", marker="^", s=10)
 plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color="yellow", marker="^", s=10)
 plt.scatter(orange_cones[:, 0], orange_cones[:, 1], color="orange", marker="^", s=20)
-plt.plot(middle_points[:, 0], middle_points[:, 1], color="green", linewidth=2)
+plt.plot(X_cen, Y_cen, color="green", linestyle="--", linewidth=2)
+plt.scatter(middle_points[:, 0], middle_points[:, 1], color="green", s=20)
 plt.axis("equal")
 plt.tight_layout()
 # plt.savefig("BE.png", dpi=300)

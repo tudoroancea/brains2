@@ -5,88 +5,81 @@
 #include <stdexcept>
 #include <vector>
 #include "brains2/common/math.hpp"
+#include "brains2/external/icecream.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
 namespace brains2::common {
 
-Track::Track(const std::vector<double>& s,
-             const std::vector<double>& X,
-             const std::vector<double>& Y,
-             const std::vector<double>& phi,
-             const std::vector<double>& kappa,
-             const std::vector<double>& width) {
+tl::optional<Track> Track::from_values(const std::vector<double>& s,
+                                       const std::vector<double>& X,
+                                       const std::vector<double>& Y,
+                                       const std::vector<double>& phi,
+                                       const std::vector<double>& kappa,
+                                       const std::vector<double>& width) {
     // Check that all the vectors have the same size
     const size_t size = s.size();
     if (size != X.size() || size != Y.size() || size != phi.size() || size != kappa.size() ||
         size != width.size()) {
-        throw std::invalid_argument("All vectors must have the same size");
+        return tl::nullopt;
     }
     // Copy the data in the Eigen vectors
     // (the Eigen::Map object creates a view to the data in the std::vector,
     //  but assigning it to an Eigen::Vector copies it)
-    this->vals_s = Eigen::VectorXd::Map(s.data(), s.size());
-    this->vals_X = Eigen::VectorXd::Map(X.data(), X.size());
-    this->vals_Y = Eigen::VectorXd::Map(Y.data(), Y.size());
-    this->vals_phi = Eigen::VectorXd::Map(phi.data(), phi.size());
-    this->vals_kappa = Eigen::VectorXd::Map(kappa.data(), kappa.size());
-    this->vals_width = Eigen::VectorXd::Map(width.data(), width.size());
+    Track track{};
+    track.vals_s = Eigen::VectorXd::Map(s.data(), s.size());
+    track.vals_X = Eigen::VectorXd::Map(X.data(), X.size());
+    track.vals_Y = Eigen::VectorXd::Map(Y.data(), Y.size());
+    track.vals_phi = Eigen::VectorXd::Map(phi.data(), phi.size());
+    track.vals_kappa = Eigen::VectorXd::Map(kappa.data(), kappa.size());
+    track.vals_width = Eigen::VectorXd::Map(width.data(), width.size());
 
     // Compute the differences in progress s
     auto delta_s =
-        this->vals_s.tail(this->vals_s.size() - 1) - this->vals_s.head(this->vals_s.size() - 1);
+        track.vals_s.tail(track.vals_s.size() - 1) - track.vals_s.head(track.vals_s.size() - 1);
 
     // fit linear splines
-    this->coeffs_X.resize(size - 1, 2);
-    this->coeffs_Y.resize(size - 1, 2);
-    this->coeffs_phi.resize(size - 1, 2);
-    this->coeffs_kappa.resize(size - 1, 2);
-    this->coeffs_width.resize(size - 1, 2);
+    track.coeffs_X.resize(size - 1, 2);
+    track.coeffs_Y.resize(size - 1, 2);
+    track.coeffs_phi.resize(size - 1, 2);
+    track.coeffs_kappa.resize(size - 1, 2);
+    track.coeffs_width.resize(size - 1, 2);
     for (size_t i = 0; i < size - 1; ++i) {
-        this->coeffs_X(i, 0) = this->vals_X(i);
-        this->coeffs_X(i, 1) = (this->vals_X(i + 1) - this->vals_X(i)) / delta_s(i);
+        track.coeffs_X(i, 0) = track.vals_X(i);
+        track.coeffs_X(i, 1) = (track.vals_X(i + 1) - track.vals_X(i)) / delta_s(i);
 
-        this->coeffs_Y(i, 0) = this->vals_Y(i);
-        this->coeffs_Y(i, 1) = (this->vals_Y(i + 1) - this->vals_Y(i)) / delta_s(i);
+        track.coeffs_Y(i, 0) = track.vals_Y(i);
+        track.coeffs_Y(i, 1) = (track.vals_Y(i + 1) - track.vals_Y(i)) / delta_s(i);
 
-        this->coeffs_phi(i, 0) = this->vals_phi(i);
-        this->coeffs_phi(i, 1) = (this->vals_phi(i + 1) - this->vals_phi(i)) / delta_s(i);
+        track.coeffs_phi(i, 0) = track.vals_phi(i);
+        track.coeffs_phi(i, 1) = (track.vals_phi(i + 1) - track.vals_phi(i)) / delta_s(i);
 
-        this->coeffs_kappa(i, 0) = this->vals_kappa(i);
-        this->coeffs_kappa(i, 1) = (this->vals_kappa(i + 1) - this->vals_kappa(i)) / delta_s(i);
+        track.coeffs_kappa(i, 0) = track.vals_kappa(i);
+        track.coeffs_kappa(i, 1) = (track.vals_kappa(i + 1) - track.vals_kappa(i)) / delta_s(i);
 
-        this->coeffs_width(i, 0) = this->vals_width(i);
-        this->coeffs_width(i, 1) = (this->vals_width(i + 1) - this->vals_width(i)) / delta_s(i);
+        track.coeffs_width(i, 0) = track.vals_width(i);
+        track.coeffs_width(i, 1) = (track.vals_width(i + 1) - track.vals_width(i)) / delta_s(i);
     }
+    return track;
 }
 
-brains2::common::Track::Track(const std::filesystem::path& csv_file) {
+tl::optional<Track> brains2::common::Track::from_file(const std::filesystem::path& csv_file) {
     rapidcsv::Document doc(csv_file.string());
-    auto row_count = static_cast<long long>(doc.GetRowCount());
-    vals_s.resize(row_count);
-    vals_X.resize(row_count);
-    vals_Y.resize(row_count);
-    vals_phi.resize(row_count);
-    vals_kappa.resize(row_count);
-    vals_width.resize(row_count);
-    for (long long i = 0; i < row_count; ++i) {
-        vals_s(i) = doc.GetCell<double>("s", i);
-        vals_X(i) = doc.GetCell<double>("X", i);
-        vals_Y(i) = doc.GetCell<double>("Y", i);
-        vals_phi(i) = doc.GetCell<double>("phi", i);
-        vals_kappa(i) = doc.GetCell<double>("kappa", i);
-        vals_width(i) = doc.GetCell<double>("w", i);
-    }
+    return Track::from_values(doc.GetColumn<double>("s"),
+                              doc.GetColumn<double>("X"),
+                              doc.GetColumn<double>("Y"),
+                              doc.GetColumn<double>("phi"),
+                              doc.GetColumn<double>("kappa"),
+                              doc.GetColumn<double>("w"));
 }
 
 double brains2::common::Track::length() const {
-    return -vals_s(0);
+    // This class usually represents 'open' tracks. When it is used to represent a closed track, the
+    // length will be slightly off as we should add
+    //  std::hypot(vals_X(size - 1) - vals_X(0), vals_Y(size - 1) - vals_Y(0))
+    return *vals_s.end() - *vals_s.begin();
 }
 size_t brains2::common::Track::size() const {
     return vals_s.size();
-}
-
-static size_t locate_index(const Eigen::VectorXd& v, double x) {
-    return std::upper_bound(v.data(), v.data() + v.size(), x) - v.data() - 1;
 }
 
 static double angle3pt(const Eigen::Vector2d& a,
@@ -99,7 +92,7 @@ static double angle3pt(const Eigen::Vector2d& a,
 double brains2::common::Track::interp(const Eigen::MatrixXd& coeffs, double s, int ind) const {
     // find i such that s_ref[i] <= s < s_ref[i+1]
     if (ind < 0) {
-        ind = locate_index(vals_s, s);
+        ind = find_interval(s);
     }
     // find the value of the spline at s
     return coeffs(ind, 0) + coeffs(ind, 1) * (s - vals_s(ind));
@@ -112,7 +105,7 @@ std::tuple<double, Eigen::Vector2d> Track::project(const Eigen::Vector2d& car_po
     // within s_guess +- s_tol
     double s_low = std::max(s_guess - s_tol, vals_s(0)),
            s_up = std::min(s_guess + s_tol, vals_s(vals_s.size() - 1));
-    long long id_low = locate_index(vals_s, s_low), id_up = locate_index(vals_s, s_up);
+    long long id_low = find_interval(s_low), id_up = find_interval(s_up);
     if (id_low > 0) {
         --id_low;
     }
@@ -199,6 +192,34 @@ Eigen::Vector2d Track::frenet_to_cartesian(const double& s, const double& n) con
     double phi_ref = this->interp(this->coeffs_phi, s);
     Eigen::Vector2d normal(-std::sin(phi_ref), std::cos(phi_ref));
     return Eigen::Vector2d(X_ref + n * normal(0), Y_ref + n * normal(1));
+}
+
+size_t brains2::common::Track::find_interval(double s) const {
+    return std::upper_bound(vals_s.data(), vals_s.data() + vals_s.size(), s) - vals_s.data() - 1;
+}
+
+const Eigen::VectorXd& brains2::common::Track::get_vals_s() const {
+    return this->vals_s;
+}
+
+const Eigen::VectorXd& brains2::common::Track::get_vals_X() const {
+    return this->vals_X;
+}
+
+const Eigen::VectorXd& brains2::common::Track::get_vals_Y() const {
+    return this->vals_Y;
+}
+
+const Eigen::VectorXd& brains2::common::Track::get_vals_phi() const {
+    return this->vals_phi;
+}
+
+const Eigen::VectorXd& brains2::common::Track::get_vals_kappa() const {
+    return this->vals_kappa;
+}
+
+const Eigen::VectorXd& brains2::common::Track::get_vals_width() const {
+    return this->vals_width;
 }
 
 }  // namespace brains2::common
