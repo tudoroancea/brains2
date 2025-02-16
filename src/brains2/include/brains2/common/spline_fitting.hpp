@@ -1,7 +1,5 @@
-// spline_fitter.hpp
-
-#ifndef SPLINE_FITTER_HPP
-#define SPLINE_FITTER_HPP
+#ifndef SPLINE_FITTING_HPP
+#define SPLINE_FITTING_HPP
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -114,4 +112,4 @@ private:
 
 }  // namespace brains2::track_estimation
 
-#endif  // SPLINE_FITTER_HPP
+#endif  // SPLINE_FITTING_HPP

@@ -1,4 +1,3 @@
-// main.cpp
 #include <chrono>
 #include <cmath>
 #include <Eigen/Dense>

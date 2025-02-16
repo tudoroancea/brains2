@@ -1,5 +1,3 @@
-// center_line_estimation.hpp
-
 #ifndef CENTER_LINE_ESTIMATION_HPP
 #define CENTER_LINE_ESTIMATION_HPP
 

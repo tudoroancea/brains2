@@ -1,5 +1,3 @@
-// SplineFitter.cpp
-
 #include "brains2/common/spline_fitting.hpp"
 #include <osqp/osqp.h>
 #include <OsqpEigen/OsqpEigen.h>
