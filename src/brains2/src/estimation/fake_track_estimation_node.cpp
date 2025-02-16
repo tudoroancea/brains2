@@ -35,7 +35,7 @@ private:
 
     void on_pose(const Pose::SharedPtr msg) {
         // Project pose onto track
-        auto [s_proj, _] = track->project(Eigen::Vector2d(msg->x, msg->y), this->last_s, 30.0);
+        auto [s_proj, _] = track->project(msg->x, msg->y, this->last_s, 30.0);
 
         // Update last s value (don't forget the Track here represents 3 laps)
         this->last_s = std::fmod(s_proj, this->track->length() / 3);

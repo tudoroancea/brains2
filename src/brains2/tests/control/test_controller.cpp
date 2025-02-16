@@ -12,7 +12,8 @@ TEST(ControllerTestSuite, bruh) {
     std::vector<double> phi = {0.0, 0.0, 0.0, 0.0};
     std::vector<double> kappa = {0.0, 0.0, 0.0, 0.0};
     std::vector<double> width = {3.0, 3.0, 3.0, 3.0};
-    auto track = Track(s, X, Y, phi, kappa, width);
+    auto track = Track::from_values(s, X, Y, phi, kappa, width);
+    ASSERT_TRUE(track.has_value());
 
     Controller controller(
         Controller::ModelParams{
@@ -33,5 +34,5 @@ TEST(ControllerTestSuite, bruh) {
             .tau_max = 100.0,
         },
         Controller::CostParams{.delta_s_ref = 0.25, .v_x_ref = 5.0, .q_s = 0.0});
-    controller.compute_control(Controller::State{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, track);
+    controller.compute_control(Controller::State{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, *track);
 }

@@ -142,13 +142,19 @@ private:
     }
 
     void track_estimate_cb(const TrackEstimate::SharedPtr msg) {
-        const brains2::common::Track track(msg->s_cen,
-                                           msg->x_cen,
-                                           msg->y_cen,
-                                           msg->phi_cen,
-                                           msg->kappa_cen,
-                                           msg->w_cen);
-        const auto controls = this->controller->compute_control(this->state, track);
+        const auto track = brains2::common::Track::from_values(msg->s_cen,
+                                                               msg->x_cen,
+                                                               msg->y_cen,
+                                                               msg->phi_cen,
+                                                               msg->kappa_cen,
+                                                               msg->w_cen);
+        if (!track) {
+            RCLCPP_ERROR(this->get_logger(),
+                         "Could not construct Track object from received message (arrays with "
+                         "different lengths ?)");
+        }
+
+        const auto controls = this->controller->compute_control(this->state, *track);
         if (!controls.has_value()) {
             RCLCPP_ERROR(this->get_logger(),
                          "Error in MPC solver: %s",
