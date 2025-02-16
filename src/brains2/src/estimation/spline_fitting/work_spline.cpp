@@ -1,12 +1,18 @@
 // main.cpp
 #include <chrono>
 #include <cmath>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCore>
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "brains2/estimation/spline_fitting/spline_fitter.h"
+#include "brains2/common/spline_fitting.hpp"
+#include "brains2/estimation/center_line_estimation.hpp"
 #include "brains2/external/icecream.hpp"
 #include "brains2/external/rapidcsv.hpp"
+
+using namespace brains2::track_estimation;
 
 int main() {
     const std::string path_input = "src/brains2/src/estimation/alpha_cones.csv";
@@ -88,8 +94,7 @@ int main() {
         return 1;
     }
 
-    auto [X_interp_blue, Y_interp_blue, idx_interp_blue, t_interp_blue, s_interp_blue] =
-        sample_result_blue.value();
+    SplineParametrization spline_interp_blue = sample_result_blue.value();
 
     // Yellow cones
     auto expected_yellow_spline_fitter = SplineFitter::create(yellow_cones, curv_weight);
@@ -122,24 +127,25 @@ int main() {
         return 1;
     }
 
-    auto [X_interp_yellow, Y_interp_yellow, idx_interp_yellow, t_interp_yellow, s_interp_yellow] =
-        sample_result_yellow.value();
+    SplineParametrization spline_interp_yellow = sample_result_yellow.value();
 
-    auto expected_center_line = SplineFitter::compute_center_line(X_interp_blue,
-                                                                  Y_interp_blue,
-                                                                  X_interp_yellow,
-                                                                  Y_interp_yellow,
-                                                                  curv_weight,
-                                                                  verbose);
+    auto expected_center_line = compute_center_line(spline_interp_blue.X,
+                                                    spline_interp_blue.Y,
+                                                    spline_interp_yellow.X,
+                                                    spline_interp_yellow.Y,
+                                                    curv_weight,
+                                                    resample_points,
+                                                    verbose);
     if (!expected_center_line) {
-        std::cerr << "Error computing center line: "
-                  << SplineFitter::to_string(expected_center_line.error()) << "\n";
+        std::cerr << "Error computing center line: " << to_string(expected_center_line.error())
+                  << "\n";
         return 1;
     }
 
     VectorPair center_line = expected_center_line.value();
 
-    auto excpected_heading_blue = blue_spline_fitter.get_heading(idx_interp_blue, t_interp_blue);
+    auto excpected_heading_blue =
+        blue_spline_fitter.get_heading(spline_interp_blue.idx, spline_interp_blue.t);
 
     if (!excpected_heading_blue) {
         std::cerr << "Error computing heading for blue cones: "
@@ -148,7 +154,7 @@ int main() {
     }
 
     auto excpected_heading_yellow =
-        yellow_spline_fitter.get_heading(idx_interp_yellow, t_interp_yellow);
+        yellow_spline_fitter.get_heading(spline_interp_yellow.idx, spline_interp_yellow.t);
 
     if (!excpected_heading_yellow) {
         std::cerr << "Error computing heading for yellow cones: "
@@ -157,7 +163,7 @@ int main() {
     }
 
     auto excpected_curvature_blue =
-        blue_spline_fitter.get_curvature(idx_interp_blue, t_interp_blue);
+        blue_spline_fitter.get_curvature(spline_interp_blue.idx, spline_interp_blue.t);
 
     if (!excpected_curvature_blue) {
         std::cerr << "Error computing curvature for blue cones: "
@@ -166,7 +172,7 @@ int main() {
     }
 
     auto excpected_curvature_yellow =
-        yellow_spline_fitter.get_curvature(idx_interp_yellow, t_interp_yellow);
+        yellow_spline_fitter.get_curvature(spline_interp_yellow.idx, spline_interp_yellow.t);
 
     if (!excpected_curvature_yellow) {
         std::cerr << "Error computing curvature for yellow cones: "
@@ -183,11 +189,11 @@ int main() {
     // For example, write to CSV:
     std::ofstream file(path_output);
     file << "color,X,Y\n";
-    for (int i = 0; i < X_interp_blue.size(); ++i) {
-        file << "blue," << X_interp_blue(i) << "," << Y_interp_blue(i) << "\n";
+    for (int i = 0; i < spline_interp_blue.X.size(); ++i) {
+        file << "blue," << spline_interp_blue.X(i) << "," << spline_interp_blue.Y(i) << "\n";
     }
-    for (int i = 0; i < X_interp_yellow.size(); ++i) {
-        file << "yellow," << X_interp_yellow(i) << "," << Y_interp_yellow(i) << "\n";
+    for (int i = 0; i < spline_interp_yellow.X.size(); ++i) {
+        file << "yellow," << spline_interp_yellow.X(i) << "," << spline_interp_yellow.Y(i) << "\n";
     }
     for (int i = 0; i < center_line.first.size(); ++i) {
         file << "center," << center_line.first(i) << "," << center_line.second(i) << "\n";

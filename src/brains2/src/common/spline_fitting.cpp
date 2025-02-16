@@ -1,10 +1,13 @@
 // SplineFitter.cpp
 
-#include "brains2/estimation/spline_fitting/spline_fitter.h"
+#include "brains2/common/spline_fitting.hpp"
+#include <osqp/osqp.h>
+#include <OsqpEigen/OsqpEigen.h>
 #include <cmath>
 #include <numeric>
-#include <set>
 #include "brains2/external/icecream.hpp"
+
+namespace brains2::track_estimation {
 
 SplineFitter::SplineFitter(const Eigen::MatrixXd& path, double curv_weight, bool verbose)
     : path(path), curv_weight(curv_weight), verbose(verbose) {
@@ -269,10 +272,8 @@ tl::expected<void, SplineFittingError> SplineFitter::compute_spline_interval_len
     return {};
 }
 
-tl::expected<
-    std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::VectorXd, Eigen::VectorXd>,
-    SplineFittingError>
-SplineFitter::uniformly_sample_spline(int n_samples) {
+tl::expected<SplineParametrization, SplineFittingError> SplineFitter::uniformly_sample_spline(
+    int n_samples) {
     // n_samples =
     //     n_samples - 1;  // Subtract 1 to exclude the last point which will be added at the end
     // Get coefficients
@@ -288,7 +289,7 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
         return tl::make_unexpected(SplineFittingError::DELTA_S_LENGTH);
     }
 
-    // Compute cumulative sum of delta_s_
+    // Compute cumulative sum of delta_s
     Eigen::VectorXd s(N);
     std::partial_sum(delta_s.data(), delta_s.data() + N, s.data());
 
@@ -337,7 +338,7 @@ SplineFitter::uniformly_sample_spline(int n_samples) {
             coeffs_Y(idx, 0) + coeffs_Y(idx, 1) * t + coeffs_Y(idx, 2) * t2 + coeffs_Y(idx, 3) * t3;
     }
 
-    return std::make_tuple(X_interp, Y_interp, idx_interp, t_interp, s_interp);
+    return SplineParametrization{X_interp, Y_interp, idx_interp, t_interp, s_interp};
 }
 
 // Function to compute heading (phi)
@@ -447,155 +448,6 @@ tl::expected<Eigen::VectorXd, SplineFittingError> SplineFitter::get_curvature(
     return kappa;
 }
 
-// tl::expected<VectorPair, SplineFittingError> SplineFitter::compute_center_line(
-//     Eigen::VectorXd X_blue,
-//     Eigen::VectorXd Y_blue,
-//     Eigen::VectorXd X_yellow,
-//     Eigen::VectorXd Y_yellow) {
-//     long sizes[4] = {X_blue.size(), Y_blue.size(), X_yellow.size(), Y_yellow.size()};
-//     // check if all sizes are equal
-//     if (not std::all_of(std::begin(sizes), std::end(sizes), [&](long size) {
-//             return size == sizes[0];
-//         })) {
-//         return tl::make_unexpected(SplineFittingError::SIZE_MISMATCH);
-//     }
-
-//     Eigen::VectorXd X_center = (X_blue + X_yellow) / 2;
-//     Eigen::VectorXd Y_center = (Y_blue + Y_yellow) / 2;
-
-//     return std::make_pair(X_center, Y_center);
-// }
-
-tl::expected<VectorPair, SplineFittingError> SplineFitter::compute_center_line(
-    const Eigen::VectorXd& X_blue,
-    const Eigen::VectorXd& Y_blue,
-    const Eigen::VectorXd& X_yellow,
-    const Eigen::VectorXd& Y_yellow,
-    double curv_weight,
-    bool verbose) {
-    // Check that sizes of X and Y are equal for each boundary
-    if (X_blue.size() != Y_blue.size() || X_yellow.size() != Y_yellow.size()) {
-        return tl::make_unexpected(SplineFittingError::SIZE_MISMATCH);
-    }
-
-    using IndexPair = std::pair<int, int>;
-    std::set<IndexPair> matched_pairs;
-
-    // Find closest points from blue to yellow boundary
-    for (int i = 0; i < X_blue.size(); ++i) {
-        Eigen::Vector2d blue_point(X_blue[i], Y_blue[i]);
-
-        double min_dist_sq = std::numeric_limits<double>::max();
-        int min_index = -1;
-        for (int j = 0; j < X_yellow.size(); ++j) {
-            Eigen::Vector2d yellow_point(X_yellow[j], Y_yellow[j]);
-            double dist_sq = (blue_point - yellow_point).squaredNorm();
-            if (dist_sq < min_dist_sq) {
-                min_dist_sq = dist_sq;
-                min_index = j;
-            }
-        }
-
-        matched_pairs.insert({i, min_index});
-    }
-
-    // Find closest points from yellow to blue boundary
-    for (int j = 0; j < X_yellow.size(); ++j) {
-        Eigen::Vector2d yellow_point(X_yellow[j], Y_yellow[j]);
-
-        double min_dist_sq = std::numeric_limits<double>::max();
-        int min_index = -1;
-        for (int i = 0; i < X_blue.size(); ++i) {
-            Eigen::Vector2d blue_point(X_blue[i], Y_blue[i]);
-            double dist_sq = (yellow_point - blue_point).squaredNorm();
-            if (dist_sq < min_dist_sq) {
-                min_dist_sq = dist_sq;
-                min_index = i;
-            }
-        }
-
-        matched_pairs.insert({min_index, j});
-    }
-
-    // Precompute cumulative distances along blue and yellow boundaries
-    std::vector<double> cumulative_distances_blue(X_blue.size(), 0.0);
-    for (int i = 1; i < X_blue.size(); ++i) {
-        Eigen::Vector2d prev_point(X_blue[i - 1], Y_blue[i - 1]);
-        Eigen::Vector2d curr_point(X_blue[i], Y_blue[i]);
-        cumulative_distances_blue[i] =
-            cumulative_distances_blue[i - 1] + (curr_point - prev_point).norm();
-    }
-
-    std::vector<double> cumulative_distances_yellow(X_yellow.size(), 0.0);
-    for (int j = 1; j < X_yellow.size(); ++j) {
-        Eigen::Vector2d prev_point(X_yellow[j - 1], Y_yellow[j - 1]);
-        Eigen::Vector2d curr_point(X_yellow[j], Y_yellow[j]);
-        cumulative_distances_yellow[j] =
-            cumulative_distances_yellow[j - 1] + (curr_point - prev_point).norm();
-    }
-
-    // Compute middle points and parameters for ordering
-    std::vector<std::pair<Eigen::Vector2d, double>> center_points_with_param;
-    for (const auto& [i, j] : matched_pairs) {
-        Eigen::Vector2d blue_point(X_blue[i], Y_blue[i]);
-        Eigen::Vector2d yellow_point(X_yellow[j], Y_yellow[j]);
-        Eigen::Vector2d center_point = (blue_point + yellow_point) / 2.0;
-
-        // Average cumulative distance for ordering
-        double param = (cumulative_distances_blue[i] + cumulative_distances_yellow[j]) / 2.0;
-        center_points_with_param.emplace_back(center_point, param);
-    }
-
-    // Sort center points based on the computed parameter
-    std::sort(center_points_with_param.begin(),
-              center_points_with_param.end(),
-              [](const auto& a, const auto& b) { return a.second < b.second; });
-
-    // Extract X_center and Y_center
-
-    Eigen::MatrixXd path = Eigen::MatrixXd(center_points_with_param.size(), 2);
-    for (size_t idx = 0; idx < center_points_with_param.size(); ++idx) {
-        path(idx, 0) = center_points_with_param[idx].first.x();
-        path(idx, 1) = center_points_with_param[idx].first.y();
-    }
-
-    // Eigen::VectorXd X_center(center_points_with_param.size());
-    // Eigen::VectorXd Y_center(center_points_with_param.size());
-    // for (size_t idx = 0; idx < center_points_with_param.size(); ++idx) {
-    //     X_center[idx] = center_points_with_param[idx].first.x();
-    //     Y_center[idx] = center_points_with_param[idx].first.y();
-    // }
-
-    // Fit a spline to the center points
-    auto expected_center_line = SplineFitter::create(path, curv_weight, verbose);
-    if (!expected_center_line) {
-        return tl::make_unexpected(expected_center_line.error());
-    }
-
-    SplineFitter center_line_fitter = expected_center_line.value();
-    auto fit_result = center_line_fitter.fit_open_spline();
-
-    if (!fit_result) {
-        return tl::make_unexpected(fit_result.error());
-    }
-
-    auto length_result = center_line_fitter.compute_spline_interval_lengths();
-
-    if (!length_result) {
-        return tl::make_unexpected(length_result.error());
-    }
-
-    auto sample_result = center_line_fitter.uniformly_sample_spline(300);
-
-    if (!sample_result) {
-        return tl::make_unexpected(sample_result.error());
-    }
-
-    auto [X_center, Y_center, idx_interp, t_interp, s_interp] = sample_result.value();
-
-    return std::make_pair(X_center, Y_center);
-}
-
 const MatrixPair& SplineFitter::get_spline_coefs() const {
     return spline_coefficients;
 }
@@ -603,3 +455,5 @@ const MatrixPair& SplineFitter::get_spline_coefs() const {
 const Eigen::VectorXd& SplineFitter::get_delta_s() const {
     return delta_s;
 }
+
+}  // namespace brains2::track_estimation

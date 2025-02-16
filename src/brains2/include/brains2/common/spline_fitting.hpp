@@ -1,19 +1,18 @@
-// SplineFitter.hpp
+// spline_fitter.hpp
 
 #ifndef SPLINE_FITTER_HPP
 #define SPLINE_FITTER_HPP
 
-#include <osqp/osqp.h>
-#include <OsqpEigen/OsqpEigen.h>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCore>
-#include <tuple>
 #include <unsupported/Eigen/KroneckerProduct>
 #include "brains2/external/expected.hpp"
 
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;
 typedef std::pair<Eigen::VectorXd, Eigen::VectorXd> VectorPair;
+
+namespace brains2::track_estimation {
 
 enum class SplineFittingError {
     PATH_SHAPE,
@@ -31,9 +30,18 @@ enum class SplineFittingError {
     EMPTY_INPUT
 };
 
+struct SplineParametrization {
+    Eigen::VectorXd X;
+    Eigen::VectorXd Y;
+    Eigen::VectorXi idx;
+    Eigen::VectorXd t;
+    Eigen::VectorXd s;
+};
+
 class SplineFitter {
 public:
     // Constructor
+    SplineFitter() = delete;
     static tl::expected<SplineFitter, SplineFittingError> create(const Eigen::MatrixXd& path,
                                                                  double curv_weight = 1.0,
                                                                  bool verbose = false);
@@ -77,14 +85,6 @@ public:
     tl::expected<Eigen::VectorXd, SplineFittingError> get_curvature(
         const Eigen::VectorXi& idx_interp, const Eigen::VectorXd& t_interp);
 
-    static tl::expected<VectorPair, SplineFittingError> compute_center_line(
-        const Eigen::VectorXd& X_blue,
-        const Eigen::VectorXd& Y_blue,
-        const Eigen::VectorXd& X_yellow,
-        const Eigen::VectorXd& Y_yellow,
-        double curv_weight = 1.0,
-        bool verbose = false);
-
     // Method to fit the open spline
     tl::expected<void, SplineFittingError> fit_open_spline();
 
@@ -93,13 +93,7 @@ public:
         int no_interp_points = 100);
 
     // Method to uniformly sample the spline
-    tl::expected<std::tuple<Eigen::VectorXd,
-                            Eigen::VectorXd,
-                            Eigen::VectorXi,
-                            Eigen::VectorXd,
-                            Eigen::VectorXd>,
-                 SplineFittingError>
-    uniformly_sample_spline(int n_samples);
+    tl::expected<SplineParametrization, SplineFittingError> uniformly_sample_spline(int n_samples);
 
     // Getters for the coefficients and delta_s
     const MatrixPair& get_spline_coefs() const;
@@ -117,5 +111,7 @@ private:
 
     SplineFitter(const Eigen::MatrixXd& path, double curv_weight = 1.0, bool verbose = false);
 };
+
+}  // namespace brains2::track_estimation
 
 #endif  // SPLINE_FITTER_HPP

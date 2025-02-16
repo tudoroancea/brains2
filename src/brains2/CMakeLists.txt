@@ -93,15 +93,16 @@ endif()
 # estimation
 ####################################################################################################
 ament_auto_add_library(brains2_estimation SHARED
-    src/estimation/spline_fitting/spline_fitter.cpp
+    src/estimation/center_line_estimation.cpp src/common/spline_fitting.cpp
 )
+
 target_link_libraries(brains2_estimation OsqpEigen::OsqpEigen osqp::osqp)
 
 ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_fitting/work_spline.cpp)
 target_link_libraries(brains2_be_spline_test brains2_common brains2_estimation)
 
 if (CMAKE_TESTING_ENABLED)
-  ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitter.cpp)
+  ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
   target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
 endif()
 

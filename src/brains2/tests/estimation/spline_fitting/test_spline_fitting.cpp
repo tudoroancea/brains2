@@ -3,8 +3,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <iostream>
-#include "brains2/estimation/spline_fitting/spline_fitter.h"
+#include "brains2/common/spline_fitting.hpp"
 #include "brains2/external/icecream.hpp"
+
+using namespace brains2::track_estimation;
 
 TEST(SplineFitterTest, EmptyPath) {
     Eigen::MatrixXd empty_path;
@@ -27,19 +29,15 @@ TEST(SplineFitterTest, StraightLine) {
     SplineFitter spline_fitter = SplineFitter::create(path).value();
     auto fit_result = spline_fitter.fit_open_spline();
     ASSERT_TRUE(fit_result.has_value());
-
     auto length_result = spline_fitter.compute_spline_interval_lengths();
     ASSERT_TRUE(length_result.has_value());
-
     int n_samples = 10;
     auto sample_result = spline_fitter.uniformly_sample_spline(n_samples);
     ASSERT_TRUE(sample_result.has_value());
-
-    auto [X_interp, Y_interp, idx_interp, t_interp, s_interp] = sample_result.value();
-
+    SplineParametrization spline_interp = sample_result.value();
     // Check that the sampled points lie along y = x
-    for (int i = 0; i < X_interp.size(); ++i) {
-        EXPECT_NEAR(Y_interp(i), X_interp(i), 1e-3);
+    for (int i = 0; i < spline_interp.X.size(); ++i) {
+        EXPECT_NEAR(spline_interp.Y(i), spline_interp.X(i), 1e-3);
     }
 }
 
@@ -76,11 +74,12 @@ TEST(SplineFitterTest, CircularArc) {
     auto sample_result = spline_fitter.uniformly_sample_spline(n_samples);
     ASSERT_TRUE(sample_result.has_value());
 
-    auto [X_interp, Y_interp, idx_interp, t_interp, s_interp] = sample_result.value();
+    SplineParametrization spline_interp = sample_result.value();
 
     // Check that the points lie approximately on the unit circle
-    for (int i = 0; i < X_interp.size(); ++i) {
-        double radius = std::sqrt(X_interp(i) * X_interp(i) + Y_interp(i) * Y_interp(i));
+    for (int i = 0; i < spline_interp.X.size(); ++i) {
+        double radius = std::sqrt(spline_interp.X(i) * spline_interp.X(i) +
+                                  spline_interp.Y(i) * spline_interp.Y(i));
         EXPECT_NEAR(radius, real_radius, 1e-1);
     }
 }
