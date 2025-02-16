@@ -19,6 +19,7 @@ using namespace brains2::msg;
 using namespace brains2::common;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
+using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 
 class FakeTrackEstimationNode : public rclcpp::Node {
@@ -35,39 +36,45 @@ private:
     void on_pose(const Pose::SharedPtr msg) {
         // Project pose onto track
         auto [s_proj, _] = track->project(Eigen::Vector2d(msg->x, msg->y), this->last_s, 30.0);
+
+        // Update last s value (don't forget the Track here represents 3 laps)
         this->last_s = std::fmod(s_proj, this->track->length() / 3);
 
         // Take 5m behind and 10 in front
-        size_t start_id = track->find_interval(s_proj - 5), proj_id = track->find_interval(s_proj),
-               end_id = track->find_interval(s_proj + 10) + 1;
+        size_t start_id =
+                   track->find_interval(s_proj - this->get_parameter("dist_back").as_double()),
+               end_id =
+                   track->find_interval(s_proj + this->get_parameter("dist_front").as_double()) + 1;
+        const auto npoints = end_id - start_id;
 
         // Update track estimate message
         track_estimate_msg.header.stamp = this->now();
         track_estimate_msg.header.frame_id = "world";
-        track_estimate_msg.s_cen.resize(end_id - start_id);
+        track_estimate_msg.s_cen.resize(npoints);
         std::copy(track->get_vals_s().data() + start_id,
                   track->get_vals_s().data() + end_id,
                   track_estimate_msg.s_cen.begin());
-        track_estimate_msg.x_cen.resize(end_id - start_id);
+        track_estimate_msg.x_cen.resize(npoints);
         std::copy(track->get_vals_X().data() + start_id,
                   track->get_vals_X().data() + end_id,
                   track_estimate_msg.x_cen.begin());
-        track_estimate_msg.y_cen.resize(end_id - start_id);
+        track_estimate_msg.y_cen.resize(npoints);
         std::copy(track->get_vals_Y().data() + start_id,
                   track->get_vals_Y().data() + end_id,
                   track_estimate_msg.y_cen.begin());
-        track_estimate_msg.phi_cen.resize(end_id - start_id);
+        track_estimate_msg.phi_cen.resize(npoints);
         std::copy(track->get_vals_phi().data() + start_id,
                   track->get_vals_phi().data() + end_id,
                   track_estimate_msg.phi_cen.begin());
-        track_estimate_msg.kappa_cen.resize(end_id - start_id);
+        track_estimate_msg.kappa_cen.resize(npoints);
         std::copy(track->get_vals_kappa().data() + start_id,
                   track->get_vals_kappa().data() + end_id,
                   track_estimate_msg.kappa_cen.begin());
-        track_estimate_msg.w_cen.resize(end_id - start_id);
+        track_estimate_msg.w_cen.resize(npoints);
         std::copy(track->get_vals_width().data() + start_id,
                   track->get_vals_width().data() + end_id,
                   track_estimate_msg.w_cen.begin());
+
         // Publish track estimate
         track_estimate_pub->publish(track_estimate_msg);
 
@@ -77,8 +84,10 @@ private:
         viz_msg.markers[0].ns = "center_line";
         viz_msg.markers[0].action = visualization_msgs::msg::Marker::MODIFY;
         viz_msg.markers[0].type = visualization_msgs::msg::Marker::LINE_STRIP;
-        viz_msg.markers[0].points.resize(track_estimate_msg.s_cen.size());
-        for (size_t i = 0; i < track_estimate_msg.s_cen.size(); ++i) {
+        // TODO: maybe only send a subset of the points to have a rougher
+        // but faster visualization?
+        viz_msg.markers[0].points.resize(npoints);
+        for (size_t i = 0; i < npoints; ++i) {
             viz_msg.markers[0].points[i].x = track_estimate_msg.x_cen[i];
             viz_msg.markers[0].points[i].y = track_estimate_msg.y_cen[i];
         }
@@ -91,7 +100,9 @@ private:
 
 public:
     FakeTrackEstimationNode() : Node("fake_track_estimation_node"), track_estimate_msg{} {
-        auto track_name = this->declare_parameter<std::string>("track_name", "alpha");
+        auto track_name = this->declare_parameter("track_name", "alpha");
+        this->declare_parameter("dist_front", 10.0);
+        this->declare_parameter("dist_back", 5.0);
 
         // Load track
 #ifdef TRACK_DATABASE_PATH
