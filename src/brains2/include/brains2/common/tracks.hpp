@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <tuple>
+#include "brains2/external/optional.hpp"
 #include "Eigen/Dense"
 
 namespace brains2 {
@@ -23,14 +24,16 @@ private:
      */
     double interp(const Eigen::MatrixXd &coeffs, double s, int ind = -1) const;
 
+    Track() = default;
+
 public:
-    explicit Track(const std::vector<double> &s,
-                   const std::vector<double> &X,
-                   const std::vector<double> &Y,
-                   const std::vector<double> &phi,
-                   const std::vector<double> &kappa,
-                   const std::vector<double> &width);
-    explicit Track(const std::filesystem::path &csv_file_path);
+    static tl::optional<Track> from_values(const std::vector<double> &s,
+                                           const std::vector<double> &X,
+                                           const std::vector<double> &Y,
+                                           const std::vector<double> &phi,
+                                           const std::vector<double> &kappa,
+                                           const std::vector<double> &width);
+    static tl::optional<Track> from_file(const std::filesystem::path &csv_file_path);
 
     /*
      *  @brief Returns the number of points in the track
@@ -75,6 +78,14 @@ public:
     double eval_track_width(double s) const;
 
     Eigen::Vector2d frenet_to_cartesian(const double &s, const double &n) const;
+
+    size_t find_interval(double s) const;
+    const Eigen::VectorXd &get_vals_s() const;
+    const Eigen::VectorXd &get_vals_X() const;
+    const Eigen::VectorXd &get_vals_Y() const;
+    const Eigen::VectorXd &get_vals_phi() const;
+    const Eigen::VectorXd &get_vals_kappa() const;
+    const Eigen::VectorXd &get_vals_width() const;
 };
 
 }  // namespace common

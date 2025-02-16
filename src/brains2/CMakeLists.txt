@@ -117,6 +117,12 @@ target_link_libraries(sim_node
 ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_test.cpp)
 target_link_libraries(brains2_be_spline_test brains2_common OsqpEigen::OsqpEigen osqp::osqp)
 
+ament_auto_add_executable(fake_track_estimation_node src/estimation/fake_track_estimation_node.cpp)
+target_link_libraries(fake_track_estimation_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  brains2_common
+)
+
 ####################################################################################################
 # SLAM
 ####################################################################################################
