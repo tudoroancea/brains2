@@ -33,6 +33,12 @@ public:
                                            const std::vector<double> &phi,
                                            const std::vector<double> &kappa,
                                            const std::vector<double> &width);
+    static tl::optional<Track> from_values(const Eigen::VectorXd &s,
+                                           const Eigen::VectorXd &X,
+                                           const Eigen::VectorXd &Y,
+                                           const Eigen::VectorXd &phi,
+                                           const Eigen::VectorXd &kappa,
+                                           const Eigen::VectorXd &width);
     static tl::optional<Track> from_file(const std::filesystem::path &csv_file_path);
 
     /*

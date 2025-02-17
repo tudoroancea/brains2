@@ -16,22 +16,34 @@ tl::optional<Track> Track::from_values(const std::vector<double>& s,
                                        const std::vector<double>& phi,
                                        const std::vector<double>& kappa,
                                        const std::vector<double>& width) {
-    // Check that all the vectors have the same size
-    const size_t size = s.size();
+    return Track::from_values(Eigen::VectorXd::Map(s.data(), s.size()),
+                              Eigen::VectorXd::Map(X.data(), X.size()),
+                              Eigen::VectorXd::Map(Y.data(), Y.size()),
+                              Eigen::VectorXd::Map(phi.data(), phi.size()),
+                              Eigen::VectorXd::Map(kappa.data(), kappa.size()),
+                              Eigen::VectorXd::Map(width.data(), width.size()));
+}
+
+tl::optional<Track> Track::from_values(const Eigen::VectorXd& s,
+                                       const Eigen::VectorXd& X,
+                                       const Eigen::VectorXd& Y,
+                                       const Eigen::VectorXd& phi,
+                                       const Eigen::VectorXd& kappa,
+                                       const Eigen::VectorXd& width) {
+    const auto size = s.size();
     if (size != X.size() || size != Y.size() || size != phi.size() || size != kappa.size() ||
         size != width.size()) {
         return tl::nullopt;
     }
-    // Copy the data in the Eigen vectors
-    // (the Eigen::Map object creates a view to the data in the std::vector,
-    //  but assigning it to an Eigen::Vector copies it)
+
+    // Copy the data
     Track track{};
-    track.vals_s = Eigen::VectorXd::Map(s.data(), s.size());
-    track.vals_X = Eigen::VectorXd::Map(X.data(), X.size());
-    track.vals_Y = Eigen::VectorXd::Map(Y.data(), Y.size());
-    track.vals_phi = Eigen::VectorXd::Map(phi.data(), phi.size());
-    track.vals_kappa = Eigen::VectorXd::Map(kappa.data(), kappa.size());
-    track.vals_width = Eigen::VectorXd::Map(width.data(), width.size());
+    track.vals_s = s;
+    track.vals_X = X;
+    track.vals_Y = Y;
+    track.vals_phi = phi;
+    track.vals_kappa = kappa;
+    track.vals_width = width;
 
     // Compute the differences in progress s
     auto delta_s =
@@ -43,7 +55,7 @@ tl::optional<Track> Track::from_values(const std::vector<double>& s,
     track.coeffs_phi.resize(size - 1, 2);
     track.coeffs_kappa.resize(size - 1, 2);
     track.coeffs_width.resize(size - 1, 2);
-    for (size_t i = 0; i < size - 1; ++i) {
+    for (long i = 0; i < size - 1; ++i) {
         track.coeffs_X(i, 0) = track.vals_X(i);
         track.coeffs_X(i, 1) = (track.vals_X(i + 1) - track.vals_X(i)) / delta_s(i);
 

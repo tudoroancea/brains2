@@ -28,7 +28,6 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto kappa_cen = casadi::MX::sym("kappa_cen");
 
     // assemble the continuous dynamics
-    IC();
     auto beta = params.l_R / (params.l_F + params.l_R) * delta;
     auto s_dot = v * cos(psi + beta) / (1 - n * kappa_cen);
     auto f_cont = casadi::Function(
@@ -43,21 +42,16 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
                 params.m,
         }))});
 
-    IC();
     // Discretize with RK4
     auto xnext = x;
     auto scaled_dt = params.dt / rk_steps;
     for (size_t i = 0; i < rk_steps; ++i) {
-        IC();
         auto k1 = f_cont({x, u, kappa_cen})[0];
-        IC(x.size(), k1.size());
         auto k2 = f_cont({x + scaled_dt / 2 * k1, u, kappa_cen})[0];
         auto k3 = f_cont({x + scaled_dt / 2 * k2, u, kappa_cen})[0];
         auto k4 = f_cont({x + scaled_dt * k3, u, kappa_cen})[0];
-        IC();
         xnext = x + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
     }
-    IC();
     auto f_disc = casadi::Function("f_disc", {x, u, kappa_cen}, {cse(xnext)});
     return f_disc;
 }
