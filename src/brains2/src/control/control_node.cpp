@@ -1,8 +1,7 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+#include <rmw/qos_profiles.h>
 #include <memory>
-#include <rclcpp/logging.hpp>
 #include <tuple>
-#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
@@ -11,37 +10,47 @@
 #include "brains2/external/icecream.hpp"
 #include "brains2/external/optional.hpp"
 #include "brains2/msg/controls.hpp"
+#include "brains2/msg/detail/velocity__struct.hpp"
 #include "brains2/msg/pose.hpp"
 #include "brains2/msg/track_estimate.hpp"
 #include "brains2/msg/velocity.hpp"
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "Eigen/Dense"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "message_filters/subscriber.h"
+#include "message_filters/sync_policies/approximate_time.h"
+#include "message_filters/time_synchronizer.h"
 #include "rclcpp/node.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/subscription.hpp"
-#include "std_srvs/srv/empty.hpp"
-#include "tf2_ros/transform_broadcaster.h"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
 
 using namespace std;
 using namespace brains2::msg;
+using namespace brains2::common;
+using namespace brains2::control;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
+using visualization_msgs::msg::Marker;
+using visualization_msgs::msg::MarkerArray;
 
-class ControllerNode : public rclcpp::Node {
+typedef message_filters::sync_policies::ApproximateTime<Pose, Velocity> StateMsgSyncPolicy;
+typedef message_filters::Synchronizer<StateMsgSyncPolicy> StateMsgSync;
+
+class ControlNode : public rclcpp::Node {
 public:
-    ControllerNode() : Node("controller_node") {
+    ControlNode() : Node("control_node") {
         const auto dt = 1 / this->declare_parameter("freq", 20.0);
         const auto Nf = this->declare_parameter("Nf", 10);
 
         // Limits
-        const brains2::control::Controller::Limits limits{this->declare_parameter("v_x_max", 10.0),
-                                                          this->declare_parameter("delta_max", 0.5),
-                                                          this->declare_parameter("tau_max", 1.0)};
+        const brains2::control::Controller::Limits limits{
+            this->declare_parameter("v_x_max", 10.0),
+            this->declare_parameter("delta_max", 0.5),
+            this->declare_parameter("tau_max", 100.0)};
 
         // load yaml file with car constants
 #ifdef CAR_CONSTANTS_PATH
@@ -58,21 +67,13 @@ public:
             car_constants["drivetrain"]["C_r2"].as<double>(),
         };
 
-        {
-            std::string init_message{};
-            IC_CONFIG.prefix("");
-            IC_CONFIG.output(init_message);
-            IC(model_params, limits);
-            RCLCPP_INFO(this->get_logger(), "Loaded model parameters: %s", init_message.c_str());
-        }
-
 #else
 #error CAR_CONSTANTS_PATH is not defined
 #endif
 
         // cost params
         const brains2::control::Controller::CostParams cost_params{
-            .v_ref = this->declare_parameter("v_x_ref", 5.0),
+            .v_ref = this->declare_parameter("v_ref", 5.0),
             .delta_s_ref = this->declare_parameter("delta_s_ref", 5.0),
             .q_s = this->declare_parameter("q_s", 1.0),
             .q_n = this->declare_parameter("q_n", 1.0),
@@ -101,72 +102,119 @@ public:
         this->diagnostics_pub =
             this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/brains2/diagnostics",
                                                                           10);
+        IC();
+        this->track_estimate_sub = this->create_subscription<TrackEstimate>(
+            "/brains2/track_estimate",
+            10,
+            std::bind(&ControlNode::track_estimate_cb, this, std::placeholders::_1));
+        IC();
+        this->pose_sub =
+            std::make_shared<message_filters::Subscriber<Pose>>(this,
+                                                                "/brains2/pose",
+                                                                rmw_qos_profile_default);
+        this->vel_sub =
+            std::make_shared<message_filters::Subscriber<Velocity>>(this,
+                                                                    "/brains2/velocity",
+                                                                    rmw_qos_profile_default);
+        IC();
+        this->sync =
+            std::make_shared<StateMsgSync>(StateMsgSyncPolicy(10), *this->pose_sub, *this->vel_sub);
+        this->sync->registerCallback(&ControlNode::state_cb, this);
+        IC();
     }
 
 private:
     // publishers
     Publisher<Controls>::SharedPtr target_controls_pub;
-    Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr viz_pub;
+    Publisher<MarkerArray>::SharedPtr viz_pub;
     Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub;
 
     // subscribers
-    Subscription<Pose>::SharedPtr pose_sub;
-    Subscription<Velocity>::SharedPtr velocity_sub;
-    Subscription<Controls>::SharedPtr current_controls_sub;
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
+    shared_ptr<message_filters::Subscriber<Pose>> pose_sub;
+    shared_ptr<message_filters::Subscriber<Velocity>> vel_sub;
+    shared_ptr<StateMsgSync> sync;
+
+    // messages
+    brains2::msg::Controls controls_msg;
+    visualization_msgs::msg::MarkerArray viz_msg;
 
     // controller
-    brains2::control::Controller::State state;
+    tl::optional<brains2::common::Track> track;
     std::unique_ptr<brains2::control::Controller> controller;
 
-    void pose_cb(const Pose::SharedPtr msg) {
-        state.X = msg->x;
-        state.Y = msg->y;
-        state.phi = msg->phi;
-    }
-
-    void vel_cb(const Velocity::SharedPtr msg) {
-        state.v = std::hypot(msg->v_x, msg->v_y);
-    }
-
-    void current_controls_cb([[maybe_unused]] const Controls::SharedPtr msg) {
-    }
+    // only treat one in 5 messages
+    uint8_t counter = 0;
 
     void track_estimate_cb(const TrackEstimate::SharedPtr msg) {
-        const auto track = brains2::common::Track::from_values(msg->s_cen,
-                                                               msg->x_cen,
-                                                               msg->y_cen,
-                                                               msg->phi_cen,
-                                                               msg->kappa_cen,
-                                                               msg->w_cen);
+        track = brains2::common::Track::from_values(msg->s_cen,
+                                                    msg->x_cen,
+                                                    msg->y_cen,
+                                                    msg->phi_cen,
+                                                    msg->kappa_cen,
+                                                    msg->w_cen);
         if (!track) {
             RCLCPP_ERROR(this->get_logger(),
                          "Could not construct Track object from received message (arrays with "
                          "different lengths ?)");
         }
+    }
 
-        const auto controls = this->controller->compute_control(this->state, *track);
-        if (!controls.has_value()) {
-            RCLCPP_ERROR(this->get_logger(),
-                         "Error in MPC solver: %s",
-                         brains2::control::Controller::to_string(controls.error()).c_str());
+    void state_cb(const Pose::SharedPtr pose_msg, const Velocity::SharedPtr vel_msg) {
+        if (!this->track) {
+            return;
         }
-        // Publish controls
-        brains2::msg::Controls controls_msg;
-        controls_msg.tau_fl = controls->tau / 4;
-        controls_msg.tau_fr = controls->tau / 4;
-        controls_msg.tau_rl = controls->tau / 4;
-        controls_msg.tau_rr = controls->tau / 4;
-        controls_msg.delta = controls->delta;
-        this->target_controls_pub->publish(controls_msg);
+        IC(this->counter, pose_msg, vel_msg);
+        if (this->counter == 0) {
+            // Construct current state
+            const Controller::State state{.X = pose_msg->x,
+                                          .Y = pose_msg->y,
+                                          .phi = pose_msg->phi,
+                                          .v = std::hypot(vel_msg->v_x, vel_msg->v_y)};
 
-        // TODO: add viz
+            const auto controls = this->controller->compute_control(state, *(this->track));
+            if (!controls.has_value()) {
+                RCLCPP_ERROR(this->get_logger(),
+                             "Error in MPC solver: %s",
+                             brains2::control::Controller::to_string(controls.error()).c_str());
+            }
+            IC(*controls);
+
+            // Publish controls
+            controls_msg.header.stamp = this->now();
+            controls_msg.tau_fl = controls->tau / 4;
+            controls_msg.tau_fr = controls->tau / 4;
+            controls_msg.tau_rl = controls->tau / 4;
+            controls_msg.tau_rr = controls->tau / 4;
+            controls_msg.delta = controls->delta;
+            this->target_controls_pub->publish(controls_msg);
+
+            // TODO: add viz
+            viz_msg.markers.resize(1);
+            viz_msg.markers[0].header.frame_id = "world";
+            viz_msg.markers[0].ns = "traj_pred";
+            viz_msg.markers[0].action = visualization_msgs::msg::Marker::MODIFY;
+            viz_msg.markers[0].type = visualization_msgs::msg::Marker::LINE_STRIP;
+            const auto x_opt = this->controller->get_x_opt();
+            const auto npoints = x_opt.cols();
+            viz_msg.markers[0].points.resize(npoints);
+            for (long i = 0; i < npoints; ++i) {
+                auto [X, Y, phi] =
+                    track->frenet_to_cartesian(x_opt(0, i), x_opt(1, i), x_opt(2, i));
+                viz_msg.markers[0].points[i].x = X;
+                viz_msg.markers[0].points[i].y = Y;
+            }
+            viz_msg.markers[0].scale.x = 0.05;
+            viz_msg.markers[0].color = marker_colors("green");
+            this->viz_pub->publish(viz_msg);
+        }
+        this->counter = (this->counter + 1) % 5;
     }
 };
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<ControllerNode>();
+    auto node = std::make_shared<ControlNode>();
     try {
         rclcpp::spin(node);
     } catch (std::exception &e) {

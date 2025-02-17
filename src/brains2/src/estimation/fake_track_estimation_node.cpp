@@ -1,8 +1,10 @@
+#include <algorithm>
 #include <cmath>
 #include <Eigen/Dense>
 #include <memory>
 #include <rclcpp/logging.hpp>
 #include "brains2/common/marker_color.hpp"
+#include "brains2/common/math.hpp"
 #include "brains2/common/tracks.hpp"
 #include "brains2/external/icecream.hpp"
 #include "brains2/msg/pose.hpp"
@@ -27,15 +29,23 @@ private:
     Subscription<Pose>::SharedPtr pose_sub;
     Publisher<TrackEstimate>::SharedPtr track_estimate_pub;
     Publisher<MarkerArray>::SharedPtr viz_pub;
+    rclcpp::TimerBase::SharedPtr timer;
 
     double last_s = 0.0;
     tl::optional<Track> track;
     TrackEstimate track_estimate_msg;
     MarkerArray viz_msg;
+    shared_ptr<Pose> last_pose;
 
     void on_pose(const Pose::SharedPtr msg) {
+        last_pose = msg;
+    }
+    void timer_cb() {
+        if (!last_pose) {
+            return;
+        }
         // Project pose onto track
-        auto [s_proj, _] = track->project(msg->x, msg->y, this->last_s, 30.0);
+        auto [s_proj, _] = track->project(last_pose->x, last_pose->y, this->last_s, 30.0);
 
         // Update last s value (don't forget the Track here represents 3 laps)
         this->last_s = std::fmod(s_proj, this->track->length() / 3);
@@ -75,6 +85,20 @@ private:
                   track->get_vals_width().data() + end_id,
                   track_estimate_msg.w_cen.begin());
 
+        // post-process the heading values phi such that they all lie "around" current phi
+        // for this, wrap all in interval [phi-pi, phi+pi) and then remove discontinuities
+        const auto tpr = last_pose->phi - M_PI;
+        for (auto &phi_cen : track_estimate_msg.phi_cen) {
+            phi_cen = teds_projection(phi_cen, tpr);
+        }
+        std::vector<double> diffs(npoints);
+        std::adjacent_difference(track_estimate_msg.phi_cen.begin(),
+                                 track_estimate_msg.phi_cen.end(),
+                                 diffs.begin());
+        if (std::any_of(diffs.begin(), diffs.end(), [](auto x) { return x > M_PI; })) {
+            throw std::runtime_error("Heading discontinuity detected in local track estimation");
+        }
+
         // Publish track estimate
         track_estimate_pub->publish(track_estimate_msg);
 
@@ -99,14 +123,15 @@ private:
     }
 
 public:
-    FakeTrackEstimationNode() : Node("fake_track_estimation_node"), track_estimate_msg{} {
-        auto track_name = this->declare_parameter("track_name", "alpha");
+    FakeTrackEstimationNode()
+        : Node("fake_track_estimation_node"), track_estimate_msg{}, viz_msg{}, last_pose(nullptr) {
         this->declare_parameter("dist_front", 10.0);
         this->declare_parameter("dist_back", 5.0);
 
         // Load track
 #ifdef TRACK_DATABASE_PATH
         std::filesystem::path center_line_file(TRACK_DATABASE_PATH);
+        const auto track_name = this->declare_parameter("track_name", "alpha");
         center_line_file /= (track_name + "_center_line.csv");
         if (!std::filesystem::exists(center_line_file)) {
             throw std::runtime_error("Track " + track_name + " not found in TRACK_DATABASE_PATH");
@@ -131,6 +156,11 @@ public:
             "/brains2/pose",
             10,
             std::bind(&FakeTrackEstimationNode::on_pose, this, std::placeholders::_1));
+
+        // Create timer
+        const auto timer_period = 1 / this->declare_parameter<double>("freq", 10.0);
+        this->timer = this->create_wall_timer(std::chrono::duration<double>(timer_period),
+                                              bind(&FakeTrackEstimationNode::timer_cb, this));
     }
 };
 

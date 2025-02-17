@@ -104,9 +104,15 @@ public:
     size_t find_interval(double s) const;
 
     /*
-     *  @brief Converts a Frenet coordinate to a Cartesian coordinate
+     *  @brief Converts a pose in Frenet coordinates to a Cartesian coordinates
      */
-    Eigen::Vector2d frenet_to_cartesian(const double &s, const double &n) const;
+    std::tuple<double, double, double> frenet_to_cartesian(const double s,
+                                                           const double n,
+                                                           const double psi) const;
+    /*
+     *  @brief Converts a pose in Frenet coordinates to a Cartesian coordinates
+     */
+    Eigen::Vector3d frenet_to_cartesian(const Eigen::Vector3d &frenet_pose) const;
 
     /*
          * @brief Compute orthogonal projection of a point onto the track

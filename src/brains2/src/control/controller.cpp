@@ -150,10 +150,11 @@ Controller::Controller(size_t Nf,
     ///////////////////////////////////////////////////////////////////
     opti.solver("fatrop",
                 {
-                    // {"print_time", 1},
+                    {"print_time", 0},
                     {"expand", true},
                     {"debug", false},
                     {"structure_detection", "auto"},
+                    {"fatrop", casadi::Dict({{"print_level", 0}})},
                 });
 }
 
@@ -168,6 +169,14 @@ tl::expected<Controller::Control, Controller::ControllerError> Controller::compu
     double n = -(current_state.X - pos_proj(0)) * sin(phi_proj) +
                (current_state.Y - pos_proj(1)) * cos(phi_proj),
            psi = current_state.phi - phi_proj;
+
+    IC(s,
+       n,
+       psi,
+       current_state.phi,
+       phi_proj,
+       track.get_vals_s()(0),
+       track.get_vals_s()(track.size() - 1));
 
     // Set current state
     opti.set_value(this->x0, casadi::DM({s, n, psi, current_state.v}));

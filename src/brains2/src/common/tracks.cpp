@@ -198,12 +198,18 @@ double Track::eval_width(double s) const {
     return this->interp(this->coeffs_width, s);
 }
 
-Eigen::Vector2d Track::frenet_to_cartesian(const double& s, const double& n) const {
-    double X_ref = this->interp(this->coeffs_X, s);
-    double Y_ref = this->interp(this->coeffs_Y, s);
-    double phi_ref = this->interp(this->coeffs_phi, s);
-    Eigen::Vector2d normal(-std::sin(phi_ref), std::cos(phi_ref));
-    return Eigen::Vector2d(X_ref + n * normal(0), Y_ref + n * normal(1));
+std::tuple<double, double, double> Track::frenet_to_cartesian(const double s,
+                                                              const double n,
+                                                              const double psi) const {
+    double X = this->interp(this->coeffs_X, s);
+    double Y = this->interp(this->coeffs_Y, s);
+    double phi = this->interp(this->coeffs_phi, s);
+    return std::make_tuple(X - n * sin(phi), Y + n * cos(phi), psi + phi);
+}
+
+Eigen::Vector3d Track::frenet_to_cartesian(const Eigen::Vector3d& frenet_pose) const {
+    auto [X, Y, phi] = this->frenet_to_cartesian(frenet_pose(0), frenet_pose(1), frenet_pose(2));
+    return Eigen::Vector3d(X, Y, phi);
 }
 
 size_t brains2::common::Track::find_interval(double s) const {

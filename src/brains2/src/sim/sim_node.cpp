@@ -117,6 +117,7 @@ private:
         this->state =
             brains2::sim::Sim::State{0.0, 0.0, M_PI_2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         this->accels = brains2::sim::Sim::Accels{0.0, 0.0};
+        this->control = brains2::sim::Sim::Control{0.0, 0.0, 0.0, 0.0, 0.0};
         // Reset lap timing
         this->last_lap_time_stamp = rclcpp::Time(0, 0);
     }
@@ -380,6 +381,7 @@ public:
             car_constants["actuators"]["steering_max"].as<double>(),
             car_constants["actuators"]["steering_rate_max"].as<double>()};
 
+        // TODO: the config here is actually global, so find something else?
         {
             std::string init_message{};
             IC_CONFIG.prefix("");
