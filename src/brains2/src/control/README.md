@@ -28,6 +28,11 @@ We receive from the estimation module (or the simulation in certain scenarios):
 
 ## Concept
 
+#### V0
+
+- curvilinear model with kinematic bicycle with 4 DOF $(s,n,\psi,v)$ and no actuator dynamics.
+> [!NOTE] it's basically ihm 1.5 but with curvilinear coordinates
+
 #### V1
 
 - We only follow the center line with a certain target velocity.

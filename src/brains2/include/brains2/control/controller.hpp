@@ -47,7 +47,8 @@ public:
                const ModelParams& model_params,
                const Limits& limits,
                const CostParams& cost_params,
-               size_t rk_steps = 1);
+               size_t rk_steps = 1,
+               bool jit = false);
 
     /*
      * @brief All the errors that may occur in the MPC.
@@ -82,6 +83,11 @@ public:
                                                            const brains2::common::Track& track);
 
     /*
+     * @brief Get the predicted positions of the vehicle in Cartesian coordinates.
+     */
+    Eigen::Matrix<double, 2, Eigen::Dynamic> get_predicted_positions() const;
+
+    /*
      * @brief Const ref getter to the optimal state trajectory. May contain outdated data if
      * compute_control() returned an error.
      */
@@ -99,10 +105,11 @@ public:
 
 private:
     size_t Nf;
-    double dt, v_ref;
+    double dt, v_ref, tau_ref;
     Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_opt;
     Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_opt;
     casadi::Opti opti;
+    casadi::MX cost_function;
     // optimization variables
     std::vector<casadi::MX> x, u;
     // params

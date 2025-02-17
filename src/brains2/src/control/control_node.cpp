@@ -88,10 +88,13 @@ public:
         };
 
         // Create controller object
-        this->controller = std::make_unique<brains2::control::Controller>(static_cast<size_t>(Nf),
-                                                                          model_params,
-                                                                          limits,
-                                                                          cost_params);
+        this->controller =
+            std::make_unique<brains2::control::Controller>(static_cast<size_t>(Nf),
+                                                           model_params,
+                                                           limits,
+                                                           cost_params,
+                                                           1,
+                                                           this->declare_parameter("jit", false));
 
         // Publishers and subscribers
         this->target_controls_pub =
@@ -102,12 +105,10 @@ public:
         this->diagnostics_pub =
             this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/brains2/diagnostics",
                                                                           10);
-        IC();
         this->track_estimate_sub = this->create_subscription<TrackEstimate>(
             "/brains2/track_estimate",
             10,
             std::bind(&ControlNode::track_estimate_cb, this, std::placeholders::_1));
-        IC();
         this->pose_sub =
             std::make_shared<message_filters::Subscriber<Pose>>(this,
                                                                 "/brains2/pose",
@@ -116,11 +117,17 @@ public:
             std::make_shared<message_filters::Subscriber<Velocity>>(this,
                                                                     "/brains2/velocity",
                                                                     rmw_qos_profile_default);
-        IC();
         this->sync =
             std::make_shared<StateMsgSync>(StateMsgSyncPolicy(10), *this->pose_sub, *this->vel_sub);
         this->sync->registerCallback(&ControlNode::state_cb, this);
-        IC();
+
+        // Diagnostics
+        this->diag_msg.status.resize(1);
+        this->diag_msg.status[0].name = "control_node";
+        this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+        this->diag_msg.status[0].message = "OK";
+        this->diag_msg.status[0].values.resize(1);
+        this->diag_msg.status[0].values[0].key = "runtime (ms)";
     }
 
 private:
@@ -138,6 +145,7 @@ private:
     // messages
     brains2::msg::Controls controls_msg;
     visualization_msgs::msg::MarkerArray viz_msg;
+    diagnostic_msgs::msg::DiagnosticArray diag_msg;
 
     // controller
     tl::optional<brains2::common::Track> track;
@@ -164,7 +172,6 @@ private:
         if (!this->track) {
             return;
         }
-        IC(this->counter, pose_msg, vel_msg);
         if (this->counter == 0) {
             // Construct current state
             const Controller::State state{.X = pose_msg->x,
@@ -172,13 +179,14 @@ private:
                                           .phi = pose_msg->phi,
                                           .v = std::hypot(vel_msg->v_x, vel_msg->v_y)};
 
+            auto start = this->now();
             const auto controls = this->controller->compute_control(state, *(this->track));
+            auto end = this->now();
             if (!controls.has_value()) {
                 RCLCPP_ERROR(this->get_logger(),
                              "Error in MPC solver: %s",
                              brains2::control::Controller::to_string(controls.error()).c_str());
             }
-            IC(*controls);
 
             // Publish controls
             controls_msg.header.stamp = this->now();
@@ -188,6 +196,10 @@ private:
             controls_msg.tau_rr = controls->tau / 4;
             controls_msg.delta = controls->delta;
             this->target_controls_pub->publish(controls_msg);
+
+            // Publish diagnostics
+            diag_msg.status[0].values[0].value = std::to_string(1000 * (end - start).seconds());
+            diagnostics_pub->publish(diag_msg);
 
             // TODO: add viz
             viz_msg.markers.resize(1);

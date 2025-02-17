@@ -196,6 +196,7 @@ private:
         this->tf_broadcaster->sendTransform(this->transform);
 
         // publish diagnostics
+        diag_msg.header.stamp = this->now();
         diag_msg.status[0].values[0].value = std::to_string(1000 * (end - start).seconds());
         diag_msg.status[0].values[1].value = this->get_parameter("track_name").as_string();
         diag_msg.status[0].values[2].value = std::to_string(this->last_lap_time);
