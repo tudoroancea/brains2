@@ -35,8 +35,8 @@ using rclcpp::Subscription;
 class ControllerNode : public rclcpp::Node {
 public:
     ControllerNode() : Node("controller_node") {
-        // Initialize publishers and subscribers here
         const auto dt = 1 / this->declare_parameter("freq", 20.0);
+        const auto Nf = this->declare_parameter("Nf", 10);
 
         // Limits
         const brains2::control::Controller::Limits limits{this->declare_parameter("v_x_max", 10.0),
@@ -95,9 +95,12 @@ public:
             .q_tau_f = this->declare_parameter("q_tau_f", 1.0)};
 
         // Create controller object
-        this->controller =
-            std::make_unique<brains2::control::Controller>(model_params, limits, cost_params);
+        this->controller = std::make_unique<brains2::control::Controller>(static_cast<size_t>(Nf),
+                                                                          model_params,
+                                                                          limits,
+                                                                          cost_params);
 
+        // Publishers and subscribers
         this->target_controls_pub =
             this->create_publisher<Controls>("/brains2/target_controls", 10);
         this->viz_pub =

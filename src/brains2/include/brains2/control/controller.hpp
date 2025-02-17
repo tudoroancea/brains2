@@ -3,18 +3,18 @@
 #define BRAINS2_CONTROL_CONTROLLER_HPP
 
 #include <array>
+#include <casadi/core/casadi_types.hpp>
 #include <cstdint>
+#include <Eigen/Dense>
 #include "brains2/common/tracks.hpp"
 #include "brains2/external/expected.hpp"
-#include "casadi/mem.h"
+#include "casadi/casadi.hpp"
 
 namespace brains2 {
 namespace control {
 
 class Controller {
 public:
-    static constexpr uint8_t Nf = 10;
-
     struct ModelParams {
         static constexpr uint8_t dim = 10;
         double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta, t_tau;
@@ -28,7 +28,6 @@ public:
         static constexpr uint8_t dim = 3;
         double v_x_max, delta_max, tau_max;
     };
-
     struct State {
         static constexpr uint8_t dim = 8;
         double X, Y, phi, v_x, v_y, omega, delta, tau;
@@ -37,48 +36,78 @@ public:
         static constexpr uint8_t dim = 2;
         double u_delta, u_tau;
     };
+    static constexpr uint8_t nx = State::dim;
+    static constexpr uint8_t nu = Control::dim;
 
     Controller() = delete;
     Controller(const Controller&) = delete;
     Controller& operator=(const Controller&) = delete;
     virtual ~Controller() = default;
 
-    Controller(const ModelParams& model_params,
+    Controller(size_t Nf,
+               const ModelParams& model_params,
                const Limits& limits,
-               const CostParams& cost_params);
+               const CostParams& cost_params,
+               size_t rk_steps = 1);
 
+    /*
+     * @brief All the errors that may occur in the MPC.
+     */
     enum class ControllerError : uint8_t {
-        MAX_ITER = 0,
+        MAX_ITER,
+        NANS_IN_SOLVER,
+        INFEASIBLE_PROBLEM,
+        UNKNOWN_ERROR,
     };
+
     static inline std::string to_string(ControllerError error) {
         switch (error) {
             case ControllerError::MAX_ITER:
                 return "MAX_ITER";
-            default:
+            case ControllerError::NANS_IN_SOLVER:
+                return "NANS_IN_SOLVER";
+            case ControllerError::INFEASIBLE_PROBLEM:
+                return "INFEASIBLE_PROBLEM";
+            case ControllerError::UNKNOWN_ERROR:
                 return "UNKNOWN_ERROR";
         }
     }
 
+    /*
+     * @brief Crunch the numbers; solve the MPC.
+     * @param current_state The current state of the vehicle.
+     * @param track The current track estimate.
+     * @return A control command or an error.
+     */
     tl::expected<Control, ControllerError> compute_control(const State& current_state,
                                                            const brains2::common::Track& track);
 
+    /*
+     * @brief Const ref getter to the optimal state trajectory. May contain outdated data if
+     * compute_control() returned an error.
+     */
+    inline const Eigen::Matrix<double, State::dim, Eigen::Dynamic>& get_x_opt() const {
+        return x_opt;
+    }
+
+    /*
+     * @brief Const ref getter to the optimal control trajectory. May contain outdated data if
+     * compute_control() returned an error.
+     */
+    inline const Eigen::Matrix<double, Control::dim, Eigen::Dynamic>& get_u_opt() const {
+        return u_opt;
+    }
+
 private:
-    // Casadi solver function memory
-    casadi_mem* solver_fun_mem;
-    // Function inputs
-    std::array<double, State::dim*(Nf + 1)> x_guess;
-    std::array<double, Control::dim * Nf> u_guess;
-    std::array<double, State::dim> x0;
-    std::array<double, Nf> kappa_cen;
-    std::array<double, Nf> w_cen;
-    std::array<double, ModelParams::dim> model_params;
-    std::array<double, Limits::dim> limits;
-    std::array<double, CostParams::dim> cost_params;
-    // Function outputs
-    std::array<double, State::dim*(Nf + 1)> x_opt;
-    std::array<double, Control::dim * Nf> u_opt;
-    // Redundant variables that are simpler to access
+    size_t Nf;
     double dt, v_x_ref;
+    Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_opt;
+    Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_opt;
+    casadi::Opti opti;
+    // optimization variables
+    std::vector<casadi::MX> x, u;
+    // params
+    casadi::MX x0, kappa_cen, w_cen;
 };
 
 }  // namespace control

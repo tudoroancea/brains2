@@ -40,7 +40,7 @@ def generate_model():
     # parameters
     kappa_cen = ca.SX.sym("kappa_cen")
     p = ca.SX.sym("p", 10)
-    dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_tau, t_delta = ca.vertsplit(p, 1)
+    dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta, t_tau = ca.vertsplit(p, 1)
 
     # actuator dynamics
     delta_dot = (u_delta - delta) / t_delta
