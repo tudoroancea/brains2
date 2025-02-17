@@ -1,0 +1,40 @@
+launch:
+  - node:
+      pkg: "brains2"
+      exec: "sim_node"
+      param:
+        - name: "track_name"
+          value: "alpha"
+  - node:
+      pkg: "brains2"
+      exec: "fake_track_estimation_node"
+  - node:
+      pkg: "brains2"
+      exec: "control_node"
+      param:
+        - name: "v_ref"
+          value: 5.0
+        - name: "delta_s_ref"
+          value: 2.5
+        - name: "tau_max"
+          value: 200.0
+        - name: "q_s"
+          value: 10.0
+        - name: "q_n"
+          value: 20.0
+        - name: "q_phi"
+          value: 50.0
+        - name: "q_v"
+          value: 10.0
+        - name: "r_delta"
+          value: 2.0
+        - name: "r_tau"
+          value: 0.05
+        - name: "q_s_f"
+          value: 100.0
+        - name: "q_n_f"
+          value: 200.0
+        - name: "q_p_fhi"
+          value: 500.0
+        - name: "q_v_f"
+          value: 100.0
