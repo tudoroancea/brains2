@@ -3,7 +3,6 @@
 #define BRAINS2_CONTROL_CONTROLLER_HPP
 
 #include <array>
-#include <casadi/core/casadi_types.hpp>
 #include <cstdint>
 #include <Eigen/Dense>
 #include "brains2/common/tracks.hpp"
@@ -16,25 +15,25 @@ namespace control {
 class Controller {
 public:
     struct ModelParams {
-        static constexpr uint8_t dim = 10;
-        double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta, t_tau;
+        static constexpr uint8_t dim = 8;
+        double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2;
     };
     struct CostParams {
-        static constexpr uint8_t dim = 20;
-        double v_x_ref, delta_s_ref, q_s, q_n, q_psi, q_v_x, q_v_y, q_omega, q_delta, q_tau,
-            r_delta, r_tau, q_s_f, q_n_f, q_psi_f, q_v_x_f, q_v_y_f, q_omega_f, q_delta_f, q_tau_f;
+        static constexpr uint8_t dim = 12;
+        double v_ref, delta_s_ref, q_s, q_n, q_psi, q_v, r_delta, r_tau, q_s_f, q_n_f, q_psi_f,
+            q_v_f;
     };
     struct Limits {
         static constexpr uint8_t dim = 3;
         double v_x_max, delta_max, tau_max;
     };
     struct State {
-        static constexpr uint8_t dim = 8;
-        double X, Y, phi, v_x, v_y, omega, delta, tau;
+        static constexpr uint8_t dim = 4;
+        double X, Y, phi, v;
     };
     struct Control {
         static constexpr uint8_t dim = 2;
-        double u_delta, u_tau;
+        double delta, tau;
     };
     static constexpr uint8_t nx = State::dim;
     static constexpr uint8_t nu = Control::dim;
@@ -100,7 +99,7 @@ public:
 
 private:
     size_t Nf;
-    double dt, v_x_ref;
+    double dt, v_ref;
     Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_opt;
     Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_opt;
     casadi::Opti opti;

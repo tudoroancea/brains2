@@ -56,8 +56,7 @@ public:
             car_constants["drivetrain"]["C_r0"].as<double>(),
             car_constants["drivetrain"]["C_r1"].as<double>(),
             car_constants["drivetrain"]["C_r2"].as<double>(),
-            car_constants["actuators"]["steering_time_constant"].as<double>(),
-            car_constants["actuators"]["motor_time_constant"].as<double>()};
+        };
 
         {
             std::string init_message{};
@@ -73,26 +72,19 @@ public:
 
         // cost params
         const brains2::control::Controller::CostParams cost_params{
-            .v_x_ref = this->declare_parameter("v_x_ref", 5.0),
+            .v_ref = this->declare_parameter("v_x_ref", 5.0),
             .delta_s_ref = this->declare_parameter("delta_s_ref", 5.0),
             .q_s = this->declare_parameter("q_s", 1.0),
             .q_n = this->declare_parameter("q_n", 1.0),
             .q_psi = this->declare_parameter("q_psi", 1.0),
-            .q_v_x = this->declare_parameter("q_v_x", 1.0),
-            .q_v_y = this->declare_parameter("q_v_y", 1.0),
-            .q_omega = this->declare_parameter("q_omega", 1.0),
-            .q_delta = this->declare_parameter("q_delta", 1.0),
-            .q_tau = this->declare_parameter("q_tau", 1.0),
+            .q_v = this->declare_parameter("q_v", 1.0),
             .r_delta = this->declare_parameter("r_delta", 1.0),
             .r_tau = this->declare_parameter("r_tau", 1.0),
             .q_s_f = this->declare_parameter("q_s_f", 1.0),
             .q_n_f = this->declare_parameter("q_n_f", 1.0),
             .q_psi_f = this->declare_parameter("q_psi_f", 1.0),
-            .q_v_x_f = this->declare_parameter("q_v_x_f", 1.0),
-            .q_v_y_f = this->declare_parameter("q_v_y_f", 1.0),
-            .q_omega_f = this->declare_parameter("q_omega_f", 1.0),
-            .q_delta_f = this->declare_parameter("q_delta_f", 1.0),
-            .q_tau_f = this->declare_parameter("q_tau_f", 1.0)};
+            .q_v_f = this->declare_parameter("q_v_f", 1.0),
+        };
 
         // Create controller object
         this->controller = std::make_unique<brains2::control::Controller>(static_cast<size_t>(Nf),
@@ -134,14 +126,10 @@ private:
     }
 
     void vel_cb(const Velocity::SharedPtr msg) {
-        state.v_x = msg->v_x;
-        state.v_y = msg->v_y;
-        state.omega = msg->omega;
+        state.v = std::hypot(msg->v_x, msg->v_y);
     }
 
-    void current_controls_cb(const Controls::SharedPtr msg) {
-        state.tau = msg->tau_fl + msg->tau_fr + msg->tau_rl + msg->tau_rr;
-        state.delta = msg->delta;
+    void current_controls_cb([[maybe_unused]] const Controls::SharedPtr msg) {
     }
 
     void track_estimate_cb(const TrackEstimate::SharedPtr msg) {
@@ -165,11 +153,11 @@ private:
         }
         // Publish controls
         brains2::msg::Controls controls_msg;
-        controls_msg.tau_fl = controls->u_tau / 4;
-        controls_msg.tau_fr = controls->u_tau / 4;
-        controls_msg.tau_rl = controls->u_tau / 4;
-        controls_msg.tau_rr = controls->u_tau / 4;
-        controls_msg.delta = controls->u_delta;
+        controls_msg.tau_fl = controls->tau / 4;
+        controls_msg.tau_fr = controls->tau / 4;
+        controls_msg.tau_rl = controls->tau / 4;
+        controls_msg.tau_rr = controls->tau / 4;
+        controls_msg.delta = controls->delta;
         this->target_controls_pub->publish(controls_msg);
 
         // TODO: add viz

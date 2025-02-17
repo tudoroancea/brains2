@@ -28,37 +28,28 @@ TEST(ControllerTestSuite, straight_line_test) {
                               .C_r0 = 350.0,
                               .C_r1 = 20.0,
                               .C_r2 = 3.0,
-                              .t_delta = 0.02,
-                              .t_tau = 0.01,
                           },
                           Controller::Limits{
                               .v_x_max = 10.0,
                               .delta_max = 0.5,
                               .tau_max = 100.0,
                           },
-                          Controller::CostParams{.delta_s_ref = 3.0,
-                                                 .v_x_ref = 5.0,
-                                                 .q_s = 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0,
-                                                 1.0},
-                          10);
-    auto res = controller.compute_control(Controller::State{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-                                          *track);
+                          Controller::CostParams{
+                              .delta_s_ref = 3.0,
+                              .v_ref = 5.0,
+                              .q_s = 1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                              1.0,
+                          },
+                          1);
+    auto res = controller.compute_control(Controller::State{0.0, 0.0, 0.0, 0.0}, *track);
     ASSERT_TRUE(res.has_value());
     IC(*res, controller.get_x_opt(), controller.get_u_opt());
 }
