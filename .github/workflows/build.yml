@@ -73,7 +73,6 @@ jobs:
             curl -fsSLo Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
           fi
           bash Miniforge3.sh -b -p $HOME/miniforge3
-          source "${HOME}/conda/etc/profile.d/conda.sh"
 
       - name: Install conda-lock
         run: |
