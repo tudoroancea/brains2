@@ -380,16 +380,6 @@ public:
             car_constants["actuators"]["steering_max"].as<double>(),
             car_constants["actuators"]["steering_rate_max"].as<double>()};
 
-        {
-            std::string init_message{};
-            IC_CONFIG.prefix("");
-            IC_CONFIG.output(init_message);
-            IC(params, limits);
-            RCLCPP_INFO(this->get_logger(),
-                        "Sim initialized with parameters: %s",
-                        init_message.c_str());
-        }
-
         // Create Sim object
         this->sim = std::make_unique<brains2::sim::Sim>(params, limits);
 #else
