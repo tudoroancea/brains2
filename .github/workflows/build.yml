@@ -1,0 +1,24 @@
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          recursive: true
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          miniforge-version: latest
+          activate-environment: brains2
+          environment-file: conda-lock.yml
+      - name: Build workspace
+        run: |
+          chmod +x ./scripts/build.sh
+          ./scripts/build.sh
