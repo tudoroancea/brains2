@@ -1,9 +1,15 @@
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+      - main
+    types: [labeled]
+  workflow_dispatch:
 
 jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    if: github.event.label.name == 'run_build_ci'
     strategy:
       fail-fast: false
       matrix:
@@ -12,12 +18,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           recursive: true
+
+      - name: Remove workflow label
+        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label run_build_ci
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           miniforge-version: latest
           activate-environment: brains2
           environment-file: conda-lock.yml
+
       - name: Build workspace
         run: |
           chmod +x ./scripts/build.sh
