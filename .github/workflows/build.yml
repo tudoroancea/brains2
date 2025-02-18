@@ -9,7 +9,7 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    if: github.event.label.name == 'run_build_ci'
+    if: false # github.event.label.name == 'run_build_ci'
     strategy:
       fail-fast: false
       matrix:
@@ -42,5 +42,52 @@ jobs:
       - name: Build workspace
         run: |
           conda activate brains
+          chmod +x ./scripts/build.sh
+          ./scripts/build.sh
+
+  build2:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: github.event.label.name == 'run_build_ci'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          recursive: true
+
+      - name: Remove workflow label
+        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label run_build_ci
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Install miniforge3
+        # on macos: curl -fsSLo Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
+        # on linux: wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+        run: |
+          if [[ ${{ matrix.os }} == "ubuntu-latest" ]]; then
+            wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+          elif [[ ${{ matrix.os }} == "macos-latest" ]]; then
+            curl -fsSLo Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
+          fi
+          bash Miniforge3.sh -b -p $HOME/miniforge3
+          source "${HOME}/conda/etc/profile.d/conda.sh"
+
+      - name: Install conda-lock
+        run: |
+          conda activate
+          conda install -y conda-lock
+
+      - name: Install dependencies
+        run: |
+          conda activate
+          chmod +x ./scripts/env_sync.sh
+          ./scripts/env_sync.sh
+
+      - name: Build workspace
+        run: |
+          conda activate brains2
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
