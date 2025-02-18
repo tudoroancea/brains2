@@ -9,3 +9,5 @@ log
 __pycache__
 *.egg-info
 .DS_Store
+*.mtx
+*.casadi
