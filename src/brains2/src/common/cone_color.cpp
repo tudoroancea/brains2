@@ -1,5 +1,6 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include "brains2/common/cone_color.hpp"
+#include <stdexcept>
 #include <string>
 
 brains2::common::ConeColor brains2::common::cone_color_from_string(const std::string& s) {
