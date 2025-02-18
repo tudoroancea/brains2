@@ -28,10 +28,18 @@ jobs:
         with:
           auto-update-conda: true
           miniforge-version: latest
-          activate-environment: brains2
+          auto-activate-base: true
+          activate-environment: ""
           environment-file: conda-lock.yml
+
+      - name: Install dependencies
+        run: |
+          conda install -y conda-lock
+          chmod +x ./scripts/env_sync.sh
+          ./scripts/env_sync.sh
 
       - name: Build workspace
         run: |
+          conda activate brains
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
