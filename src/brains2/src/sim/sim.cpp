@@ -49,7 +49,7 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     // Update simulation/sampling time
     kin6_acados_sim_update_params((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule,
                                   p.data(),
-                                  np_kin6);
+                                  Parameters::dim_kin6);
 
     // Allocate memory for the acceleration function
     kin6_workspace.accel_fun_mem = casadi_alloc(kin6_accels_functions());
@@ -73,7 +73,7 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     // Update model parameters
     dyn6_acados_sim_update_params((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule,
                                   p.data(),
-                                  np_dyn6);
+                                  Parameters::dim_dyn6);
 
     // Allocate memory for the acceleration function
     dyn6_workspace.accel_fun_mem = casadi_alloc(dyn6_accels_functions());
@@ -107,7 +107,7 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
     x[10] = state.tau_RR;
 
     // Set current target controls (and enforce limits)
-    const double ddelta_max = p[Sim::np_kin6 - 1] * limits.delta_dot_max;
+    const double ddelta_max = p[Sim::Parameters::dim_kin6 - 1] * limits.delta_dot_max;
     u[0] = clip(clip(control.u_delta, state.delta - ddelta_max, state.delta + ddelta_max),
                 -limits.delta_max,
                 limits.delta_max);
@@ -127,6 +127,7 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
     // depending on the last velocity v=sqrt(v_x^2+v_y^2), decide which model to
     // use and set its inputs.
     if (std::hypot(state.v_x, state.v_y) > 0.1) {
+        // if (true) {
         // We use the dynamic model
         // Set simulation solver inputs
         sim_in_set(dyn6_workspace._sim_config,

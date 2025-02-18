@@ -1,0 +1,38 @@
+{
+  "name": "brains2_extensions",
+  "displayName": "Brains2 Extensions",
+  "description": "A collection of panels and message converters for brains2",
+  "publisher": "tudoroancea",
+  "homepage": "https://github.com/tudoroancea/brains2",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "main": "./dist/extension.js",
+  "keywords": [],
+  "scripts": {
+    "build": "foxglove-extension build",
+    "foxglove:prepublish": "foxglove-extension build --mode production",
+    "lint": "eslint .",
+    "lint:ci": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "local-install": "foxglove-extension install",
+    "package": "foxglove-extension package",
+    "pretest": "foxglove-extension pretest"
+  },
+  "devDependencies": {
+    "@foxglove/eslint-plugin": "2.0.0",
+    "@foxglove/extension": "2.21.0",
+    "@foxglove/studio": "^2.4.0",
+    "@microlink/react-json-view": "1.23.4",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "create-foxglove-extension": "1.0.4",
+    "eslint": "9.20.1",
+    "immer": "10.1.1",
+    "lodash": "4.17.21",
+    "prettier": "3.5.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-joystick-component": "^6.2.1",
+    "typescript": "5.7.3"
+  }
+}

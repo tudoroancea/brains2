@@ -3,13 +3,251 @@
     "3D!3mfo4f7": {
       "cameraState": {
         "perspective": true,
-        "distance": 12.634999999641119,
-        "phi": 57.13137379588164,
-        "thetaOffset": 91.73373346255308,
+        "distance": 5.018802913570741,
+        "phi": 85,
+        "thetaOffset": 90,
         "targetOffset": [
-          0.14575961453806646,
-          -0.07884313261524961,
-          -3.465000086675962e-14
+          4.487143679271978,
+          0.005153709910343682,
+          0.5
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 55,
+        "near": 0.5,
+        "far": 5000,
+        "logDepth": false
+      },
+      "followMode": "follow-pose",
+      "scene": {
+        "ignoreColladaUpAxis": false,
+        "backgroundColor": "#565656",
+        "enableStats": true,
+        "syncCamera": false
+      },
+      "transforms": {
+        "frame:world": {
+          "visible": false
+        },
+        "frame:car": {
+          "visible": false
+        },
+        "frame:car_gt": {
+          "visible": false
+        },
+        "frame:": {
+          "visible": false
+        },
+        "frame:splashscreen": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/mesh": {
+          "visible": true,
+          "namespaces": {
+            "mesh": {
+              "visible": true
+            },
+            "cones": {
+              "visible": true
+            }
+          }
+        },
+        "/ihm2/pose": {
+          "visible": false
+        },
+        "/ihm2/viz": {
+          "visible": true
+        },
+        "/ihm2/viz/sim": {
+          "visible": true,
+          "namespaces": {
+            "car": {
+              "visible": true
+            }
+          }
+        },
+        "/hess_sim/viz": {
+          "visible": true,
+          "namespaces": {
+            "car": {
+              "visible": true
+            }
+          }
+        },
+        "/hess_sim/pose": {
+          "visible": true
+        },
+        "/brains/viz/control": {
+          "visible": true
+        },
+        "/brains/pose": {
+          "visible": true
+        },
+        "/brains/viz/localization": {
+          "visible": true
+        },
+        "/brains/splashscreen/camera_info": {
+          "visible": false,
+          "width": 0.0564,
+          "planarProjectionFactor": 1,
+          "distance": 0.01
+        },
+        "/brains/splashscreen": {
+          "visible": true,
+          "frameLocked": true,
+          "cameraInfoTopic": "/brains/splashscreen/camera_info",
+          "color": "#ffffffff",
+          "distance": 1,
+          "planarProjectionFactor": 0.01
+        },
+        "/brains/splashscreen/img": {
+          "visible": false,
+          "frameLocked": true,
+          "cameraInfoTopic": "/brains/splashscreen/camera_info",
+          "color": "#ffffff",
+          "distance": 0.01,
+          "planarProjectionFactor": 1
+        },
+        "/brains/splashscreen/text": {
+          "visible": false,
+          "showOutlines": true,
+          "color": "#0066ffff"
+        },
+        "/hess_sim/splashscreen_camera_info": {
+          "visible": false,
+          "width": 0.05,
+          "planarProjectionFactor": 1,
+          "distance": 0.01
+        },
+        "/hess_sim/splashscreen_image": {
+          "visible": true,
+          "frameLocked": true,
+          "cameraInfoTopic": "/hess_sim/splashscreen_camera_info",
+          "color": "#ffffffff",
+          "planarProjectionFactor": 1,
+          "distance": 0.01
+        },
+        "/hess_sim/splashscreen_text": {
+          "visible": true
+        },
+        "/brains2/viz/sim": {
+          "visible": true
+        }
+      },
+      "layers": {
+        "930c05e1-0b0c-4143-9344-a0747eea3846": {
+          "visible": true,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "930c05e1-0b0c-4143-9344-a0747eea3846",
+          "layerId": "foxglove.Grid",
+          "size": 200,
+          "lineWidth": 1,
+          "color": "#ffffff30",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "order": 1,
+          "divisions": 200,
+          "frameId": "world"
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "followTf": "car"
+    },
+    "Plot!x58usv": {
+      "paths": [
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/acceleration.a_x",
+          "enabled": true,
+          "color": "#4e98e2"
+        }
+      ],
+      "minYValue": -10,
+      "maxYValue": 10,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "custom",
+      "sidebarDimension": 240,
+      "xAxisPath": {
+        "value": "/brains2/acceleration.a_y"
+      }
+    },
+    "Gauge!2l3wbfs": {
+      "path": "/brains2/velocity.v_x",
+      "minValue": 0,
+      "maxValue": 20,
+      "colorMap": "red-yellow-green",
+      "colorMode": "colormap",
+      "gradient": [
+        "#0000ff",
+        "#ff00ff"
+      ],
+      "reverse": false,
+      "foxglovePanelTitle": "Speed"
+    },
+    "Brains2 Extensions.Joystick Controller!3g13bpa": {
+      "topic": "/brains2/target_controls",
+      "enabled": false,
+      "freq": 100,
+      "tau_max": 100,
+      "delta_max": 0.5,
+      "foxglovePanelTitle": "Manual control"
+    },
+    "Brains2 Extensions.Call Service Button!1lial39": {
+      "service": "/brains2/reset",
+      "buttonLabel": "reset",
+      "buttonColor": "#ff0087",
+      "foxglovePanelTitle": "Reset simulation"
+    },
+    "Brains2 Extensions.Call Service Button!17ia8gj": {
+      "service": "/brains2/publish_cones_markers",
+      "buttonLabel": "publish",
+      "buttonColor": "#007bff",
+      "foxglovePanelTitle": "Publish cones"
+    },
+    "3D!4bkb5sl": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 5.282950435340312,
+        "phi": 67.47078859794684,
+        "thetaOffset": -33.59501008305441,
+        "targetOffset": [
+          0.4214516246731516,
+          -0.16706059959352385,
+          0.09999999999999984
         ],
         "target": [
           0,
@@ -181,54 +419,26 @@
       "imageMode": {},
       "followTf": "car"
     },
-    "virtual-joystick.Virtual Joystick!3gs8zo6": {
-      "publishRate": 100,
-      "maxLinearSpeed": 100,
-      "maxAngularSpeed": 0.5,
-      "topic": "/brains2/alternative_target_controls",
-      "messageSchema": "geometry_msgs/msg/Twist"
-    },
-    "DiagnosticStatusPanel!mvree4": {
+    "DiagnosticStatusPanel!1u4b6x5": {
       "topicToRender": "/brains2/diagnostics"
     },
-    "Plot!8r4ga1": {
-      "paths": [
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/acceleration.a_x",
-          "enabled": true,
-          "color": "#4e98e2"
-        }
-      ],
-      "minYValue": -10,
-      "maxYValue": 10,
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showLegend": false,
-      "legendDisplay": "floating",
-      "showPlotValuesInLegend": false,
-      "isSynced": true,
-      "xAxisVal": "custom",
-      "sidebarDimension": 240,
-      "xAxisPath": {
-        "value": "/brains2/acceleration.a_y"
-      }
-    },
-    "RawMessages!1v5d1jj": {
+    "RawMessages!2ijdo78": {
       "diffEnabled": false,
       "diffMethod": "custom",
       "diffTopicPath": "",
       "showFullMessageForDiff": false,
-      "topicPath": "/brains2/acceleration.a_x"
+      "topicPath": "/brains2/acceleration.a_x",
+      "fontSize": 12
     },
-    "RawMessages!vcy4a6": {
+    "RawMessages!2h6k884": {
       "diffEnabled": false,
       "diffMethod": "custom",
       "diffTopicPath": "",
       "showFullMessageForDiff": false,
-      "topicPath": "/brains2/acceleration.a_y"
+      "topicPath": "/brains2/acceleration.a_y",
+      "fontSize": 12
     },
-    "CallService!1zs06v0": {
+    "CallService!3b5o1lu": {
       "requestPayload": "{}",
       "layout": "horizontal",
       "foxglovePanelTitle": "reset",
@@ -238,7 +448,7 @@
       "buttonColor": "#c32e2e",
       "timeoutSeconds": 10
     },
-    "CallService!10mxkor": {
+    "CallService!40wh11s": {
       "requestPayload": "{}",
       "layout": "horizontal",
       "buttonText": "publish them cones",
@@ -248,7 +458,7 @@
       "buttonColor": "#1b9300",
       "timeoutSeconds": 10
     },
-    "Plot!1xctq6s": {
+    "Plot!btytc4": {
       "paths": [
         {
           "value": "/brains2/current_controls.tau_fr",
@@ -280,7 +490,7 @@
       "followingViewWidth": 10,
       "foxglovePanelTitle": "torque per wheel (Nm)"
     },
-    "Plot!2sv84j4": {
+    "Plot!3mjjvvt": {
       "paths": [
         {
           "value": "/brains2/current_controls.delta",
@@ -313,7 +523,7 @@
       "foxglovePanelTitle": "steering angle (rad)",
       "followingViewWidth": 10
     },
-    "Plot!2bhy01b": {
+    "Plot!3qhslh1": {
       "paths": [
         {
           "value": "/brains2/velocity.v_x",
@@ -350,35 +560,53 @@
       "activeTabIdx": 0,
       "tabs": [
         {
+          "title": "demo",
+          "layout": {
+            "first": "3D!3mfo4f7",
+            "second": {
+              "first": {
+                "first": {
+                  "first": "Plot!x58usv",
+                  "second": "Gauge!2l3wbfs",
+                  "direction": "row"
+                },
+                "second": "Brains2 Extensions.Joystick Controller!3g13bpa",
+                "direction": "row",
+                "splitPercentage": 72.8909952606635
+              },
+              "second": {
+                "first": "Brains2 Extensions.Call Service Button!1lial39",
+                "second": "Brains2 Extensions.Call Service Button!17ia8gj",
+                "direction": "column"
+              },
+              "direction": "row",
+              "splitPercentage": 82.29329173166927
+            },
+            "direction": "column",
+            "splitPercentage": 77.06626954579299
+          }
+        },
+        {
           "title": "main",
           "layout": {
             "first": {
               "first": {
-                "first": "3D!3mfo4f7",
-                "second": {
-                  "first": "virtual-joystick.Virtual Joystick!3gs8zo6",
-                  "second": {
-                    "first": "DiagnosticStatusPanel!mvree4",
-                    "second": "Plot!8r4ga1",
-                    "direction": "column",
-                    "splitPercentage": 51.46831530139101
-                  },
-                  "direction": "column"
-                },
+                "first": "3D!4bkb5sl",
+                "second": "DiagnosticStatusPanel!1u4b6x5",
                 "direction": "row",
                 "splitPercentage": 68.94977168949772
               },
               "second": {
                 "first": {
                   "first": {
-                    "first": "RawMessages!1v5d1jj",
-                    "second": "RawMessages!vcy4a6",
+                    "first": "RawMessages!2ijdo78",
+                    "second": "RawMessages!2h6k884",
                     "direction": "column"
                   },
-                  "second": "CallService!1zs06v0",
+                  "second": "CallService!3b5o1lu",
                   "direction": "column"
                 },
-                "second": "CallService!10mxkor",
+                "second": "CallService!40wh11s",
                 "direction": "column",
                 "splitPercentage": 67.8516228748068
               },
@@ -387,11 +615,11 @@
             },
             "second": {
               "first": {
-                "first": "Plot!1xctq6s",
-                "second": "Plot!2sv84j4",
+                "first": "Plot!btytc4",
+                "second": "Plot!3mjjvvt",
                 "direction": "row"
               },
-              "second": "Plot!2bhy01b",
+              "second": "Plot!3qhslh1",
               "direction": "row",
               "splitPercentage": 67.55102040816327
             },

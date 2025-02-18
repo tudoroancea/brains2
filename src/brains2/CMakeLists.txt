@@ -36,7 +36,7 @@ find_package(osqp REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # the following assumes acados has already been installed (automatically done in build.sh)
-find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake) 
+find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
 set(CMAKE_TESTING_ENABLED ON)
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
@@ -72,15 +72,14 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-ament_auto_add_library(brains2_common SHARED
-    src/common/cone_color.cpp
-    src/common/marker_color.cpp
-    src/common/math.cpp
-    src/common/tracks.cpp
-)
+file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
+ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
 target_link_libraries(brains2_common Eigen3::Eigen)
 
 if (CMAKE_TESTING_ENABLED)
+  ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
+  target_link_libraries(test_track_database brains2_common)
+
   ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
   target_link_libraries(test_tracks brains2_common)
 endif()
@@ -115,8 +114,35 @@ target_link_libraries(sim_node
 ####################################################################################################
 # estimation
 ####################################################################################################
-ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_test.cpp)
-target_link_libraries(brains2_be_spline_test brains2_common OsqpEigen::OsqpEigen osqp::osqp)
+ament_auto_add_library(brains2_estimation SHARED
+    src/estimation/center_line_estimation.cpp src/common/spline_fitting.cpp
+)
+
+target_link_libraries(brains2_estimation OsqpEigen::OsqpEigen osqp::osqp)
+
+ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_fitting/work_spline.cpp)
+target_link_libraries(brains2_be_spline_test brains2_common brains2_estimation)
+
+if (CMAKE_TESTING_ENABLED)
+  ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
+  target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
+endif()
+
+ament_auto_add_executable(fake_track_estimation_node src/estimation/fake_track_estimation_node.cpp)
+target_link_libraries(fake_track_estimation_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  brains2_common
+)
+
+####################################################################################################
+# SLAM
+####################################################################################################
+ament_auto_add_executable(fake_slam_node src/slam/fake_slam_node.cpp)
+target_link_libraries(fake_slam_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  yaml-cpp::yaml-cpp
+  brains2_common
+)
 
 ####################################################################################################
 # create package

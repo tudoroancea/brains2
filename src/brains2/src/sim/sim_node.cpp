@@ -4,7 +4,7 @@
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track_database.hpp"
 #include "brains2/external/icecream.hpp"
 #include "brains2/external/optional.hpp"
 #include "brains2/msg/acceleration.hpp"
@@ -15,7 +15,6 @@
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "Eigen/Dense"
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/node.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -68,7 +67,6 @@ private:
 
     // subscribers
     rclcpp::Subscription<Controls>::SharedPtr target_controls_sub;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr alternative_target_controls_sub;
 
     // services
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv;
@@ -100,23 +98,11 @@ private:
     rclcpp::Time last_lap_time_stamp = rclcpp::Time(0, 0);
 
     void controls_callback(const brains2::msg::Controls::SharedPtr msg) {
-        if (!this->get_parameter("manual_control").as_bool()) {
-            control.u_tau_FL = msg->tau_fl;
-            control.u_tau_FR = msg->tau_fr;
-            control.u_tau_RL = msg->tau_rl;
-            control.u_tau_RR = msg->tau_rr;
-            control.u_delta = msg->delta;
-        }
-    }
-
-    void alternative_controls_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
-        if (this->get_parameter("manual_control").as_bool()) {
-            control.u_tau_FL = msg->linear.x;
-            control.u_tau_FR = msg->linear.x;
-            control.u_tau_RL = msg->linear.x;
-            control.u_tau_RR = msg->linear.x;
-            control.u_delta = msg->angular.z;
-        }
+        control.u_tau_FL = msg->tau_fl;
+        control.u_tau_FR = msg->tau_fr;
+        control.u_tau_RL = msg->tau_rl;
+        control.u_tau_RR = msg->tau_rr;
+        control.u_delta = msg->delta;
     }
 
     void publish_cones_srv_cb(
@@ -362,7 +348,6 @@ public:
     SimNode() : Node("sim_node"), sim{}, state{}, control{}, accels{} {
         // Declare all node parameters
         this->declare_parameter<double>("freq", 100.0);
-        this->declare_parameter<bool>("manual_control", true);
         this->declare_parameter<std::string>("track_name", "alpha");
 
         // Compute sampling time
@@ -431,11 +416,6 @@ public:
             "/brains2/target_controls",
             10,
             std::bind(&SimNode::controls_callback, this, std::placeholders::_1));
-        this->alternative_target_controls_sub =
-            this->create_subscription<geometry_msgs::msg::Twist>(
-                "/brains2/alternative_target_controls",
-                10,
-                std::bind(&SimNode::alternative_controls_callback, this, std::placeholders::_1));
 
         // Create ros services.
         this->reset_srv = this->create_service<std_srvs::srv::Empty>(
