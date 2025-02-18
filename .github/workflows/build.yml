@@ -73,21 +73,52 @@ jobs:
             curl -fsSLo Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
           fi
           bash Miniforge3.sh -b -p $HOME/miniforge3
-          conda init
 
       - name: Install conda-lock
         run: |
+          conda init
           conda activate
           conda install -y conda-lock
 
       - name: Install dependencies
         run: |
+          conda init
           conda activate
           chmod +x ./scripts/env_sync.sh
           ./scripts/env_sync.sh
 
       - name: Build workspace
         run: |
+          conda init
           conda activate brains2
+          chmod +x ./scripts/build.sh
+          ./scripts/build.sh
+
+  build3:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: github.event.label.name == 'run_build_ci'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          recursive: true
+
+      - name: Remove workflow label
+        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label run_build_ci
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: conda-lock.yml
+          environment-name: brains2
+          init-shell: bash
+
+      - name: Build workspace
+        run: |
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
