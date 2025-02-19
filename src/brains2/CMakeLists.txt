@@ -19,6 +19,8 @@ include_directories(include)
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
 add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 
+set(CMAKE_TESTING_ENABLED ON)
+
 ####################################################################################################
 # dependencies
 ####################################################################################################
@@ -37,7 +39,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # the following assumes acados has already been installed (automatically done in build.sh)
 find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
-set(CMAKE_TESTING_ENABLED ON)
+
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
   find_package(GTest REQUIRED)
@@ -102,7 +104,6 @@ target_link_libraries(sim_node
   yaml-cpp::yaml-cpp
   brains2_common
   brains2_sim
-  acados
 )
 
 # if (CMAKE_TESTING_ENABLED)
