@@ -46,7 +46,7 @@ jobs:
           ./scripts/build.sh
 
   build2:
-    name: Build (${{ matrix.os }})
+    name: Build manual installaion (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     if: github.event.label.name == 'run_build_ci'
     strategy:
@@ -95,7 +95,7 @@ jobs:
           ./scripts/build.sh
 
   build3:
-    name: Build (${{ matrix.os }})
+    name: Build miniforge (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     if: github.event.label.name == 'run_build_ci'
     strategy:
