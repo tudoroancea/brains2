@@ -76,16 +76,26 @@ submodule in `src` and is built by `colcon`.
 
 You can now lock the environment with:
 ```shell
-conda-lock -f env.yml --mamba
+conda-lock -f env.yml --mamba --virtual-package-spec virtual-packages.yml
 ```
 and update it with:
 ```shell
 conda-lock install -n brains2
 ```
 You can also accomplish the same with the scripts [`scripts/env_lock.sh`](scripts/env_lock.sh)
-and [`scripts/env_sync.sh`](scripts/env_sync.sh), or [`scripts/env_lock_sync.sh`](scripts/env_lock_sync.sh).
+and [`scripts/env_sync.sh`](scripts/env_sync.sh).
+
+> [!NOTE]
+> We use a `virtual-packages.yml` file to specify assumptions we make about the
+> machines' hardware (in particular the CPU architecture on `linux-64`). See more
+> details on virtual packages [here](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-virtual.html).
 
 > [!NOTE]
 > Locking the environment will automatically update all the dependencies to the
 > latest compatible versions, because `conda-lock` does not take into account
 > the old lock file.
+
+> [!WARNING]
+> There is a known bug in `conda-lock` that prevents you from locking the environment
+> for `linux-64` platforms. Currently, if you want to do it you have to modify a file
+> in the source code of `conda-lock`, as in the [following PR](https://github.com/conda/conda-lock/pull/776).
