@@ -119,6 +119,7 @@ jobs:
           environment-name: brains2
           init-shell: bash
           create-args: -v
+          log-level: debug
 
       - name: Build workspace
         run: |
