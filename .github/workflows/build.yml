@@ -114,7 +114,7 @@ jobs:
 
       - uses: mamba-org/setup-micromamba@v2
         with:
-          micromamba-version: 2.0.5
+          micromamba-version: 2.0.5-0
           environment-file: conda-lock.yml
           environment-name: brains2
           init-shell: bash
