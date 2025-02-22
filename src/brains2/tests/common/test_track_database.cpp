@@ -7,7 +7,7 @@
 #include "gtest/gtest.h"
 
 TEST(TrackDatabaseTestSuite, load_cones_track_database_test) {
-    for (const std::string &track_name : {"alpha", "beta", "gamma"}) {
+    for (const std::string track_name : {"alpha", "beta", "gamma"}) {
         tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> cones =
             brains2::common::load_cones_from_track_database(track_name);
         EXPECT_TRUE(cones.has_value());
@@ -15,7 +15,7 @@ TEST(TrackDatabaseTestSuite, load_cones_track_database_test) {
 }
 
 TEST(TrackDatabaseTestSuite, load_cones_file_test) {
-    for (const std::string &track_name : {"alpha", "beta", "gamma"}) {
+    for (const std::string track_name : {"alpha", "beta", "gamma"}) {
         std::filesystem::path track_path = TRACK_DATABASE_PATH;
         track_path /= (track_name + ".csv");
         tl::optional<std::unordered_map<brains2::common::ConeColor, Eigen::MatrixX2d>> cones =
