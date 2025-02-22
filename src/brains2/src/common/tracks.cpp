@@ -10,12 +10,12 @@
 
 namespace brains2::common {
 
-tl::optional<Track> Track::from_values(const std::vector<double>& s,
-                                       const std::vector<double>& X,
-                                       const std::vector<double>& Y,
-                                       const std::vector<double>& phi,
-                                       const std::vector<double>& kappa,
-                                       const std::vector<double>& width) {
+tl::expected<Track, Track::Error> Track::from_values(const std::vector<double>& s,
+                                                     const std::vector<double>& X,
+                                                     const std::vector<double>& Y,
+                                                     const std::vector<double>& phi,
+                                                     const std::vector<double>& kappa,
+                                                     const std::vector<double>& width) {
     return Track::from_values(Eigen::VectorXd::Map(s.data(), s.size()),
                               Eigen::VectorXd::Map(X.data(), X.size()),
                               Eigen::VectorXd::Map(Y.data(), Y.size()),
@@ -24,16 +24,25 @@ tl::optional<Track> Track::from_values(const std::vector<double>& s,
                               Eigen::VectorXd::Map(width.data(), width.size()));
 }
 
-tl::optional<Track> Track::from_values(const Eigen::VectorXd& s,
-                                       const Eigen::VectorXd& X,
-                                       const Eigen::VectorXd& Y,
-                                       const Eigen::VectorXd& phi,
-                                       const Eigen::VectorXd& kappa,
-                                       const Eigen::VectorXd& width) {
+tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
+                                                     const Eigen::VectorXd& X,
+                                                     const Eigen::VectorXd& Y,
+                                                     const Eigen::VectorXd& phi,
+                                                     const Eigen::VectorXd& kappa,
+                                                     const Eigen::VectorXd& width) {
+    // Check all inputs have the same size
     const auto size = s.size();
     if (size != X.size() || size != Y.size() || size != phi.size() || size != kappa.size() ||
         size != width.size()) {
-        return tl::nullopt;
+        return tl::unexpected(Track::Error::DIFFERENT_SIZES);
+    }
+    // Check that s is increasing
+    if ((s.array() <= s.head(size - 1).array()).any()) {
+        return tl::unexpected(Track::Error::NONMONOTONIC_PROGRESS);
+    }
+    // Check that the width is positive
+    if ((width.array() <= 0).any()) {
+        return tl::unexpected(Track::Error::NEGATIVE_WIDTH);
     }
 
     // Copy the data
@@ -74,7 +83,10 @@ tl::optional<Track> Track::from_values(const Eigen::VectorXd& s,
     return track;
 }
 
-tl::optional<Track> brains2::common::Track::from_file(const std::filesystem::path& csv_file) {
+tl::expected<Track, Track::Error> Track::from_file(const std::filesystem::path& csv_file) {
+    if (!std::filesystem::exists(csv_file)) {
+        return tl::make_unexpected(Track::Error::FILE_NOT_FOUND);
+    }
     rapidcsv::Document doc(csv_file.string());
     return Track::from_values(doc.GetColumn<double>("s"),
                               doc.GetColumn<double>("X"),
@@ -84,24 +96,23 @@ tl::optional<Track> brains2::common::Track::from_file(const std::filesystem::pat
                               doc.GetColumn<double>("w"));
 }
 
-double brains2::common::Track::length() const {
+double Track::length() const {
     // This class usually represents 'open' tracks. When it is used to represent a closed track, the
     // length will be slightly off as we should add
     //  std::hypot(vals_X(size - 1) - vals_X(0), vals_Y(size - 1) - vals_Y(0))
     return vals_s(vals_s.size() - 1) - vals_s(0);
 }
-size_t brains2::common::Track::size() const {
+size_t Track::size() const {
     return vals_s.size();
 }
 
 static double angle3pt(const Eigen::Vector2d& a,
                        const Eigen::Vector2d& b,
                        const Eigen::Vector2d& c) {
-    return brains2::common::wrap_to_pi(std::atan2(c(1) - b(1), c(0) - b(0)) -
-                                       std::atan2(a(1) - b(1), a(0) - b(0)));
+    return wrap_to_pi(std::atan2(c(1) - b(1), c(0) - b(0)) - std::atan2(a(1) - b(1), a(0) - b(0)));
 }
 
-double brains2::common::Track::interp(const Eigen::MatrixXd& coeffs, double s, int ind) const {
+double Track::interp(const Eigen::MatrixXd& coeffs, double s, int ind) const {
     // find i such that s_ref[i] <= s < s_ref[i+1]
     if (ind < 0) {
         ind = find_interval(s);
@@ -212,31 +223,31 @@ Eigen::Vector3d Track::frenet_to_cartesian(const Eigen::Vector3d& frenet_pose) c
     return Eigen::Vector3d(X, Y, phi);
 }
 
-size_t brains2::common::Track::find_interval(double s) const {
+size_t Track::find_interval(double s) const {
     return std::upper_bound(vals_s.data(), vals_s.data() + vals_s.size(), s) - vals_s.data() - 1;
 }
 
-const Eigen::VectorXd& brains2::common::Track::get_vals_s() const {
+const Eigen::VectorXd& Track::get_vals_s() const {
     return this->vals_s;
 }
 
-const Eigen::VectorXd& brains2::common::Track::get_vals_X() const {
+const Eigen::VectorXd& Track::get_vals_X() const {
     return this->vals_X;
 }
 
-const Eigen::VectorXd& brains2::common::Track::get_vals_Y() const {
+const Eigen::VectorXd& Track::get_vals_Y() const {
     return this->vals_Y;
 }
 
-const Eigen::VectorXd& brains2::common::Track::get_vals_phi() const {
+const Eigen::VectorXd& Track::get_vals_phi() const {
     return this->vals_phi;
 }
 
-const Eigen::VectorXd& brains2::common::Track::get_vals_kappa() const {
+const Eigen::VectorXd& Track::get_vals_kappa() const {
     return this->vals_kappa;
 }
 
-const Eigen::VectorXd& brains2::common::Track::get_vals_width() const {
+const Eigen::VectorXd& Track::get_vals_width() const {
     return this->vals_width;
 }
 

@@ -6,6 +6,7 @@
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
 #include "brains2/common/tracks.hpp"
+#include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
 #include "brains2/msg/pose.hpp"
 #include "brains2/msg/track_estimate.hpp"
@@ -32,7 +33,7 @@ private:
     rclcpp::TimerBase::SharedPtr timer;
 
     double last_s = 0.0;
-    tl::optional<Track> track;
+    unique_ptr<Track> track;
     TrackEstimate track_estimate_msg;
     MarkerArray viz_msg;
     shared_ptr<Pose> last_pose;
@@ -48,7 +49,7 @@ private:
         auto [s_proj, _] = track->project(last_pose->x, last_pose->y, this->last_s, 30.0);
 
         // Update last s value (don't forget the Track here represents 3 laps)
-        this->last_s = std::fmod(s_proj, this->track->length() / 3);
+        this->last_s = std::fmod(s_proj, track->length() / 3);
 
         // Take 5m behind and 10 in front
         size_t start_id =
@@ -136,12 +137,16 @@ public:
         if (!std::filesystem::exists(center_line_file)) {
             throw std::runtime_error("Track " + track_name + " not found in TRACK_DATABASE_PATH");
         }
-        this->track = Track::from_file(center_line_file.string());
-        if (!this->track.has_value()) {
+        const auto track_expected = Track::from_file(center_line_file.string());
+        if (!track_expected.has_value()) {
             throw std::runtime_error(
                 "Track " + track_name +
                 " could not be loaded because not all columns have the same length");
         }
+        // NOTE: this will effectively copy the instance of Track. This is necessary because the
+        // previous object was allocated on the stack and will be destroyed at the end of the
+        // constructor.
+        this->track = std::make_unique<Track>(track_expected.value());
 #else
 #error TRACK_DATABASE_PATH is not defined
 #endif

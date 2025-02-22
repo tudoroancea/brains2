@@ -9,9 +9,9 @@
 using namespace brains2::common;
 using namespace brains2::control;
 
-static tl::optional<Track> generate_constant_curvature_track(const double curvature,
-                                                             const double s_max,
-                                                             const size_t N) {
+static tl::expected<Track, Track::Error> generate_constant_curvature_track(const double curvature,
+                                                                           const double s_max,
+                                                                           const size_t N) {
     Eigen::VectorXd s = Eigen::VectorXd::LinSpaced(N, 0.0, s_max);
     Eigen::VectorXd kappa = curvature * Eigen::VectorXd::Ones(N);
     Eigen::VectorXd width = 1.5 * Eigen::VectorXd::Ones(N);
@@ -34,28 +34,28 @@ static tl::optional<Track> generate_constant_curvature_track(const double curvat
 class ControllerConstantCurvatureTest : public ::testing::TestWithParam<double> {
 protected:
     std::unique_ptr<Controller> controller;
-    tl::optional<Track> track;
+    std::unique_ptr<Track> track;
     void SetUp() override {
         controller = std::make_unique<Controller>(10,
                                                   Controller::ModelParams{
-                                                       0.05,
-                                                       230.0,
-                                                       0.7853,
-                                                       0.7853,
-                                                       4.950,
-                                                       350.0,
-                                                       20.0,
-                                                       3.0,
+                                                      0.05,
+                                                      230.0,
+                                                      0.7853,
+                                                      0.7853,
+                                                      4.950,
+                                                      350.0,
+                                                      20.0,
+                                                      3.0,
                                                   },
                                                   Controller::Limits{
-                                                       10.0,
-                                                       0.5,
-                                                       100.0,
+                                                      10.0,
+                                                      0.5,
+                                                      100.0,
                                                   },
                                                   Controller::CostParams{
-                                                       3.0,
-                                                       5.0,
-                                                       1.0,
+                                                      3.0,
+                                                      5.0,
+                                                      1.0,
                                                       1.0,
                                                       1.0,
                                                       1.0,
@@ -68,12 +68,15 @@ protected:
                                                   },
                                                   1);
         auto curvature = GetParam();
-        track = generate_constant_curvature_track(curvature, 4.0, 5);
+        const auto track_expected = generate_constant_curvature_track(curvature, 4.0, 5);
+        if (!track_expected) {
+            FAIL() << "Track generation failed";
+        }
+        this->track = std::make_unique<Track>(track_expected.value());
     }
 };
 
 TEST_P(ControllerConstantCurvatureTest, bruh) {
-    ASSERT_TRUE(track.has_value());
     auto res = controller->compute_control(Controller::State{0.0, 0.0, 0.0, 0.0}, *track);
     ASSERT_TRUE(res.has_value());
     IC(*res, controller->get_x_opt(), controller->get_u_opt());

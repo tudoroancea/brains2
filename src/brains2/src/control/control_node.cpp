@@ -7,8 +7,8 @@
 #include "brains2/common/math.hpp"
 #include "brains2/common/tracks.hpp"
 #include "brains2/control/controller.hpp"
+#include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
-#include "brains2/external/optional.hpp"
 #include "brains2/msg/controls.hpp"
 #include "brains2/msg/detail/velocity__struct.hpp"
 #include "brains2/msg/pose.hpp"
@@ -148,24 +148,25 @@ private:
     diagnostic_msgs::msg::DiagnosticArray diag_msg;
 
     // controller
-    tl::optional<brains2::common::Track> track;
+    std::unique_ptr<Track> track;
     std::unique_ptr<brains2::control::Controller> controller;
 
     // only treat one in 5 messages
     uint8_t counter = 0;
 
     void track_estimate_cb(const TrackEstimate::SharedPtr msg) {
-        track = brains2::common::Track::from_values(msg->s_cen,
-                                                    msg->x_cen,
-                                                    msg->y_cen,
-                                                    msg->phi_cen,
-                                                    msg->kappa_cen,
-                                                    msg->w_cen);
-        if (!track) {
+        const auto track_expected = Track::from_values(msg->s_cen,
+                                                       msg->x_cen,
+                                                       msg->y_cen,
+                                                       msg->phi_cen,
+                                                       msg->kappa_cen,
+                                                       msg->w_cen);
+        if (!track_expected) {
             RCLCPP_ERROR(this->get_logger(),
                          "Could not construct Track object from received message (arrays with "
                          "different lengths ?)");
         }
+        this->track = std::make_unique<Track>(track_expected.value());
     }
 
     void state_cb(const Pose::SharedPtr pose_msg, const Velocity::SharedPtr vel_msg) {

@@ -4,7 +4,7 @@
 
 #include <filesystem>
 #include <tuple>
-#include "brains2/external/optional.hpp"
+#include "brains2/external/expected.hpp"
 #include "Eigen/Dense"
 
 namespace brains2 {
@@ -27,19 +27,55 @@ private:
     Track() = default;
 
 public:
-    static tl::optional<Track> from_values(const std::vector<double> &s,
-                                           const std::vector<double> &X,
-                                           const std::vector<double> &Y,
-                                           const std::vector<double> &phi,
-                                           const std::vector<double> &kappa,
-                                           const std::vector<double> &width);
-    static tl::optional<Track> from_values(const Eigen::VectorXd &s,
-                                           const Eigen::VectorXd &X,
-                                           const Eigen::VectorXd &Y,
-                                           const Eigen::VectorXd &phi,
-                                           const Eigen::VectorXd &kappa,
-                                           const Eigen::VectorXd &width);
-    static tl::optional<Track> from_file(const std::filesystem::path &csv_file_path);
+    /*
+     * @brief Possible errors when constructing a Track object.
+     */
+    enum class Error {
+        DIFFERENT_SIZES,        // Provided arrays of values have different sizes
+        NONMONOTONIC_PROGRESS,  // Provided progress values are not strictly increasing
+        NEGATIVE_WIDTH,         // Provided width values are sometimes negative
+        FILE_NOT_FOUND,         // CSV file not found
+    };
+
+    /*
+     * @brief Constructs a Track object from the provided values.
+     * @param s The progress values.
+     * @param X The x-coordinates.
+     * @param Y The y-coordinates.
+     * @param phi The heading angles.
+     * @param kappa The curvature values.
+     * @param width The width values (here half the track width).
+     * @return A tl::expected object containing the Track object or an Error.
+     */
+    static tl::expected<Track, Error> from_values(const std::vector<double> &s,
+                                                  const std::vector<double> &X,
+                                                  const std::vector<double> &Y,
+                                                  const std::vector<double> &phi,
+                                                  const std::vector<double> &kappa,
+                                                  const std::vector<double> &width);
+    /*
+     * @brief Constructs a Track object from the provided values.
+     * @param s The progress values.
+     * @param X The x-coordinates.
+     * @param Y The y-coordinates.
+     * @param phi The heading angles.
+     * @param kappa The curvature values.
+     * @param width The width values (here half the track width).
+     * @return A tl::expected object containing the Track object or an Error.
+     */
+    static tl::expected<Track, Error> from_values(const Eigen::VectorXd &s,
+                                                  const Eigen::VectorXd &X,
+                                                  const Eigen::VectorXd &Y,
+                                                  const Eigen::VectorXd &phi,
+                                                  const Eigen::VectorXd &kappa,
+                                                  const Eigen::VectorXd &width);
+    /*
+     * @brief Constructs a Track object from a CSV file.
+     * @param csv_file_path The path to the CSV file containing 6 columns: s, X, Y, phi, kappa,
+     * width
+     * @return A tl::expected object containing the Track object or an Error.
+     */
+    static tl::expected<Track, Error> from_file(const std::filesystem::path &csv_file_path);
 
     /*
      *  @brief Returns the number of points in the track
