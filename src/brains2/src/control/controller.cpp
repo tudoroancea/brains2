@@ -30,14 +30,14 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
 
     // assemble the continuous dynamics
     auto beta = params.l_R / (params.l_F + params.l_R) * delta;
-    auto s_dot = v * cos(psi + beta) / (1 - n * kappa_cen);
+    auto s_dot = v * cos(psi + beta) / (1 + n * kappa_cen);
     auto f_cont = casadi::Function(
         "f_cont",
         {x, u, kappa_cen},
         {cse(casadi::MX::vertcat({
             s_dot,
             v * sin(psi + beta),
-            v * sin(beta) / params.l_R - kappa_cen * s_dot,
+            v * sin(beta) / params.l_R + kappa_cen * s_dot,
             (params.C_m0 * tau -
              (params.C_r0 + params.C_r1 * v + params.C_r2 * v * v) * tanh(10 * v)) /
                 params.m,
@@ -82,7 +82,6 @@ Controller::Controller(size_t Nf,
         u[i] = opti.variable(Controller::nu);
     }
     x[Nf] = opti.variable(Controller::nx);
-    IC(x, u);
 
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem parameters
@@ -90,7 +89,6 @@ Controller::Controller(size_t Nf,
     x0 = opti.parameter(Controller::nx);
     kappa_cen = opti.parameter(Nf + 1);
     w_cen = opti.parameter(Nf + 1);
-    IC(x0, kappa_cen, w_cen);
 
     ///////////////////////////////////////////////////////////////////
     // Generate model
@@ -104,10 +102,9 @@ Controller::Controller(size_t Nf,
     tau_ref = (model_params.C_r0 + model_params.C_r1 * cost_params.v_ref +
                model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
               model_params.C_m0;
-    IC(tau_ref);
-    this->u_ref.row(1).array() = tau_ref;
-    this->x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt);
-    this->x_ref.row(3).array() = v_ref;
+    u_ref.row(1).array() = tau_ref;
+    x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt);
+    x_ref.row(3).array() = v_ref;
     // Create cost weight matrices
     const auto Q = casadi::MX::diag(casadi::MX::vertcat(
                    {cost_params.q_s, cost_params.q_n, cost_params.q_psi, cost_params.q_v})),
@@ -115,22 +112,20 @@ Controller::Controller(size_t Nf,
                Q_f = casadi::MX::diag(casadi::MX::vertcat(
                    {cost_params.q_s_f, cost_params.q_n_f, cost_params.q_psi_f, cost_params.q_v_f}));
     cost_function = casadi::MX(0.0);
-    auto s0 = x0(0);
     for (size_t i = 0; i < Nf; ++i) {
-        const auto u_diff = u[i] - casadi::DM({this->u_ref(i, 0), this->u_ref(i, 1)});
+        const auto u_diff = u[i] - casadi::DM({u_ref(0, i), u_ref(1, i)});
         cost_function += mtimes(u_diff.T(), mtimes(R, u_diff));
         if (i > 0) {
             const auto x_diff =
-                x[i] - casadi::DM({x_ref(i, 0), x_ref(i, 1), x_ref(i, 2), x_ref(i, 3)});
+                x[i] - casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i)});
             cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
         }
     }
     {
-        auto x_diff = x[Nf] - casadi::DM({x_ref(Nf, 0), x_ref(Nf, 1), x_ref(Nf, 2), x_ref(Nf, 3)});
+        auto x_diff = x[Nf] - casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)});
         cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
     }
     opti.minimize(cost_function);
-    IC(cost_function);
 
     ///////////////////////////////////////////////////////////////////
     // Formulate constraints
@@ -189,10 +184,10 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
     const Eigen::VectorXd bruh = Eigen::VectorXd::LinSpaced(Nf + 1, s, s + Nf * dt * v_ref);
     const std::vector<double> s_ref(bruh.begin(), bruh.end());
     for (size_t i = 0; i < Nf; ++i) {
-        this->opti.set_initial(this->x[i], casadi::DM({0.0, 0.0, 0.0, 0.0}));
-        this->opti.set_initial(this->u[i], casadi::DM({0.0, 0.0}));
+        this->opti.set_initial(this->x[i], casadi::DM({s_ref[i] - s, 0.0, 0.0, v_ref}));
+        this->opti.set_initial(this->u[i], casadi::DM({0.0, tau_ref}));
     }
-    this->opti.set_initial(this->x[Nf], casadi::DM({0.0, 0.0, 0.0, 0.0}));
+    this->opti.set_initial(this->x[Nf], casadi::DM({s_ref[Nf] - s, 0.0, 0.0, v_ref}));
 
     // Compute parameter values
     std::vector<double> kappa_cen_val(Nf + 1), w_cen_val(Nf + 1);
@@ -202,27 +197,37 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
     }
     this->opti.set_value(this->kappa_cen, kappa_cen_val);
     this->opti.set_value(this->w_cen, w_cen_val);
+    IC(kappa_cen_val, w_cen_val);
 
-    // Call solver
-    auto sol = this->opti.solve();
+    try {
+        // Call solver
+        auto sol = this->opti.solve_limited();
 
-    // Check solver status
-    const auto stats = this->opti.stats();
-    if (!stats.at("success").as_bool()) {
+        // Check solver status
+        const auto stats = this->opti.stats();
+        if (!stats.at("success").as_bool()) {
+            throw std::runtime_error("Solver failed");
+        }
+
+        // Extract solution
+        casadi::DM tpr;
+        for (size_t i = 0; i < Nf; ++i) {
+            tpr = sol.value(this->x[i]);
+            std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + i * nx);
+            tpr = sol.value(this->u[i]);
+            std::copy(tpr->begin(), tpr->end(), this->u_opt.data() + i * nu);
+        }
+        tpr = sol.value(this->x[Nf]);
+        std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
+        IC(this->x_opt, this->u_opt);
+        return Control{u_opt(0, 0), u_opt(1, 0)};
+    } catch (const std::exception& e) {
+        IC(e.what());
         // TODO: handle all types of return status
+        const auto stats = this->opti.stats();
         IC(stats.at("unified_return_stats"));
         return tl::make_unexpected(Controller::Error::UNKNOWN_ERROR);
     }
-    casadi::DM tpr;
-    for (size_t i = 0; i < Nf; ++i) {
-        tpr = sol.value(this->x[i]);
-        std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + i * nx);
-        tpr = sol.value(this->u[i]);
-        std::copy(tpr->begin(), tpr->end(), this->u_opt.data() + i * nu);
-    }
-    tpr = sol.value(this->x[Nf]);
-    std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
-    return Control{u_opt(0, 0), u_opt(1, 0)};
 }
 
 std::string to_string(const Controller::Error& error) {

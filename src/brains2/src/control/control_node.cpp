@@ -73,18 +73,18 @@ public:
 
         // cost params
         const brains2::control::Controller::CostParams cost_params{
-            .v_ref = this->declare_parameter("v_ref", 5.0),
-            .delta_s_ref = this->declare_parameter("delta_s_ref", 5.0),
-            .q_s = this->declare_parameter("q_s", 1.0),
-            .q_n = this->declare_parameter("q_n", 1.0),
-            .q_psi = this->declare_parameter("q_psi", 1.0),
-            .q_v = this->declare_parameter("q_v", 1.0),
-            .r_delta = this->declare_parameter("r_delta", 1.0),
-            .r_tau = this->declare_parameter("r_tau", 1.0),
-            .q_s_f = this->declare_parameter("q_s_f", 1.0),
-            .q_n_f = this->declare_parameter("q_n_f", 1.0),
-            .q_psi_f = this->declare_parameter("q_psi_f", 1.0),
-            .q_v_f = this->declare_parameter("q_v_f", 1.0),
+            this->declare_parameter("v_ref", 5.0),
+            this->declare_parameter("delta_s_ref", 5.0),
+            this->declare_parameter("q_s", 1.0),
+            this->declare_parameter("q_n", 1.0),
+            this->declare_parameter("q_psi", 1.0),
+            this->declare_parameter("q_v", 1.0),
+            this->declare_parameter("r_delta", 1.0),
+            this->declare_parameter("r_tau", 1.0),
+            this->declare_parameter("q_s_f", 1.0),
+            this->declare_parameter("q_n_f", 1.0),
+            this->declare_parameter("q_psi_f", 1.0),
+            this->declare_parameter("q_v_f", 1.0),
         };
 
         // Create controller object
@@ -181,12 +181,13 @@ private:
                                           .v = std::hypot(vel_msg->v_x, vel_msg->v_y)};
 
             auto start = this->now();
-            const auto controls = this->controller->compute_control(state, *(this->track));
+            auto controls = this->controller->compute_control(state, *(this->track));
             auto end = this->now();
             if (!controls.has_value()) {
                 RCLCPP_ERROR(this->get_logger(),
                              "Error in MPC solver: %s",
                              to_string(controls.error()).c_str());
+                controls = Controller::Control{0, 0};
             }
 
             // Publish controls
