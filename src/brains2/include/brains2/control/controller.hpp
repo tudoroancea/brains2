@@ -116,10 +116,6 @@ private:
     casadi::MX x0, kappa_cen, w_cen;
 };
 
-std::ostream& operator<<(std::ostream& os, const Controller::ControllerError& error);
-std::ostream & operator<<(std::ostream& os, const Controller::Control& control);
-
-
 }  // namespace control
 }  // namespace brains2
 

@@ -10,14 +10,6 @@
 
 namespace brains2::control {
 
-std::ostream& operator<<(std::ostream& os, const Controller::ControllerError& error) {
-    return os << Controller::to_string(error);
-}
-
-std::ostream& operator<<(std::ostream& os, const Controller::Control& control) {
-    return os << "Control { .delta = " << control.delta << ", .tau = " << control.tau << "}";
-}
-
 static casadi::Function generate_model(const Controller::ModelParams& params, size_t rk_steps = 1) {
     // State variables
     auto x = casadi::MX::sym("x", Controller::nx);
