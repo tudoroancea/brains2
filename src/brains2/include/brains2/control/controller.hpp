@@ -53,25 +53,12 @@ public:
     /*
      * @brief All the errors that may occur in the MPC.
      */
-    enum class ControllerError : uint8_t {
+    enum class Error : uint8_t {
         MAX_ITER,
         NANS_IN_SOLVER,
         INFEASIBLE_PROBLEM,
         UNKNOWN_ERROR,
     };
-
-    static inline std::string to_string(ControllerError error) {
-        switch (error) {
-            case ControllerError::MAX_ITER:
-                return "MAX_ITER";
-            case ControllerError::NANS_IN_SOLVER:
-                return "NANS_IN_SOLVER";
-            case ControllerError::INFEASIBLE_PROBLEM:
-                return "INFEASIBLE_PROBLEM";
-            case ControllerError::UNKNOWN_ERROR:
-                return "UNKNOWN_ERROR";
-        }
-    }
 
     /*
      * @brief Crunch the numbers; solve the MPC.
@@ -79,8 +66,8 @@ public:
      * @param track The current track estimate.
      * @return A control command or an error.
      */
-    tl::expected<Control, ControllerError> compute_control(const State& current_state,
-                                                           const brains2::common::Track& track);
+    tl::expected<Control, Error> compute_control(const State& current_state,
+                                                 const brains2::common::Track& track);
 
     /*
      * @brief Get the predicted positions of the vehicle in Cartesian coordinates.
@@ -115,6 +102,8 @@ private:
     // params
     casadi::MX x0, kappa_cen, w_cen;
 };
+
+std::string to_string(const Controller::Error& error);
 
 }  // namespace control
 }  // namespace brains2

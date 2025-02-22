@@ -84,10 +84,9 @@ Controller::Controller(size_t Nf,
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem parameters
     ///////////////////////////////////////////////////////////////////
-    x0 = opti.parameter(Controller::nx);  // initial state
-    kappa_cen = opti.parameter(Nf);       // stages 0 to Nf-1
-    w_cen = opti.parameter(Nf);           // stages 1 to Nf
-    const auto x_ref = opti.parameter(Controller::nx, Nf + 1);
+    x0 = opti.parameter(Controller::nx);
+    kappa_cen = opti.parameter(Nf + 1);
+    w_cen = opti.parameter(Nf + 1);
 
     ///////////////////////////////////////////////////////////////////
     // Generate model
@@ -108,7 +107,7 @@ Controller::Controller(size_t Nf,
                model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
               model_params.C_m0;
     for (size_t i = 0; i < Nf; ++i) {
-        auto u_ref = casadi::DM({0.0, tau_ref});
+        auto u_ref = casadi::DM({0.0, 0.0});
         auto u_diff = u[i] - u_ref;
         cost_function += mtimes(u_diff.T(), mtimes(R, u_diff));
         if (i > 0) {
@@ -136,11 +135,11 @@ Controller::Controller(size_t Nf,
         opti.subject_to(opti.bounded(-limits.delta_max, u[i](0), limits.delta_max));
         opti.subject_to(opti.bounded(-limits.tau_max, u[i](1), limits.tau_max));
         if (i > 0) {
-            opti.subject_to(opti.bounded(-w_cen(i - 1), x[i](1), w_cen(i - 1)));
+            opti.subject_to(opti.bounded(-w_cen(i), x[i](1), w_cen(i)));
             opti.subject_to(opti.bounded(0.0, x[i](3), limits.v_x_max));
         }
     }
-    opti.subject_to(opti.bounded(-w_cen(Nf - 1), x[Nf](1), w_cen(Nf - 1)));
+    opti.subject_to(opti.bounded(-w_cen(Nf), x[Nf](1), w_cen(Nf)));
     opti.subject_to(opti.bounded(0.0, x[Nf](3), limits.v_x_max));
 
     ///////////////////////////////////////////////////////////////////
@@ -157,13 +156,9 @@ Controller::Controller(size_t Nf,
             {"jit", jit},
             {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
         });
-
-    // jit
-    // if (jit) {
-    // }
 }
 
-tl::expected<Controller::Control, Controller::ControllerError> Controller::compute_control(
+tl::expected<Controller::Control, Controller::Error> Controller::compute_control(
     const Controller::State& current_state, const brains2::common::Track& track) {
     // Project current position
     auto [s, pos_proj] =
@@ -181,19 +176,20 @@ tl::expected<Controller::Control, Controller::ControllerError> Controller::compu
     // Construct initial guess
     // Simplest way that does not depend on the previous call to the solver
     // is to create the initial guess based on the points at every dt*v_x_ref
-    // TODO: optimize this by setting things in the constructor
-    std::vector<double> kappa_cen_val(Nf), w_cen_val(Nf);
+    const Eigen::VectorXd bruh = Eigen::VectorXd::LinSpaced(Nf + 1, s, s + Nf * dt * v_ref);
+    const std::vector<double> s_ref(bruh.begin(), bruh.end());
     for (size_t i = 0; i < Nf; ++i) {
-        this->opti.set_initial(this->x[i], casadi::DM({s + i * dt * v_ref, 0.0, 0.0, v_ref}));
-        this->opti.set_initial(this->u[i], casadi::DM({0.0, tau_ref}));
-
-        kappa_cen_val[i] = track.eval_kappa(s + i * dt * v_ref);
-        if (i > 0) {
-            w_cen_val[i - 1] = track.eval_width(s + i * dt * v_ref);
-        }
+        this->opti.set_initial(this->x[i], casadi::DM({s_ref[i], 0.0, 0.0, v_ref}));
+        this->opti.set_initial(this->u[i], casadi::DM({0.0, 0.0}));
     }
     this->opti.set_initial(this->x[Nf], casadi::DM({s + Nf * dt * v_ref, 0.0, 0.0, v_ref}));
-    w_cen_val[Nf - 1] = track.eval_width(s + Nf * dt * v_ref);
+
+    // Compute parameter values
+    std::vector<double> kappa_cen_val(Nf + 1), w_cen_val(Nf + 1);
+    for (size_t i = 0; i < Nf + 1; ++i) {
+        kappa_cen_val[i] = track.eval_kappa(s_ref[i]);
+        w_cen_val[i] = track.eval_width(s_ref[i]);
+    }
     this->opti.set_value(this->kappa_cen, kappa_cen_val);
     this->opti.set_value(this->w_cen, w_cen_val);
 
@@ -205,7 +201,7 @@ tl::expected<Controller::Control, Controller::ControllerError> Controller::compu
     if (!stats.at("success").as_bool()) {
         // TODO: handle all types of return status
         IC(stats.at("unified_return_stats"));
-        return tl::make_unexpected(Controller::ControllerError::UNKNOWN_ERROR);
+        return tl::make_unexpected(Controller::Error::UNKNOWN_ERROR);
     }
     casadi::DM tpr;
     for (size_t i = 0; i < Nf; ++i) {
@@ -217,6 +213,19 @@ tl::expected<Controller::Control, Controller::ControllerError> Controller::compu
     tpr = sol.value(this->x[Nf]);
     std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
     return Control{u_opt(0, 0), u_opt(1, 0)};
+}
+
+std::string to_string(const Controller::Error& error) {
+    switch (error) {
+        case Controller::Error::MAX_ITER:
+            return "MAX_ITER";
+        case Controller::Error::NANS_IN_SOLVER:
+            return "NANS_IN_SOLVER";
+        case Controller::Error::INFEASIBLE_PROBLEM:
+            return "INFEASIBLE_PROBLEM";
+        case Controller::Error::UNKNOWN_ERROR:
+            return "UNKNOWN_ERROR";
+    }
 }
 
 }  // namespace brains2::control

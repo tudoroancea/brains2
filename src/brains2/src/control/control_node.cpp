@@ -186,7 +186,7 @@ private:
             if (!controls.has_value()) {
                 RCLCPP_ERROR(this->get_logger(),
                              "Error in MPC solver: %s",
-                             brains2::control::Controller::to_string(controls.error()).c_str());
+                             to_string(controls.error()).c_str());
             }
 
             // Publish controls
@@ -199,7 +199,7 @@ private:
             this->target_controls_pub->publish(controls_msg);
 
             // Publish diagnostics
-            diag_msg.status[0].values[0].value = std::to_string(1000 * (end - start).seconds());
+            diag_msg.status[0].values[0].value = to_string(1000 * (end - start).seconds());
             diagnostics_pub->publish(diag_msg);
 
             // TODO: add viz

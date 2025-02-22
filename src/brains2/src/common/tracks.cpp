@@ -36,8 +36,8 @@ tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
         size != width.size()) {
         return tl::unexpected(Track::Error::DIFFERENT_SIZES);
     }
-    // Check that s is increasing
-    if ((s.array() <= s.head(size - 1).array()).any()) {
+    // Check that s is increasing s_{i+1} <= s_i
+    if ((s.tail(size - 1).array() <= s.head(size - 1).array()).any()) {
         return tl::unexpected(Track::Error::NONMONOTONIC_PROGRESS);
     }
     // Check that the width is positive
@@ -253,6 +253,18 @@ const Eigen::VectorXd& Track::get_vals_width() const {
 
 double Track::s_min() const {
     return vals_s(0);
+}
+std::string to_string(const Track::Error& error) {
+    switch (error) {
+        case Track::Error::DIFFERENT_SIZES:
+            return "Different sizes";
+        case Track::Error::NONMONOTONIC_PROGRESS:
+            return "Nonmonotonic track progress";
+        case Track::Error::NEGATIVE_WIDTH:
+            return "Negative track width";
+        case Track::Error::FILE_NOT_FOUND:
+            return "CSV File not found";
+    }
 }
 
 }  // namespace brains2::common

@@ -15,7 +15,7 @@ launch:
         - name: "jit"
           value: false
         - name: "Nf"
-          value: 40
+          value: 20
         - name: "v_ref"
           value: 5.0
         - name: "tau_max"

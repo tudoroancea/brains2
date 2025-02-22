@@ -139,9 +139,10 @@ public:
         }
         const auto track_expected = Track::from_file(center_line_file.string());
         if (!track_expected.has_value()) {
+            track_expected.error();
             throw std::runtime_error(
                 "Track " + track_name +
-                " could not be loaded because not all columns have the same length");
+                " could not be loaded because of error: " + to_string(track_expected.error()));
         }
         // NOTE: this will effectively copy the instance of Track. This is necessary because the
         // previous object was allocated on the stack and will be destroyed at the end of the

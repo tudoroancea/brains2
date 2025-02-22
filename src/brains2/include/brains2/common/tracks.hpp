@@ -165,6 +165,8 @@ public:
                                                 double s_tol) const;
 };
 
+std::string to_string(const Track::Error &error);
+
 }  // namespace common
 }  // namespace brains2
 
