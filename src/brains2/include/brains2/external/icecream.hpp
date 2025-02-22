@@ -49,6 +49,7 @@
 #if !(defined(__APPLE__) && defined(__clang__))
     #define ICECREAM_CUCHAR_HEADER
     #include <cuchar>
+    #include <uchar.h>
 #endif
 
 #if defined(__cpp_lib_optional) || (__cplusplus >= 201703L)
@@ -1360,7 +1361,7 @@ namespace icecream{ namespace detail
                 auto const c_locale = std::string{std::setlocale(LC_ALL, nullptr)};
                 if (c_locale != "C" && c_locale != "POSIX")
                 {
-                    return detail::xrtomb<char32_t, std::c32rtomb>(str, count);
+                    return detail::xrtomb<char32_t, c32rtomb>(str, count);
                 }
                 else
               #endif

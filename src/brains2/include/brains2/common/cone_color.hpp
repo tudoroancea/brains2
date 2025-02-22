@@ -6,7 +6,7 @@
 namespace brains2 {
 namespace common {
 
-enum class ConeColor : uint8_t {
+enum class ConeColor {
     BLUE = 0,
     YELLOW = 1,
     ORANGE = 2,
