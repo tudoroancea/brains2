@@ -134,6 +134,7 @@ int main() {
                                                     spline_interp_yellow.Y,
                                                     curv_weight,
                                                     resample_points,
+                                                    20,
                                                     verbose);
     if (!expected_center_line) {
         std::cerr << "Error computing center line: " << to_string(expected_center_line.error())

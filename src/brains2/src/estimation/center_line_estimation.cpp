@@ -219,6 +219,10 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
     //         ((dx_yellow.array().square() + dy_yellow.array().square()).sqrt()).matrix();
     // }
 
+    // CenterLine center_line_out({{spline_interp.X, spline_interp.Y}, track_width});
+
+    // return center_line_out;
+
     Eigen::Matrix2Xd closest_neighbors_index =
         Eigen::Matrix2Xd::Constant(2, spline_interp.X.size(), std::numeric_limits<double>::max());
     // Loop over each point in the spline.
@@ -236,10 +240,10 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
 
             // Compute the squared Euclidean distance between points i and j.
             double dxb = spline_interp.X[i] - X_blue[j];
-            double dyb = spline_interp.Y[j] - Y_blue[j];
+            double dyb = spline_interp.Y[i] - Y_blue[j];
             double squared_distance_blue = dxb * dxb + dyb * dyb;
             double dxy = spline_interp.X[i] - X_yellow[j];
-            double dyy = spline_interp.Y[j] - Y_yellow[j];
+            double dyy = spline_interp.Y[i] - Y_yellow[j];
             double squared_distance_yellow = dxy * dxy + dyy * dyy;
 
             // If this distance is less than the current minimum, update the minimum and store
@@ -255,6 +259,9 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
                 closest_neighbors_index(1, i) = j;
             }
         }
+        // IC(closest_neighbors_index.col(i));
+        Eigen::Vector2d center_point = Eigen::Vector2d(spline_interp.X[i], spline_interp.Y[i]);
+        // IC(center_point);
     }
 
     auto excpected_center_line_curvature =
@@ -273,35 +280,33 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
         Eigen::Matrix2Xd candidates;
 
         // blue distance
-        for (long j = 0; j < spline_interp.X.size(); ++j) {
-            if (closest_neighbors_index(0, j) == 0) {
-                candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, j)],
-                                               X_blue[closest_neighbors_index(0, j) + 1]},
-                                              {Y_blue[closest_neighbors_index(0, j)],
-                                               Y_blue[closest_neighbors_index(0, j) + 1]}};
-            } else if (closest_neighbors_index(0, j) >= spline_interp.X.size()) {
-                candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, j) - 1],
-                                               X_blue[closest_neighbors_index(0, j)]},
-                                              {Y_blue[closest_neighbors_index(0, j) - 1],
-                                               Y_blue[closest_neighbors_index(0, j)]}};
-            } else {
-                candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, j) - 1],
-                                               X_blue[closest_neighbors_index(0, j)],
-                                               X_blue[closest_neighbors_index(0, j) + 1]},
-                                              {Y_blue[closest_neighbors_index(0, j) - 1],
-                                               Y_blue[closest_neighbors_index(0, j)],
-                                               Y_blue[closest_neighbors_index(0, j) + 1]}};
-            }
-
-            auto expected_distance =
-                compute_shortest_distance({spline_interp.X(i), spline_interp.Y(i)},
-                                          normal,
-                                          candidates);
-            if (!expected_distance) {
-                return tl::make_unexpected(CenterLineEstimationError::TRACK_WIDTH_ERROR);
-            }
-            track_width.first(i) = expected_distance.value();
+        if (closest_neighbors_index(0, i) == 0) {
+            candidates = Eigen::MatrixX2d{
+                {X_blue[closest_neighbors_index(0, i)], X_blue[closest_neighbors_index(0, i) + 1]},
+                {Y_blue[closest_neighbors_index(0, i)], Y_blue[closest_neighbors_index(0, i) + 1]}};
+        } else if (closest_neighbors_index(0, i) == spline_interp.X.size() - 1) {
+            candidates = Eigen::MatrixX2d{
+                {X_blue[closest_neighbors_index(0, i) - 1], X_blue[closest_neighbors_index(0, i)]},
+                {Y_blue[closest_neighbors_index(0, i) - 1], Y_blue[closest_neighbors_index(0, i)]}};
+        } else {
+            candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, i) - 1],
+                                           X_blue[closest_neighbors_index(0, i)],
+                                           X_blue[closest_neighbors_index(0, i) + 1]},
+                                          {Y_blue[closest_neighbors_index(0, i) - 1],
+                                           Y_blue[closest_neighbors_index(0, i)],
+                                           Y_blue[closest_neighbors_index(0, i) + 1]}};
         }
+
+        Eigen::Vector2d center_point(spline_interp.X[i], spline_interp.Y[i]);
+
+        // IC(candidates);
+        // IC(center_point);
+
+        auto expected_distance = compute_shortest_distance(center_point, normal, candidates);
+        if (!expected_distance) {
+            return tl::make_unexpected(CenterLineEstimationError::TRACK_WIDTH_ERROR);
+        }
+        track_width.first(i) = expected_distance.value();
 
         // ignore yellow distance for now
     }
