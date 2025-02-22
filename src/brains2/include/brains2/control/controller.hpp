@@ -95,6 +95,8 @@ private:
     double dt, v_ref, tau_ref;
     Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_opt;
     Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_opt;
+    Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_ref;
+    Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_ref;
     casadi::Opti opti;
     casadi::MX cost_function;
     // optimization variables
