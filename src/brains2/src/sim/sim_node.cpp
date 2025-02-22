@@ -340,8 +340,11 @@ private:
     }
 
     std::string get_remote_mesh_path(std::string mesh_file) {
-        return "https://" + this->get_parameter("remote_meshes_url").as_string() +
-               "/src/brains2/meshes/" + mesh_file;
+        auto remote_meshes_url = this->get_parameter("remote_meshes_url").as_string();
+        if (remote_meshes_url.back() == '/') {
+            remote_meshes_url.pop_back();
+        }
+        return "https://" + remote_meshes_url + "/src/brains2/meshes/" + mesh_file;
     }
 
     std::string get_local_mesh_path(std::string mesh_file) {
@@ -362,7 +365,7 @@ public:
         // Declare all node parameters
         this->declare_parameter<double>("freq", 100.0);
         this->declare_parameter<std::string>("track_name", "alpha");
-        this->declare_parameter<bool>("use_remote_meshes", false);
+        this->declare_parameter<bool>("use_remote_meshes", true);
         this->declare_parameter<std::string>("remote_meshes_url",
                                              "raw.githubusercontent.com/tudoroancea/brains2/main");
 
