@@ -2,6 +2,7 @@
 #ifndef BRAINS2_SIM_SIM_HPP
 #define BRAINS2_SIM_SIM_HPP
 
+#include <string>
 #include <array>
 #include "acados/sim/sim_common.h"
 #include "brains2/external/expected.hpp"
@@ -37,7 +38,7 @@ public:
     /*
      * @brief Possible errors that can occur during a simulation step.
      */
-    enum class SimError : std::uint8_t {
+    enum class SimError {
         SAMPLING_TIME_UPDATE_ERROR = 0,
         ACADOS_SOLVER_ERROR = 1,
         ACCELS_FUNCTION_ERROR = 2,

@@ -14,10 +14,9 @@ echo "Using python interpreter: $PYTHON_EXE"
 
 # build brains2
 export PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources
-colcon build --packages-select brains2 --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev 
+colcon build --packages-select brains2 --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev
 
-# setup environment variables
+# setup environment variables (useful for acados' python interface)
 echo "export ACADOS_SOURCE_DIR=$(pwd)/src/acados" >> "install/setup.sh"
-echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:install/acados/lib" >> "install/setup.sh"
-echo "export DYLD_LIBRARY_PATH=\$DYLD_LIBRARY_PATH:install/acados/lib" >> "install/setup.sh"
-
+# echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:install/acados/lib" >> "install/setup.sh"
+# echo "export DYLD_LIBRARY_PATH=\$DYLD_LIBRARY_PATH:install/acados/lib" >> "install/setup.sh"
