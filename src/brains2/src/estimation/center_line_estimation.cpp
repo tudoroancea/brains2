@@ -1,9 +1,65 @@
 
 #include "brains2/estimation/center_line_estimation.hpp"
+#include <Eigen/src/Core/Matrix.h>
+#include <limits>
 #include <set>
 #include "brains2/common/spline_fitting.hpp"
+#include "brains2/external/expected.hpp"
+#include "brains2/external/icecream.hpp"
 
 namespace brains2::track_estimation {
+
+tl::expected<double, CenterLineEstimationError> compute_shortest_distance(
+    const Eigen::Vector2d& center_point,
+    const Eigen::Vector2d& normal,
+    const Eigen::Matrix2Xd& candidates) {
+    if (candidates.cols() == 0) {
+        return tl::make_unexpected(CenterLineEstimationError::EMPTY_INPUT);
+    }
+
+    // Compute segments between consecutive candidates (not directly used in distance
+    // computation here but provided for consistency with the original structure)
+    Eigen::MatrixX2d candidates_segments(candidates.cols() - 1, 2);
+    for (int i = 0; i < candidates.cols() - 1; ++i) {
+        candidates_segments.row(i) = (candidates.col(i + 1) - candidates.col(i)).transpose();
+    }
+
+    double min_dist = std::numeric_limits<double>::max();
+    constexpr double epsilon = 1e-8;
+
+    // Iterate over candidate segments
+    for (int i = 0; i < candidates.cols() - 1; ++i) {
+        Eigen::Vector2d p1 = candidates.col(i);
+        Eigen::Vector2d p2 = candidates.col(i + 1);
+
+        Eigen::Vector2d segment = p2 - p1;
+
+        // Compute denominator = normal x segment using the 2D cross product
+        double denom = normal.x() * segment.y() - normal.y() * segment.x();
+
+        // If the lines are almost parallel, skip this candidate segment.
+        if (std::fabs(denom) < epsilon) {
+            continue;
+        }
+
+        // Compute the numerator:
+        // (p1 - center_point) x segment
+        double numer =
+            (p1 - center_point).x() * segment.y() - (p1 - center_point).y() * segment.x();
+
+        // Intersection parameter along the ray:
+        double t = numer / denom;
+
+        // Compute the distance along the ray.
+        double dist = std::fabs(t);
+
+        if (dist < min_dist) {
+            min_dist = dist;
+        }
+    }
+
+    return min_dist;
+}
 
 tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
     const Eigen::VectorXd& X_blue,
@@ -12,6 +68,7 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
     const Eigen::VectorXd& Y_yellow,
     const double curv_weight,
     const int no_interp_points,
+    const int neighborhood_search_track_width,
     const bool verbose) {
     // Check if any of the input vectors are empty
     if (X_blue.size() == 0 || Y_blue.size() == 0 || X_yellow.size() == 0 || Y_yellow.size() == 0) {
@@ -144,8 +201,112 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
 
     SplineParametrization spline_interp = sample_result.value();
 
-    CenterLine center_line(
-        {{spline_interp.X, spline_interp.Y}, {Eigen::VectorXd::Zero(0), Eigen::VectorXd::Zero(0)}});
+    VectorPair track_width = {Eigen::VectorXd::Zero(spline_interp.X.size()),
+                              Eigen::VectorXd::Zero(spline_interp.X.size())};
+
+    // for (size_t i = 0; i < X_blue.size(); ++i) {
+    //     // Compute differences for the blue track relative to the centerline.
+    //     Eigen::VectorXd dx_blue = X_blue - spline_interp.X;
+    //     Eigen::VectorXd dy_blue = Y_blue - spline_interp.Y;
+
+    //     // Compute differences for the yellow track relative to the centerline.
+    //     Eigen::VectorXd dx_yellow = X_yellow - spline_interp.X;
+    //     Eigen::VectorXd dy_yellow = Y_yellow - spline_interp.Y;
+
+    //     // Compute track widths
+    //     track_width.first = ((dx_blue.array().square() +
+    //     dy_blue.array().square()).sqrt()).matrix(); track_width.second =
+    //         ((dx_yellow.array().square() + dy_yellow.array().square()).sqrt()).matrix();
+    // }
+
+    Eigen::Matrix2Xd closest_neighbors_index =
+        Eigen::Matrix2Xd::Constant(2, spline_interp.X.size(), std::numeric_limits<double>::max());
+    // Loop over each point in the spline.
+    for (long i = 0; i < spline_interp.X.size(); ++i) {
+        double min_squared_distance_blue = std::numeric_limits<double>::max();
+        double min_squared_distance_yellow = std::numeric_limits<double>::max();
+        // Ensure j goes from (i - neighborhood_search_track_width) to (i +
+        // neighborhood_search_track_width)
+        for (long j = i - neighborhood_search_track_width; j <= i + neighborhood_search_track_width;
+             ++j) {
+            // Check valid index range.
+            if (j < 0 || j >= spline_interp.X.size()) {
+                continue;
+            }
+
+            // Compute the squared Euclidean distance between points i and j.
+            double dxb = spline_interp.X[i] - X_blue[j];
+            double dyb = spline_interp.Y[j] - Y_blue[j];
+            double squared_distance_blue = dxb * dxb + dyb * dyb;
+            double dxy = spline_interp.X[i] - X_yellow[j];
+            double dyy = spline_interp.Y[j] - Y_yellow[j];
+            double squared_distance_yellow = dxy * dxy + dyy * dyy;
+
+            // If this distance is less than the current minimum, update the minimum and store
+            // the coordinate of the new closest neighbor.
+            if (squared_distance_blue < min_squared_distance_blue) {
+                min_squared_distance_blue = squared_distance_blue;
+                // save only the value of j of index 1
+                closest_neighbors_index(0, i) = j;
+            }
+            if (squared_distance_yellow < min_squared_distance_yellow) {
+                min_squared_distance_yellow = squared_distance_yellow;
+                // save only the value of j of index 2
+                closest_neighbors_index(1, i) = j;
+            }
+        }
+    }
+
+    auto excpected_center_line_curvature =
+        center_line_fitter.get_curvature(spline_interp.idx, spline_interp.t);
+
+    if (!excpected_center_line_curvature) {
+        return tl::make_unexpected(CenterLineEstimationError::SPLINE_FITTING_ERROR);
+    }
+
+    Eigen::VectorXd center_line_curvature = excpected_center_line_curvature.value();
+
+    for (long i = 0; i < spline_interp.X.size(); ++i) {
+        // Compute the normal vector to the center line.
+        Eigen::Vector2d normal(-std::sin(center_line_curvature[i]),
+                               std::cos(center_line_curvature[i]));
+        Eigen::Matrix2Xd candidates;
+
+        // blue distance
+        for (long j = 0; j < spline_interp.X.size(); ++j) {
+            if (closest_neighbors_index(0, j) == 0) {
+                candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, j)],
+                                               X_blue[closest_neighbors_index(0, j) + 1]},
+                                              {Y_blue[closest_neighbors_index(0, j)],
+                                               Y_blue[closest_neighbors_index(0, j) + 1]}};
+            } else if (closest_neighbors_index(0, j) >= spline_interp.X.size()) {
+                candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, j) - 1],
+                                               X_blue[closest_neighbors_index(0, j)]},
+                                              {Y_blue[closest_neighbors_index(0, j) - 1],
+                                               Y_blue[closest_neighbors_index(0, j)]}};
+            } else {
+                candidates = Eigen::MatrixX2d{{X_blue[closest_neighbors_index(0, j) - 1],
+                                               X_blue[closest_neighbors_index(0, j)],
+                                               X_blue[closest_neighbors_index(0, j) + 1]},
+                                              {Y_blue[closest_neighbors_index(0, j) - 1],
+                                               Y_blue[closest_neighbors_index(0, j)],
+                                               Y_blue[closest_neighbors_index(0, j) + 1]}};
+            }
+
+            auto expected_distance =
+                compute_shortest_distance({spline_interp.X(i), spline_interp.Y(i)},
+                                          normal,
+                                          candidates);
+            if (!expected_distance) {
+                return tl::make_unexpected(CenterLineEstimationError::TRACK_WIDTH_ERROR);
+            }
+            track_width.first(i) = expected_distance.value();
+        }
+
+        // ignore yellow distance for now
+    }
+
+    CenterLine center_line({{spline_interp.X, spline_interp.Y}, track_width});
 
     return center_line;
 }

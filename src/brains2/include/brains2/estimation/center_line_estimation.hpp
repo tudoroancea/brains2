@@ -10,7 +10,12 @@ typedef std::pair<Eigen::VectorXd, Eigen::VectorXd> VectorPair;
 
 namespace brains2::track_estimation {
 
-enum class CenterLineEstimationError { SIZE_MISMATCH, EMPTY_INPUT, SPLINE_FITTING_ERROR };
+enum class CenterLineEstimationError {
+    SIZE_MISMATCH,
+    EMPTY_INPUT,
+    SPLINE_FITTING_ERROR,
+    TRACK_WIDTH_ERROR
+};
 
 struct CenterLine {
     VectorPair center_line;
@@ -37,6 +42,7 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
     const Eigen::VectorXd& Y_yellow,
     const double curv_weight = 1.0,
     const int no_interp_points = 100,
+    const int neighborhood_search_track_width = 5,
     const bool verbose = false);
 
 inline std::string to_string(CenterLineEstimationError error) {
@@ -47,10 +53,18 @@ inline std::string to_string(CenterLineEstimationError error) {
             return "EMPTY_INPUT";
         case CenterLineEstimationError::SPLINE_FITTING_ERROR:
             return "SPLINE_FITTING_ERROR";
+        case CenterLineEstimationError::TRACK_WIDTH_ERROR:
+            return "TRACK_WIDTH_ERROR";
         default:
             return "UNKNOWN_ERROR";
     }
 }
+
+tl::expected<double, CenterLineEstimationError> compute_shortest_distance(
+    const Eigen::Vector2d& normal,
+    const Eigen::Vector2d& point1,
+    const Eigen::Vector2d& point2,
+    const Eigen::Vector2d& point3);
 
 }  // namespace brains2::track_estimation
 

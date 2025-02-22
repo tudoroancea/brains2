@@ -184,6 +184,10 @@ int main() {
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "Elapsed time: " << elapsed_seconds.count() << "s\n";
 
+    std::cout << "Size blue: " << spline_interp_blue.X.size() << "\n";
+    std::cout << "Size yellow: " << spline_interp_yellow.X.size() << "\n";
+    std::cout << "Size center: " << center_line.center_line.first.size() << "\n";
+
     // Output the interpolated points to CSV or visualize them
     // For example, write to CSV:
     std::ofstream file(path_output);
@@ -197,6 +201,10 @@ int main() {
     for (int i = 0; i < center_line.center_line.first.size(); ++i) {
         file << "center," << center_line.center_line.first(i) << ","
              << center_line.center_line.second(i) << "\n";
+    }
+    for (int i = 0; i < center_line.track_width.first.size(); ++i) {
+        file << "track_width," << center_line.track_width.first(i) << ","
+             << center_line.track_width.second(i) << "\n";
     }
     file.close();
 

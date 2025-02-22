@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import numpy as np
 
 # color,X,Y for blue and yellow cones with x and y the coordinates in meters
 # cones = pd.read_csv(os.path.dirname(__file__) + "/interpolated_spline.csv")
@@ -56,4 +57,21 @@ max_y = max(cones["Y"].max(), gt["Y"].max())
 # set the limits of the plot
 plt.xlim(min_x - 5, max_x + 5)
 plt.ylim(min_y - 5, max_y + 5)
+plt.show()
+
+# plot track_width cones[cones["color"] == "track_width"]["X"], cones[cones["color"] == "track_width"]["Y"] in funtion of the index
+track_width_left = cones[cones["color"] == "track_width"]["X"]
+track_width_right = cones[cones["color"] == "track_width"]["Y"]
+plt.plot(
+    np.linspace(0, len(track_width_left) - 1, len(track_width_left)),
+    track_width_left,
+    label="track_width X",
+)
+plt.plot(
+    np.linspace(0, len(track_width_right) - 1, len(track_width_right)),
+    track_width_right,
+    label="track_width Y",
+)
+
+plt.legend()
 plt.show()
