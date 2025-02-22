@@ -141,7 +141,7 @@ int main() {
         return 1;
     }
 
-    VectorPair center_line = expected_center_line.value();
+    CenterLine center_line = expected_center_line.value();
 
     auto excpected_heading_blue =
         blue_spline_fitter.get_heading(spline_interp_blue.idx, spline_interp_blue.t);
@@ -194,8 +194,9 @@ int main() {
     for (int i = 0; i < spline_interp_yellow.X.size(); ++i) {
         file << "yellow," << spline_interp_yellow.X(i) << "," << spline_interp_yellow.Y(i) << "\n";
     }
-    for (int i = 0; i < center_line.first.size(); ++i) {
-        file << "center," << center_line.first(i) << "," << center_line.second(i) << "\n";
+    for (int i = 0; i < center_line.center_line.first.size(); ++i) {
+        file << "center," << center_line.center_line.first(i) << ","
+             << center_line.center_line.second(i) << "\n";
     }
     file.close();
 

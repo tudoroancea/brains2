@@ -10,10 +10,11 @@ typedef std::pair<Eigen::VectorXd, Eigen::VectorXd> VectorPair;
 
 namespace brains2::track_estimation {
 
-enum class CenterLineEstimationError {
-    SIZE_MISMATCH,
-    EMPTY_INPUT,
-    SPLINE_FITTING_ERROR
+enum class CenterLineEstimationError { SIZE_MISMATCH, EMPTY_INPUT, SPLINE_FITTING_ERROR };
+
+struct CenterLine {
+    VectorPair center_line;
+    VectorPair track_width;
 };
 
 /*
@@ -29,7 +30,7 @@ enum class CenterLineEstimationError {
  * @return A pair of vectors with the x and y coordinates of the center line
  */
 
-tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
+tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
     const Eigen::VectorXd& X_blue,
     const Eigen::VectorXd& Y_blue,
     const Eigen::VectorXd& X_yellow,

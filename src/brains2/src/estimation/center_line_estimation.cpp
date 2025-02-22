@@ -5,7 +5,7 @@
 
 namespace brains2::track_estimation {
 
-tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
+tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
     const Eigen::VectorXd& X_blue,
     const Eigen::VectorXd& Y_blue,
     const Eigen::VectorXd& X_yellow,
@@ -95,8 +95,8 @@ tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
 
     // Sort center points based on the computed parameter
     std::sort(center_points_with_param.begin(),
-                center_points_with_param.end(),
-                [](const auto& a, const auto& b) { return a.second < b.second; });
+              center_points_with_param.end(),
+              [](const auto& a, const auto& b) { return a.second < b.second; });
 
     // Extract X_center and Y_center
 
@@ -144,7 +144,10 @@ tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
 
     SplineParametrization spline_interp = sample_result.value();
 
-    return std::make_pair(spline_interp.X, spline_interp.Y);
+    CenterLine center_line(
+        {{spline_interp.X, spline_interp.Y}, {Eigen::VectorXd::Zero(0), Eigen::VectorXd::Zero(0)}});
+
+    return center_line;
 }
 
 // tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
