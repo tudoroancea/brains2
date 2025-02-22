@@ -103,7 +103,7 @@ Controller::Controller(size_t Nf,
                model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
               model_params.C_m0;
     u_ref.row(1).array() = tau_ref;
-    x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt);
+    x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt * v_ref);
     x_ref.row(3).array() = v_ref;
     // Create cost weight matrices
     const auto Q = casadi::MX::diag(casadi::MX::vertcat(
@@ -164,30 +164,21 @@ Controller::Controller(size_t Nf,
 }
 
 tl::expected<Controller::Control, Controller::Error> Controller::compute_control(
-    const Controller::State& current_state, const brains2::common::Track& track) {
-    // Project current position
-    auto [s, pos_proj] =
-        track.project(current_state.X, current_state.Y, track.s_min(), track.length());
-
-    // Convert to Frenet pose
-    auto phi_proj = track.eval_phi(s);
-    double n = -(current_state.X - pos_proj(0)) * sin(phi_proj) +
-               (current_state.Y - pos_proj(1)) * cos(phi_proj),
-           psi = current_state.phi - phi_proj;
-
+    const Controller::State& state, const brains2::common::Track& track) {
     // Set current state
-    this->opti.set_value(this->x0, casadi::DM({s, n, psi, current_state.v}));
+    this->opti.set_value(this->x0, casadi::DM({state.s, state.n, state.psi, state.v}));
 
     // Construct initial guess
     // Simplest way that does not depend on the previous call to the solver
-    // is to create the initial guess based on the points at every dt*v_x_ref
-    const Eigen::VectorXd bruh = Eigen::VectorXd::LinSpaced(Nf + 1, s, s + Nf * dt * v_ref);
+    // is to create the initial guess based on the points at every dt*v_ref
+    const Eigen::VectorXd bruh =
+        Eigen::VectorXd::LinSpaced(Nf + 1, state.s, state.s + Nf * dt * v_ref);
     const std::vector<double> s_ref(bruh.begin(), bruh.end());
     for (size_t i = 0; i < Nf; ++i) {
-        this->opti.set_initial(this->x[i], casadi::DM({s_ref[i] - s, 0.0, 0.0, v_ref}));
+        this->opti.set_initial(this->x[i], casadi::DM({s_ref[i] - state.s, 0.0, 0.0, v_ref}));
         this->opti.set_initial(this->u[i], casadi::DM({0.0, tau_ref}));
     }
-    this->opti.set_initial(this->x[Nf], casadi::DM({s_ref[Nf] - s, 0.0, 0.0, v_ref}));
+    this->opti.set_initial(this->x[Nf], casadi::DM({s_ref[Nf] - state.s, 0.0, 0.0, v_ref}));
 
     // Compute parameter values
     std::vector<double> kappa_cen_val(Nf + 1), w_cen_val(Nf + 1);

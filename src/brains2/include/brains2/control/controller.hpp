@@ -29,7 +29,7 @@ public:
     };
     struct State {
         static constexpr uint8_t dim = 4;
-        double X, Y, phi, v;
+        double s, n, psi, v;
     };
     struct Control {
         static constexpr uint8_t dim = 2;
@@ -88,6 +88,20 @@ public:
      */
     inline const Eigen::Matrix<double, Control::dim, Eigen::Dynamic>& get_u_opt() const {
         return u_opt;
+    }
+
+    /*
+     * @brief Const ref getter to the state reference trajectory.
+     */
+    inline const Eigen::Matrix<double, State::dim, Eigen::Dynamic>& get_x_ref() const {
+        return x_ref;
+    }
+
+    /*
+     * @brief Const ref getter to the control reference trajectory.
+     */
+    inline const Eigen::Matrix<double, Control::dim, Eigen::Dynamic>& get_u_ref() const {
+        return u_ref;
     }
 
 private:

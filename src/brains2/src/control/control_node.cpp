@@ -128,6 +128,25 @@ public:
         this->diag_msg.status[0].message = "OK";
         this->diag_msg.status[0].values.resize(1);
         this->diag_msg.status[0].values[0].key = "runtime (ms)";
+
+        // Markers
+        this->viz_msg.markers.resize(3);
+
+        this->viz_msg.markers[0].header.frame_id = "world";
+        this->viz_msg.markers[0].ns = "traj_pred";
+        this->viz_msg.markers[0].action = visualization_msgs::msg::Marker::MODIFY;
+        this->viz_msg.markers[0].type = visualization_msgs::msg::Marker::LINE_STRIP;
+        this->viz_msg.markers[0].points.resize(Nf + 1);
+        this->viz_msg.markers[0].scale.x = 0.05;
+        this->viz_msg.markers[0].color = marker_colors("green");
+
+        this->viz_msg.markers[1].header.frame_id = "world";
+        this->viz_msg.markers[1].ns = "traj_ref";
+        this->viz_msg.markers[1].action = visualization_msgs::msg::Marker::MODIFY;
+        this->viz_msg.markers[1].type = visualization_msgs::msg::Marker::LINE_STRIP;
+        this->viz_msg.markers[1].points.resize(Nf + 1);
+        this->viz_msg.markers[1].scale.x = 0.05;
+        this->viz_msg.markers[1].color = marker_colors("orange");
     }
 
 private:
@@ -174,12 +193,20 @@ private:
             return;
         }
         if (this->counter == 0) {
-            // Construct current state
-            const Controller::State state{.X = pose_msg->x,
-                                          .Y = pose_msg->y,
-                                          .phi = pose_msg->phi,
-                                          .v = std::hypot(vel_msg->v_x, vel_msg->v_y)};
+            // Project current position
+            const auto [s, pos_proj] =
+                track->project(pose_msg->x, pose_msg->y, track->s_min(), track->length());
 
+            // Convert to Frenet pose
+            const auto phi_proj = track->eval_phi(s);
+            const double n = -(pose_msg->x - pos_proj(0)) * sin(phi_proj) +
+                             (pose_msg->y - pos_proj(1)) * cos(phi_proj),
+                         psi = pose_msg->phi - phi_proj;
+
+            // Construct current state
+            const Controller::State state{s, n, psi, std::hypot(vel_msg->v_x, vel_msg->v_y)};
+
+            // Compute control
             auto start = this->now();
             auto controls = this->controller->compute_control(state, *(this->track));
             auto end = this->now();
@@ -203,24 +230,24 @@ private:
             diag_msg.status[0].values[0].value = to_string(1000 * (end - start).seconds());
             diagnostics_pub->publish(diag_msg);
 
-            // TODO: add viz
-            viz_msg.markers.resize(1);
-            viz_msg.markers[0].header.frame_id = "world";
-            viz_msg.markers[0].ns = "traj_pred";
-            viz_msg.markers[0].action = visualization_msgs::msg::Marker::MODIFY;
-            viz_msg.markers[0].type = visualization_msgs::msg::Marker::LINE_STRIP;
+            // Publish visualization
             const auto x_opt = this->controller->get_x_opt();
-            const auto npoints = x_opt.cols();
-            viz_msg.markers[0].points.resize(npoints);
-            for (long i = 0; i < npoints; ++i) {
-                auto [X, Y, phi] =
+            const auto x_ref = this->controller->get_x_ref();
+            for (long i = 0; i < x_opt.cols(); ++i) {
+                // predicted trajectory
+                const auto [X, Y, phi] =
                     track->frenet_to_cartesian(x_opt(0, i), x_opt(1, i), x_opt(2, i));
                 viz_msg.markers[0].points[i].x = X;
                 viz_msg.markers[0].points[i].y = Y;
+                viz_msg.markers[0].points[i].z = 0.1;
+                // reference trajectory
+                const auto s_ref = s + x_ref(0, i), X_ref = track->eval_X(s_ref),
+                           Y_ref = track->eval_Y(s_ref);
+                viz_msg.markers[1].points[i].x = X_ref;
+                viz_msg.markers[1].points[i].y = Y_ref;
+                viz_msg.markers[1].points[i].z = 0.05;
             }
-            viz_msg.markers[0].scale.x = 0.05;
-            viz_msg.markers[0].color = marker_colors("green");
-            this->viz_pub->publish(viz_msg);
+            viz_pub->publish(viz_msg);
         }
         this->counter = (this->counter + 1) % 5;
     }

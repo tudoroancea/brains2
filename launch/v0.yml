@@ -1,14 +1,19 @@
 launch:
+  - arg:
+      name: "track_name"
+      default: "alpha"
   - node:
       pkg: "brains2"
       exec: "sim_node"
       param:
         - name: "track_name"
-          value: "alpha"
+          value: $(var track_name)
   - node:
       pkg: "brains2"
       exec: "fake_track_estimation_node"
       param:
+        - name: "track_name"
+          value: $(var track_name)
         - name: "dist_front"
           value: 20.0
   - node:
@@ -18,15 +23,15 @@ launch:
         - name: "jit"
           value: false
         - name: "Nf"
-          value: 20
+          value: 40
         - name: "v_ref"
-          value: 2.0
+          value: 3.0
         - name: "tau_max"
           value: 200.0
         - name: "q_s"
           value: 1.0
         - name: "q_n"
-          value: 10.0
+          value: 5.0
         - name: "q_psi"
           value: 10.0
         - name: "q_v"
