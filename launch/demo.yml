@@ -1,0 +1,10 @@
+launch:
+    - arg:
+          name: "track_name"
+          default: "alpha"
+    - node:
+          pkg: "brains2"
+          exec: "sim_node"
+          param:
+              - name: "track_name"
+                value: $(var track_name)
