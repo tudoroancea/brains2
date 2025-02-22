@@ -163,13 +163,6 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
         path(idx, 1) = center_points_with_param[idx].first.y();
     }
 
-    // Eigen::VectorXd X_center(center_points_with_param.size());
-    // Eigen::VectorXd Y_center(center_points_with_param.size());
-    // for (size_t idx = 0; idx < center_points_with_param.size(); ++idx) {
-    //     X_center[idx] = center_points_with_param[idx].first.x();
-    //     Y_center[idx] = center_points_with_param[idx].first.y();
-    // }
-
     // Fit a spline to the center points
     auto expected_center_line = SplineFitter::create(path, curv_weight, verbose);
     if (!expected_center_line) {
@@ -203,25 +196,6 @@ tl::expected<CenterLine, CenterLineEstimationError> compute_center_line(
 
     VectorPair track_width = {Eigen::VectorXd::Zero(spline_interp.X.size()),
                               Eigen::VectorXd::Zero(spline_interp.X.size())};
-
-    // for (size_t i = 0; i < X_blue.size(); ++i) {
-    //     // Compute differences for the blue track relative to the centerline.
-    //     Eigen::VectorXd dx_blue = X_blue - spline_interp.X;
-    //     Eigen::VectorXd dy_blue = Y_blue - spline_interp.Y;
-
-    //     // Compute differences for the yellow track relative to the centerline.
-    //     Eigen::VectorXd dx_yellow = X_yellow - spline_interp.X;
-    //     Eigen::VectorXd dy_yellow = Y_yellow - spline_interp.Y;
-
-    //     // Compute track widths
-    //     track_width.first = ((dx_blue.array().square() +
-    //     dy_blue.array().square()).sqrt()).matrix(); track_width.second =
-    //         ((dx_yellow.array().square() + dy_yellow.array().square()).sqrt()).matrix();
-    // }
-
-    // CenterLine center_line_out({{spline_interp.X, spline_interp.Y}, track_width});
-
-    // return center_line_out;
 
     Eigen::Matrix2Xd closest_neighbors_index =
         Eigen::Matrix2Xd::Constant(2, spline_interp.X.size(), std::numeric_limits<double>::max());
