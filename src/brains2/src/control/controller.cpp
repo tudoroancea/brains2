@@ -2,7 +2,6 @@
 #include "brains2/control/controller.hpp"
 #include <cmath>
 #include <iterator>
-#include <sstream>
 #include "brains2/common/tracks.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
@@ -10,6 +9,14 @@
 #include "Eigen/Dense"
 
 namespace brains2::control {
+
+std::ostream& operator<<(std::ostream& os, const Controller::ControllerError& error) {
+    return os << Controller::to_string(error);
+}
+
+std::ostream& operator<<(std::ostream& os, const Controller::Control& control) {
+    return os << "Control { .delta = " << control.delta << ", .tau = " << control.tau << "}";
+}
 
 static casadi::Function generate_model(const Controller::ModelParams& params, size_t rk_steps = 1) {
     // State variables
