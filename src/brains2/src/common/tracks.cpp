@@ -2,6 +2,7 @@
 #include "brains2/common/tracks.hpp"
 #include <Eigen/src/Core/Matrix.h>
 #include <cmath>
+#include <numeric>
 #include <stdexcept>
 #include <vector>
 #include "brains2/common/math.hpp"
@@ -43,6 +44,13 @@ tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
     // Check that the width is positive
     if ((width.array() <= 0).any()) {
         return tl::unexpected(Track::Error::NEGATIVE_WIDTH);
+    }
+    // Check that the heading is continuous
+    std::vector<double> diffs(size);
+    std::adjacent_difference(phi.begin(), phi.end(), diffs.begin());
+    // NOTE: here diffs[0] == phi[0], diffs[1] == phi[1] - phi[0], etc.
+    if (std::any_of(next(diffs.begin()), diffs.end(), [](auto x) { return x > M_PI; })) {
+        return tl::unexpected(Track::Error::DISCONTINUOUS_HEADING);
     }
 
     // Copy the data

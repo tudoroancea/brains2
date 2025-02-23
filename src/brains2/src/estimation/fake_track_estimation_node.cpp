@@ -2,6 +2,7 @@
 #include <cmath>
 #include <Eigen/Dense>
 #include <memory>
+#include <numeric>
 #include <rclcpp/logging.hpp>
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
@@ -24,6 +25,31 @@ using rclcpp::Publisher;
 using rclcpp::Subscription;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
+
+template <typename InputIt>
+void adjust_heading_range(InputIt start, InputIt end) {
+    if (start == end) {
+        return;
+    }
+    adjacent_difference(start, end, start);  // first element stays the same
+    const auto wrap = [](double diff) {
+        if (diff > M_PI) {
+            return diff - 2 * M_PI;
+        } else if (diff < -M_PI) {
+            return diff + 2 * M_PI;
+        }
+        return diff;
+    };
+    transform_inclusive_scan(next(start), end, start, std::plus<double>{}, wrap, *start);
+}
+
+void adjust_heading(vector<double> &headings, size_t ref_id) {
+    if (ref_id < 0 || ref_id >= headings.size()) {
+        return;
+    }
+    adjust_heading_range(headings.begin() + ref_id, headings.end());
+    adjust_heading_range(headings.rbegin() + (headings.size() - 1 - ref_id), headings.rend());
+}
 
 class FakeTrackEstimationNode : public rclcpp::Node {
 private:
@@ -54,6 +80,7 @@ private:
         // Take 5m behind and 10 in front
         size_t start_id =
                    track->find_interval(s_proj - this->get_parameter("dist_back").as_double()),
+               proj_id = track->find_interval(s_proj),
                end_id =
                    track->find_interval(s_proj + this->get_parameter("dist_front").as_double()) + 1;
         const auto npoints = end_id - start_id;
@@ -92,13 +119,7 @@ private:
         for (auto &phi_cen : track_estimate_msg.phi_cen) {
             phi_cen = teds_projection(phi_cen, tpr);
         }
-        std::vector<double> diffs(npoints);
-        std::adjacent_difference(track_estimate_msg.phi_cen.begin(),
-                                 track_estimate_msg.phi_cen.end(),
-                                 diffs.begin());
-        if (std::any_of(diffs.begin(), diffs.end(), [](auto x) { return x > M_PI; })) {
-            throw std::runtime_error("Heading discontinuity detected in local track estimation");
-        }
+        adjust_heading(track_estimate_msg.phi_cen, proj_id);
 
         // Publish track estimate
         track_estimate_pub->publish(track_estimate_msg);

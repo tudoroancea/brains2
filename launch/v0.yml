@@ -3,6 +3,9 @@ launch:
       name: "track_name"
       default: "alpha"
   - arg:
+      name: "Nf"
+      default: "20"
+  - arg:
       name: "v_ref"
       default: "6.0"
   - arg:
@@ -39,7 +42,7 @@ launch:
         - name: "track_name"
           value: $(var track_name)
         - name: "dist_front"
-          value: 10.0
+          value: $(eval "$(var Nf) * 0.05 * $(var v_ref) * 1.5")
         - name: "dist_back"
           value: 2.0
   - node:
@@ -51,7 +54,7 @@ launch:
         - name: "jit"
           value: false
         - name: "Nf"
-          value: 20
+          value: $(var Nf)
         - name: "v_ref"
           value: $(var v_ref)
         - name: "tau_max"
