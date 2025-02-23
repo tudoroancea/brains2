@@ -69,7 +69,6 @@ Controller::Controller(size_t Nf,
       u_opt(Controller::ControlHorizonMatrix::Zero(nu, Nf)),
       x_ref(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
       u_ref(Controller::ControlHorizonMatrix::Zero(nu, Nf)) {
-    IC(cost_params);
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem
     ///////////////////////////////////////////////////////////////////
@@ -102,7 +101,6 @@ Controller::Controller(size_t Nf,
     tau_ref = (model_params.C_r0 + model_params.C_r1 * cost_params.v_ref +
                model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
               model_params.C_m0;
-    IC(tau_ref);
     u_ref.row(1).array() = tau_ref;
     x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt * v_ref);
     x_ref.row(3).array() = v_ref;
@@ -228,7 +226,6 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
         IC(e.what());
         // TODO: handle all types of return status
         const auto stats = this->opti.stats();
-        // IC(stats);
         IC(stats.at("unified_return_status"), opti.return_status());
         return tl::make_unexpected(Controller::Error::UNKNOWN_ERROR);
     }

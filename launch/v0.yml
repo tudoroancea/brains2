@@ -39,7 +39,9 @@ launch:
         - name: "track_name"
           value: $(var track_name)
         - name: "dist_front"
-          value: 20.0
+          value: 10.0
+        - name: "dist_back"
+          value: 2.0
   - node:
       pkg: "brains2"
       exec: "control_node"

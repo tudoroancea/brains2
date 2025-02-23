@@ -34,6 +34,7 @@ public:
         DIFFERENT_SIZES,        // Provided arrays of values have different sizes
         NONMONOTONIC_PROGRESS,  // Provided progress values are not strictly increasing
         NEGATIVE_WIDTH,         // Provided width values are sometimes negative
+        DISCONTINUOUS_HEADING,  // Provided heading values are not continuous
         FILE_NOT_FOUND,         // CSV file not found
     };
 

@@ -262,6 +262,8 @@ std::string to_string(const Track::Error& error) {
             return "Nonmonotonic track progress";
         case Track::Error::NEGATIVE_WIDTH:
             return "Negative track width";
+        case Track::Error::DISCONTINUOUS_HEADING:
+            return "Discontinuous heading";
         case Track::Error::FILE_NOT_FOUND:
             return "CSV File not found";
     }
