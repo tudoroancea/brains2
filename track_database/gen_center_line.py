@@ -1,14 +1,15 @@
 # the method to isolate the center line is inspired by the following blog post
 # https://blogs.mathworks.com/student-lounge/2022/10/03/path-planning-for-formula-student-driverless-cars-using-delaunay-triangulation/
 import sys
+
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy
-import matplotlib.pyplot as plt
+from icecream import ic
+from qpsolvers import solve_qp
 from scipy.sparse import csc_array
 from scipy.sparse import eye as speye
 from scipy.sparse import kron as spkron
-from qpsolvers import solve_qp
-from icecream import ic
 
 track_name = len(sys.argv) > 1 and sys.argv[1] or "alpha"
 data = np.loadtxt(f"{track_name}.csv", delimiter=",", dtype=str, skiprows=1)
@@ -48,18 +49,60 @@ middle_points = [
     0.5 * (all_cones[edge[0]] + all_cones[edge[1]]) for edge in crossing_edges
 ]
 
-# order middle points to form a continuous line
-ordered_middle_points = [np.array([0, 0])]
-while len(middle_points) > 0:
-    min_idx = np.argmin(
-        np.linalg.norm(middle_points - ordered_middle_points[-1], axis=1)
-    )
-    ordered_middle_points.append(middle_points[min_idx])
-    middle_points = np.delete(middle_points, min_idx, axis=0)
 
-# technically, it may happen that we started in the wrong order, so reverse if it is the case
-if ordered_middle_points[1][1] < ordered_middle_points[0][1]:
-    ordered_middle_points = ordered_middle_points[::-1]
+def order_points(points: list[np.ndarray]) -> list[np.ndarray]:
+    # Work with a copy to avoid modifying the original list.
+    points_copy = points.copy()
+
+    # Step 1: Choose the starting point.
+    # First try to find a point with y > 0.
+    upward_points = [(i, pt) for i, pt in enumerate(points_copy) if pt[1] > 0]
+    if upward_points:
+        start_idx, start_point = min(
+            upward_points, key=lambda tup: np.linalg.norm(tup[1])
+        )
+    else:
+        # Fallback: choose the closest point overall if none are upward.
+        start_idx, start_point = min(
+            enumerate(points_copy), key=lambda tup: np.linalg.norm(tup[1])
+        )
+
+    ordered = [start_point]
+    points_copy.pop(start_idx)
+
+    # Step 2: Choose the second point so the initial segment is upward.
+    # Look among the remaining points for one with y greater than the start's y.
+    upward_candidates = [
+        (i, pt) for i, pt in enumerate(points_copy) if pt[1] > start_point[1]
+    ]
+
+    if upward_candidates:
+        second_idx, second_point = min(
+            upward_candidates, key=lambda tup: np.linalg.norm(start_point - tup[1])
+        )
+    else:
+        # No upward candidate exists; simply choose the nearest neighbor.
+        second_idx, second_point = min(
+            enumerate(points_copy), key=lambda tup: np.linalg.norm(start_point - tup[1])
+        )
+
+    ordered.append(second_point)
+    points_copy.pop(second_idx)
+
+    # Step 3: Order the remaining points by greedily picking the nearest neighbor.
+    while points_copy:
+        current = ordered[-1]
+        next_idx, next_point = min(
+            enumerate(points_copy), key=lambda tup: np.linalg.norm(current - tup[1])
+        )
+        ordered.append(next_point)
+        points_copy.pop(next_idx)
+
+    return ordered
+
+
+ordered_middle_points = order_points(middle_points)
+ic(ordered_middle_points)
 center_line_points = np.array(ordered_middle_points)
 
 
@@ -373,7 +416,7 @@ plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color="blue", marker="^", s=10)
 plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color="yellow", marker="^", s=10)
 plt.scatter(orange_cones[:, 0], orange_cones[:, 1], color="orange", marker="^", s=20)
 plt.plot(X_cen, Y_cen, color="green", linestyle="--", linewidth=2)
-plt.scatter(middle_points[:, 0], middle_points[:, 1], color="green", s=20)
+plt.scatter(center_line_points[:, 0], center_line_points[:, 1], color="green", s=20)
 plt.axis("equal")
 plt.tight_layout()
 # plt.savefig("BE.png", dpi=300)
