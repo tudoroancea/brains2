@@ -15,16 +15,12 @@ namespace control {
 class Controller {
 public:
     struct ModelParams {
-        static constexpr uint8_t dim = 8;
         double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2;
     };
     struct CostParams {
-        static constexpr uint8_t dim = 12;
-        double v_ref, delta_s_ref, q_s, q_n, q_psi, q_v, r_delta, r_tau, q_s_f, q_n_f, q_psi_f,
-            q_v_f;
+        double v_ref, q_s, q_n, q_psi, q_v, r_delta, r_tau, q_s_f, q_n_f, q_psi_f, q_v_f;
     };
     struct Limits {
-        static constexpr uint8_t dim = 3;
         double v_x_max, delta_max, tau_max;
     };
     struct State {
@@ -37,6 +33,8 @@ public:
     };
     static constexpr uint8_t nx = State::dim;
     static constexpr uint8_t nu = Control::dim;
+    typedef Eigen::Matrix<double, nx, Eigen::Dynamic> StateHorizonMatrix;
+    typedef Eigen::Matrix<double, nu, Eigen::Dynamic> ControlHorizonMatrix;
 
     Controller() = delete;
     Controller(const Controller&) = delete;
@@ -48,7 +46,8 @@ public:
                const Limits& limits,
                const CostParams& cost_params,
                size_t rk_steps = 1,
-               bool jit = false);
+               bool jit = false,
+               const std::string solver = "fatrop");
 
     /*
      * @brief All the errors that may occur in the MPC.
@@ -78,7 +77,7 @@ public:
      * @brief Const ref getter to the optimal state trajectory. May contain outdated data if
      * compute_control() returned an error.
      */
-    inline const Eigen::Matrix<double, State::dim, Eigen::Dynamic>& get_x_opt() const {
+    inline const StateHorizonMatrix& get_x_opt() const {
         return x_opt;
     }
 
@@ -86,31 +85,31 @@ public:
      * @brief Const ref getter to the optimal control trajectory. May contain outdated data if
      * compute_control() returned an error.
      */
-    inline const Eigen::Matrix<double, Control::dim, Eigen::Dynamic>& get_u_opt() const {
+    inline const ControlHorizonMatrix& get_u_opt() const {
         return u_opt;
     }
 
     /*
      * @brief Const ref getter to the state reference trajectory.
      */
-    inline const Eigen::Matrix<double, State::dim, Eigen::Dynamic>& get_x_ref() const {
+    inline const StateHorizonMatrix& get_x_ref() const {
         return x_ref;
     }
 
     /*
      * @brief Const ref getter to the control reference trajectory.
      */
-    inline const Eigen::Matrix<double, Control::dim, Eigen::Dynamic>& get_u_ref() const {
+    inline const ControlHorizonMatrix& get_u_ref() const {
         return u_ref;
     }
 
 private:
     size_t Nf;
     double dt, v_ref, tau_ref;
-    Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_opt;
-    Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_opt;
-    Eigen::Matrix<double, State::dim, Eigen::Dynamic> x_ref;
-    Eigen::Matrix<double, Control::dim, Eigen::Dynamic> u_ref;
+    StateHorizonMatrix x_opt;
+    ControlHorizonMatrix u_opt;
+    StateHorizonMatrix x_ref;
+    ControlHorizonMatrix u_ref;
     casadi::Opti opti;
     casadi::MX cost_function;
     // optimization variables

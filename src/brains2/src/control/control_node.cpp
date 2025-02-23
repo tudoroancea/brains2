@@ -1,5 +1,5 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
-#include <rmw/qos_profiles.h>
+#include <cstdint>
 #include <memory>
 #include <tuple>
 #include "brains2/common/cone_color.hpp"
@@ -24,6 +24,7 @@
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/subscription.hpp"
+#include "rmw/qos_profiles.h"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
@@ -74,7 +75,6 @@ public:
         // cost params
         const brains2::control::Controller::CostParams cost_params{
             this->declare_parameter("v_ref", 5.0),
-            this->declare_parameter("delta_s_ref", 5.0),
             this->declare_parameter("q_s", 1.0),
             this->declare_parameter("q_n", 1.0),
             this->declare_parameter("q_psi", 1.0),
@@ -88,13 +88,14 @@ public:
         };
 
         // Create controller object
-        this->controller =
-            std::make_unique<brains2::control::Controller>(static_cast<size_t>(Nf),
-                                                           model_params,
-                                                           limits,
-                                                           cost_params,
-                                                           1,
-                                                           this->declare_parameter("jit", false));
+        this->controller = std::make_unique<brains2::control::Controller>(
+            static_cast<size_t>(Nf),
+            model_params,
+            limits,
+            cost_params,
+            1,
+            this->declare_parameter("jit", false),
+            this->declare_parameter("solver", "fatrop"));
 
         // Publishers and subscribers
         this->target_controls_pub =
@@ -130,7 +131,7 @@ public:
         this->diag_msg.status[0].values[0].key = "runtime (ms)";
 
         // Markers
-        this->viz_msg.markers.resize(3);
+        this->viz_msg.markers.resize(2);
 
         this->viz_msg.markers[0].header.frame_id = "world";
         this->viz_msg.markers[0].ns = "traj_pred";
@@ -171,7 +172,10 @@ private:
     std::unique_ptr<brains2::control::Controller> controller;
 
     // only treat one in 5 messages
-    uint8_t counter = 0;
+    uint8_t control_counter = 0;
+    static constexpr uint8_t CONTROL_EVERY_STEPS = 5;  // every 5 pose messages
+    uint8_t error_counter = 0;
+    static constexpr uint8_t MAX_ERROR_COUNT = 5;
 
     void track_estimate_cb(const TrackEstimate::SharedPtr msg) {
         const auto track_expected = Track::from_values(msg->s_cen,
@@ -192,8 +196,9 @@ private:
         if (!this->track) {
             return;
         }
-        if (this->counter == 0) {
+        if (this->control_counter == 0) {
             // Project current position
+            // TODO: optimize this by keeping track of the last projection
             const auto [s, pos_proj] =
                 track->project(pose_msg->x, pose_msg->y, track->s_min(), track->length());
 
@@ -201,20 +206,28 @@ private:
             const auto phi_proj = track->eval_phi(s);
             const double n = -(pose_msg->x - pos_proj(0)) * sin(phi_proj) +
                              (pose_msg->y - pos_proj(1)) * cos(phi_proj),
-                         psi = pose_msg->phi - phi_proj;
+                         psi = wrap_to_pi(pose_msg->phi - phi_proj);
 
             // Construct current state
             const Controller::State state{s, n, psi, std::hypot(vel_msg->v_x, vel_msg->v_y)};
 
             // Compute control
-            auto start = this->now();
+            const auto start = this->now();
             auto controls = this->controller->compute_control(state, *(this->track));
-            auto end = this->now();
+            const auto end = this->now();
             if (!controls.has_value()) {
                 RCLCPP_ERROR(this->get_logger(),
                              "Error in MPC solver: %s",
                              to_string(controls.error()).c_str());
                 controls = Controller::Control{0, 0};
+                ++error_counter;
+                if (error_counter >= MAX_ERROR_COUNT) {
+                    throw std::runtime_error("Failed to compute control " +
+                                             to_string(MAX_ERROR_COUNT) +
+                                             " times in a row. Aborting.");
+                }
+            } else {
+                error_counter = 0;
             }
 
             // Publish controls
@@ -227,6 +240,7 @@ private:
             this->target_controls_pub->publish(controls_msg);
 
             // Publish diagnostics
+            diag_msg.header.stamp = this->now();
             diag_msg.status[0].values[0].value = to_string(1000 * (end - start).seconds());
             diagnostics_pub->publish(diag_msg);
 
@@ -236,7 +250,7 @@ private:
             for (long i = 0; i < x_opt.cols(); ++i) {
                 // predicted trajectory
                 const auto [X, Y, phi] =
-                    track->frenet_to_cartesian(x_opt(0, i), x_opt(1, i), x_opt(2, i));
+                    track->frenet_to_cartesian(s + x_opt(0, i), x_opt(1, i), x_opt(2, i));
                 viz_msg.markers[0].points[i].x = X;
                 viz_msg.markers[0].points[i].y = Y;
                 viz_msg.markers[0].points[i].z = 0.1;
@@ -249,7 +263,7 @@ private:
             }
             viz_pub->publish(viz_msg);
         }
-        this->counter = (this->counter + 1) % 5;
+        this->control_counter = (this->control_counter + 1) % CONTROL_EVERY_STEPS;
     }
 };
 

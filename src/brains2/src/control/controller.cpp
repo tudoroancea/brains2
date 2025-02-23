@@ -34,14 +34,12 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto f_cont = casadi::Function(
         "f_cont",
         {x, u, kappa_cen},
-        {cse(casadi::MX::vertcat({
+        {casadi::MX::vertcat({
             s_dot,
             v * sin(psi + beta),
             v * sin(beta) / params.l_R + kappa_cen * s_dot,
-            (params.C_m0 * tau -
-             (params.C_r0 + params.C_r1 * v + params.C_r2 * v * v) * tanh(10 * v)) /
-                params.m,
-        }))});
+            (params.C_m0 * tau - (params.C_r0 + params.C_r1 * v + params.C_r2 * v * v)) / params.m,
+        })});
 
     // Discretize with RK4
     auto xnext = x;
@@ -62,14 +60,16 @@ Controller::Controller(size_t Nf,
                        const Controller::Limits& limits,
                        const Controller::CostParams& cost_params,
                        size_t rk_steps,
-                       bool jit)
+                       bool jit,
+                       const std::string solver)
     : Nf(Nf),
       dt(model_params.dt),
       v_ref(cost_params.v_ref),
-      x_opt(Eigen::Matrix<double, nx, Eigen::Dynamic>::Zero(nx, Nf + 1)),
-      u_opt(Eigen::Matrix<double, nu, Eigen::Dynamic>::Zero(nu, Nf)),
-      x_ref(Eigen::Matrix<double, nx, Eigen::Dynamic>::Zero(nx, Nf + 1)),
-      u_ref(Eigen::Matrix<double, nu, Eigen::Dynamic>::Zero(nu, Nf)) {
+      x_opt(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
+      u_opt(Controller::ControlHorizonMatrix::Zero(nu, Nf)),
+      x_ref(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
+      u_ref(Controller::ControlHorizonMatrix::Zero(nu, Nf)) {
+    IC(cost_params);
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem
     ///////////////////////////////////////////////////////////////////
@@ -102,6 +102,7 @@ Controller::Controller(size_t Nf,
     tau_ref = (model_params.C_r0 + model_params.C_r1 * cost_params.v_ref +
                model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
               model_params.C_m0;
+    IC(tau_ref);
     u_ref.row(1).array() = tau_ref;
     x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt * v_ref);
     x_ref.row(3).array() = v_ref;
@@ -125,7 +126,7 @@ Controller::Controller(size_t Nf,
         auto x_diff = x[Nf] - casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)});
         cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
     }
-    opti.minimize(cost_function);
+    opti.minimize(cse(cost_function));
 
     ///////////////////////////////////////////////////////////////////
     // Formulate constraints
@@ -140,55 +141,67 @@ Controller::Controller(size_t Nf,
         opti.subject_to(opti.bounded(-limits.delta_max, u[i](0), limits.delta_max));
         opti.subject_to(opti.bounded(-limits.tau_max, u[i](1), limits.tau_max));
         if (i > 0) {
-            opti.subject_to(opti.bounded(-w_cen(i), x[i](1), w_cen(i)));
+            // opti.subject_to(opti.bounded(-w_cen(i), x[i](1), w_cen(i)));
             opti.subject_to(opti.bounded(0.0, x[i](3), limits.v_x_max));
         }
     }
-    opti.subject_to(opti.bounded(-w_cen(Nf), x[Nf](1), w_cen(Nf)));
+    // opti.subject_to(opti.bounded(-w_cen(Nf), x[Nf](1), w_cen(Nf)));
     opti.subject_to(opti.bounded(0.0, x[Nf](3), limits.v_x_max));
 
     ///////////////////////////////////////////////////////////////////
     // Solver and options
     ///////////////////////////////////////////////////////////////////
-    opti.solver(
-        "fatrop",
-        {
-            {"print_time", 0},
-            {"expand", true},
-            {"debug", true},
-            {"structure_detection", "auto"},
-            {"fatrop", casadi::Dict({{"print_level", 1}})},
-            {"jit", jit},
-            {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
-        });
+    if (solver == "fatrop") {
+        opti.solver(
+            "fatrop",
+            {
+                {"print_time", 0},
+                {"expand", true},
+                {"debug", false},
+                {"structure_detection", "auto"},
+                {"fatrop", casadi::Dict({{"print_level", 1}})},
+                {"jit", jit},
+                {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
+            });
+    } else if (solver == "ipopt") {
+        opti.solver(
+            "ipopt",
+            {
+                {"print_time", 0},
+                {"expand", true},
+                {"ipopt", casadi::Dict({{"print_level", 0}})},
+                {"jit", jit},
+                {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
+            });
+    } else {
+        throw std::runtime_error("Unknown solver");
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    // Set initial guess
+    ///////////////////////////////////////////////////////////////////
+    for (size_t i = 0; i < Nf; ++i) {
+        this->opti.set_initial(this->x[i],
+                               casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i)}));
+        this->opti.set_initial(this->u[i], casadi::DM({u_ref(0, i), u_ref(1, i)}));
+    }
+    this->opti.set_initial(this->x[Nf],
+                           casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)}));
 }
 
 tl::expected<Controller::Control, Controller::Error> Controller::compute_control(
     const Controller::State& state, const brains2::common::Track& track) {
     // Set current state
-    this->opti.set_value(this->x0, casadi::DM({state.s, state.n, state.psi, state.v}));
-
-    // Construct initial guess
-    // Simplest way that does not depend on the previous call to the solver
-    // is to create the initial guess based on the points at every dt*v_ref
-    const Eigen::VectorXd bruh =
-        Eigen::VectorXd::LinSpaced(Nf + 1, state.s, state.s + Nf * dt * v_ref);
-    const std::vector<double> s_ref(bruh.begin(), bruh.end());
-    for (size_t i = 0; i < Nf; ++i) {
-        this->opti.set_initial(this->x[i], casadi::DM({s_ref[i] - state.s, 0.0, 0.0, v_ref}));
-        this->opti.set_initial(this->u[i], casadi::DM({0.0, tau_ref}));
-    }
-    this->opti.set_initial(this->x[Nf], casadi::DM({s_ref[Nf] - state.s, 0.0, 0.0, v_ref}));
+    this->opti.set_value(this->x0, casadi::DM({0.0, state.n, state.psi, state.v}));
 
     // Compute parameter values
     std::vector<double> kappa_cen_val(Nf + 1), w_cen_val(Nf + 1);
     for (size_t i = 0; i < Nf + 1; ++i) {
-        kappa_cen_val[i] = track.eval_kappa(s_ref[i]);
-        w_cen_val[i] = track.eval_width(s_ref[i]);
+        kappa_cen_val[i] = track.eval_kappa(state.s + x_ref(0, i));
+        w_cen_val[i] = track.eval_width(state.s + x_ref(0, i));
     }
     this->opti.set_value(this->kappa_cen, kappa_cen_val);
     this->opti.set_value(this->w_cen, w_cen_val);
-    IC(kappa_cen_val, w_cen_val);
 
     try {
         // Call solver
@@ -210,13 +223,13 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
         }
         tpr = sol.value(this->x[Nf]);
         std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
-        IC(this->x_opt, this->u_opt);
         return Control{u_opt(0, 0), u_opt(1, 0)};
     } catch (const std::exception& e) {
         IC(e.what());
         // TODO: handle all types of return status
         const auto stats = this->opti.stats();
-        IC(stats.at("unified_return_stats"));
+        // IC(stats);
+        IC(stats.at("unified_return_status"), opti.return_status());
         return tl::make_unexpected(Controller::Error::UNKNOWN_ERROR);
     }
 }

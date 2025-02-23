@@ -423,6 +423,7 @@ public:
                                                                           10);
 
         // Create ros subscribers.
+        const rclcpp::QoS qos(10);
         this->target_controls_sub = this->create_subscription<brains2::msg::Controls>(
             "/brains2/target_controls",
             10,
