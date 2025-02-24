@@ -18,87 +18,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   build:
-    name: Build with conda (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    if: false # github.event.label.name == 'run_build_ci'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest"]
-    defaults:
-      run:
-        shell: bash -el {0}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          recursive: true
-
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          miniforge-version: latest
-          activate-environment: "brains2"
-          conda-remove-defaults: "true"
-          environment-file: "env-ci.yml"
-
-      - name: Info
-        run: conda info -a
-
-      - name: Install dependencies
-        run: |
-          chmod +x ./scripts/env_sync.sh
-          ./scripts/env_sync.sh
-
-      - name: Build workspace
-        run: |
-          chmod +x ./scripts/build.sh
-          ./scripts/build.sh
-
-  build2:
-    name: Build with conda manually installed (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    if: false # github.event.label.name == 'run_build_ci'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest"]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          recursive: true
-
-      - name: Install miniforge3
-        # on macos: curl -fsSLo Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
-        # on linux: wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-        run: |
-          if [[ ${{ matrix.os }} == "ubuntu-latest" ]]; then
-            wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-          elif [[ ${{ matrix.os }} == "macos-latest" ]]; then
-            curl -fsSLo Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-$(uname -m).sh"
-          fi
-          bash Miniforge3.sh -b -p $HOME/miniforge3
-
-      - name: Install conda-lock
-        run: |
-          conda init
-          conda activate
-          conda install -y conda-lock
-
-      - name: Install dependencies
-        run: |
-          conda init
-          conda activate
-          chmod +x ./scripts/env_sync.sh
-          ./scripts/env_sync.sh
-
-      - name: Build workspace
-        run: |
-          conda init
-          conda activate brains2
-          chmod +x ./scripts/build.sh
-          ./scripts/build.sh
-
-  build3:
     name: Build with micromamba (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     if: github.event.label.name == 'run_build_ci'
@@ -112,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          recursive: true
+          submodules: "recursive"
 
       - uses: mamba-org/setup-micromamba@v2
         with:
@@ -120,6 +39,7 @@ jobs:
           environment-name: brains2
           environment-file: conda-lock.yml
           init-shell: bash
+          cache-environment: true
 
       - name: Build workspace
         run: |
