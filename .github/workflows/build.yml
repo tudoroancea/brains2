@@ -18,7 +18,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   build:
-    name: Build with micromamba (${{ matrix.os }})
+    name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     if: github.event.label.name == 'run_build_ci'
     strategy:
