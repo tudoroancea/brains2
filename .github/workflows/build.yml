@@ -41,6 +41,9 @@ jobs:
           conda-remove-defaults: "true"
           environment-file: "env-ci.yml"
 
+      - name: Info
+        run: conda info -a
+
       - name: Install dependencies
         run: |
           chmod +x ./scripts/env_sync.sh
