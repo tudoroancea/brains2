@@ -106,6 +106,9 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
     steps:
       - uses: actions/checkout@v4
         with:
