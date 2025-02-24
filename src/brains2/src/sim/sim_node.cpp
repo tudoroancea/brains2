@@ -276,7 +276,7 @@ private:
         marker.id = id;
         marker.action = visualization_msgs::msg::Marker::MODIFY;
         marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
-        marker.mesh_resource = this->get_local_mesh_path("cone.stl");
+        marker.mesh_resource = this->get_mesh_path("cone.stl");
         marker.scale.x = 1.0;
         marker.scale.y = 1.0;
         marker.scale.z = 1.0;
@@ -299,7 +299,7 @@ private:
         markers[0].ns = "chassis";
         markers[0].type = visualization_msgs::msg::Marker::MESH_RESOURCE;
         markers[0].action = visualization_msgs::msg::Marker::MODIFY;
-        markers[0].mesh_resource = this->get_local_mesh_path("ariane.stl");
+        markers[0].mesh_resource = this->get_mesh_path("ariane.stl");
         markers[0].pose.orientation = brains2::common::rpy_to_quaternion_msg(0.0, 0.0, 0.0);
         markers[0].scale.x = 1.0;
         markers[0].scale.y = 1.0;
@@ -310,7 +310,7 @@ private:
             markers[i].ns = "tires";
             markers[i].id = i;
             markers[i].type = visualization_msgs::msg::Marker::MESH_RESOURCE;
-            markers[i].mesh_resource = this->get_local_mesh_path("ariane_wheel.stl");
+            markers[i].mesh_resource = this->get_mesh_path("ariane_wheel.stl");
             markers[i].action = visualization_msgs::msg::Marker::MODIFY;
             // The wheels are listed in CW order, starting from the front left
             markers[i].pose.position.x = (i < 3 ? 0.7853 : -0.7853);
@@ -339,9 +339,25 @@ private:
             brains2::common::rpy_to_quaternion_msg(0.0, 0.0, state.delta);
     }
 
-    inline std::string get_local_mesh_path(std::string mesh_file) {
+    std::string get_remote_mesh_path(std::string mesh_file) {
+        auto remote_meshes_url = this->get_parameter("remote_meshes_url").as_string();
+        if (remote_meshes_url.back() == '/') {
+            remote_meshes_url.pop_back();
+        }
+        return "https://" + remote_meshes_url + "/src/brains2/meshes/" + mesh_file;
+    }
+
+    std::string get_local_mesh_path(std::string mesh_file) {
         return "file://" + ament_index_cpp::get_package_share_directory("brains2") + "/meshes/" +
                mesh_file;
+    }
+
+    std::string get_mesh_path(std::string mesh_file) {
+        if (this->get_parameter("use_remote_meshes").as_bool()) {
+            return get_remote_mesh_path(mesh_file);
+        } else {
+            return get_local_mesh_path(mesh_file);
+        }
     }
 
 public:
@@ -349,6 +365,9 @@ public:
         // Declare all node parameters
         this->declare_parameter<double>("freq", 100.0);
         this->declare_parameter<std::string>("track_name", "alpha");
+        this->declare_parameter<bool>("use_remote_meshes", true);
+        this->declare_parameter<std::string>("remote_meshes_url",
+                                             "raw.githubusercontent.com/tudoroancea/brains2/main");
 
         // Compute sampling time
         dt = 1 / this->get_parameter("freq").as_double();
@@ -379,16 +398,6 @@ public:
             car_constants["actuators"]["torque_max"].as<double>(),
             car_constants["actuators"]["steering_max"].as<double>(),
             car_constants["actuators"]["steering_rate_max"].as<double>()};
-
-        {
-            std::string init_message{};
-            IC_CONFIG.prefix("");
-            IC_CONFIG.output(init_message);
-            IC(params, limits);
-            RCLCPP_INFO(this->get_logger(),
-                        "Sim initialized with parameters: %s",
-                        init_message.c_str());
-        }
 
         // Create Sim object
         this->sim = std::make_unique<brains2::sim::Sim>(params, limits);

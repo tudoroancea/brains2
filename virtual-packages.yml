@@ -1,0 +1,8 @@
+subdirs:
+  linux-64:
+    packages:
+      __glibc: "2.39"
+      __archspec: "1 x86_64_v3"
+  osx-arm64:
+    packages:
+      __osx:  "15.0"

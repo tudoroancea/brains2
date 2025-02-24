@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(brains2)
 
+set(CMAKE_C_COMPILER $ENV{CONDA_PREFIX}/bin/clang CACHE STRING "C compiler" FORCE)
+set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang++ CACHE STRING "C++ compiler" FORCE)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
@@ -19,6 +22,8 @@ include_directories(include)
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
 add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 
+set(CMAKE_TESTING_ENABLED ON)
+
 ####################################################################################################
 # dependencies
 ####################################################################################################
@@ -31,13 +36,13 @@ ament_auto_find_build_dependencies()
 
 # find other libraries: eigen3, nlohmann json
 find_package(Eigen3 REQUIRED)
-find_package(OsqpEigen REQUIRED)
 find_package(osqp REQUIRED)
+find_package(OsqpEigen REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # the following assumes acados has already been installed (automatically done in build.sh)
 find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
-set(CMAKE_TESTING_ENABLED ON)
+
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
   find_package(GTest REQUIRED)
@@ -74,7 +79,7 @@ install(DIRECTORY
 
 file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
 ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
-target_link_libraries(brains2_common Eigen3::Eigen)
+target_link_libraries(brains2_common Eigen3::Eigen OsqpEigen::OsqpEigen osqp::osqp)
 
 if (CMAKE_TESTING_ENABLED)
   ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
@@ -82,6 +87,9 @@ if (CMAKE_TESTING_ENABLED)
 
   ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
   target_link_libraries(test_tracks brains2_common)
+
+  ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
+  target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
 endif()
 
 ####################################################################################################
@@ -99,7 +107,6 @@ target_link_libraries(sim_node
   yaml-cpp::yaml-cpp
   brains2_common
   brains2_sim
-  acados
 )
 
 # if (CMAKE_TESTING_ENABLED)
@@ -115,18 +122,12 @@ target_link_libraries(sim_node
 # estimation
 ####################################################################################################
 ament_auto_add_library(brains2_estimation SHARED
-    src/estimation/center_line_estimation.cpp src/common/spline_fitting.cpp
+    src/estimation/center_line_estimation.cpp
 )
-
 target_link_libraries(brains2_estimation OsqpEigen::OsqpEigen osqp::osqp)
 
 ament_auto_add_executable(brains2_be_spline_test src/estimation/spline_fitting/work_spline.cpp)
 target_link_libraries(brains2_be_spline_test brains2_common brains2_estimation)
-
-if (CMAKE_TESTING_ENABLED)
-  ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
-  target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
-endif()
 
 ament_auto_add_executable(fake_track_estimation_node src/estimation/fake_track_estimation_node.cpp)
 target_link_libraries(fake_track_estimation_node
