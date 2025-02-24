@@ -45,3 +45,13 @@ jobs:
         run: |
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
+
+      - name: Zip log folder
+        run: |
+          zip -r logs-${{ matrix.os }}.zip log/
+
+      - name: Upload zipped log folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.os }}
+          path: logs-${{ matrix.os }}.zip
