@@ -7,13 +7,13 @@ on:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
+    name: Build with conda (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    if: false # github.event.label.name == 'run_build_ci'
+    if: github.event.label.name == 'run_build_ci'
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest"]
+        os: ["ubuntu-latest", "macos-latest"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,25 +28,24 @@ jobs:
         with:
           auto-update-conda: true
           miniforge-version: latest
-          auto-activate-base: true
-          activate-environment: ""
-          environment-file: conda-lock.yml
+          activate-environment: "brains2"
+          conda-remove-defaults: "true"
+      - name: Install conda-lock
+        run: |
+          conda install -y conda-lock
 
       - name: Install dependencies
         run: |
-          conda install -y conda-lock
-          conda activate base
           chmod +x ./scripts/env_sync.sh
           ./scripts/env_sync.sh
 
       - name: Build workspace
         run: |
-          conda activate brains
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
 
   build2:
-    name: Build manual installaion (${{ matrix.os }})
+    name: Build with conda manually installed (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     if: false # github.event.label.name == 'run_build_ci'
     strategy:
