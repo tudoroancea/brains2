@@ -3,13 +3,13 @@
     "3D!3mfo4f7": {
       "cameraState": {
         "perspective": true,
-        "distance": 5.018802913570741,
+        "distance": 0.6434451771224811,
         "phi": 85,
         "thetaOffset": 90,
         "targetOffset": [
-          4.487143679271978,
-          0.005153709910343682,
-          0.5
+          0.5001731873664113,
+          0,
+          0.8
         ],
         "target": [
           0,
@@ -22,7 +22,7 @@
           0,
           1
         ],
-        "fovy": 55,
+        "fovy": 56,
         "near": 0.5,
         "far": 5000,
         "logDepth": false
@@ -143,6 +143,12 @@
         },
         "/brains2/viz/sim": {
           "visible": true
+        },
+        "/brains2/viz/track_estimation": {
+          "visible": true
+        },
+        "/brains2/viz/control": {
+          "visible": true
         }
       },
       "layers": {
@@ -188,7 +194,8 @@
           "timestampMethod": "headerStamp",
           "value": "/brains2/acceleration.a_x",
           "enabled": true,
-          "color": "#4e98e2"
+          "color": "#4e98e2",
+          "xValuePath": "/brains2/acceleration.a_y"
         }
       ],
       "minYValue": -10,
@@ -202,8 +209,10 @@
       "xAxisVal": "custom",
       "sidebarDimension": 240,
       "xAxisPath": {
-        "value": "/brains2/acceleration.a_y"
-      }
+        "value": ""
+      },
+      "minXValue": -20,
+      "maxXValue": 20
     },
     "Gauge!2l3wbfs": {
       "path": "/brains2/velocity.v_x",
@@ -220,7 +229,7 @@
     },
     "Brains2 Extensions.Joystick Controller!3g13bpa": {
       "topic": "/brains2/target_controls",
-      "enabled": false,
+      "enabled": true,
       "freq": 100,
       "tau_max": 100,
       "delta_max": 0.5,
@@ -238,16 +247,16 @@
       "buttonColor": "#007bff",
       "foxglovePanelTitle": "Publish cones"
     },
-    "3D!4bkb5sl": {
+    "3D!2u59b2d": {
       "cameraState": {
         "perspective": true,
-        "distance": 5.282950435340312,
-        "phi": 67.47078859794684,
-        "thetaOffset": -33.59501008305441,
+        "distance": 6.147137354499415,
+        "phi": 56.047936474693515,
+        "thetaOffset": 87.23607659729078,
         "targetOffset": [
-          0.4214516246731516,
-          -0.16706059959352385,
-          0.09999999999999984
+          0.006251647575083693,
+          0.0003018108976807063,
+          0
         ],
         "target": [
           0,
@@ -260,16 +269,21 @@
           0,
           1
         ],
-        "fovy": 45,
+        "fovy": 55,
         "near": 0.5,
-        "far": 5000
+        "far": 5000,
+        "logDepth": false
       },
       "followMode": "follow-pose",
       "scene": {
         "ignoreColladaUpAxis": false,
         "backgroundColor": "#565656",
         "enableStats": true,
-        "syncCamera": false
+        "syncCamera": false,
+        "transforms": {
+          "lineWidth": 0,
+          "showLabel": true
+        }
       },
       "transforms": {
         "frame:world": {
@@ -379,6 +393,39 @@
           "visible": true
         },
         "/brains2/viz/sim": {
+          "visible": true,
+          "namespaces": {
+            "chassis": {
+              "visible": true
+            }
+          }
+        },
+        "/brains2/viz/track_estimation": {
+          "visible": true,
+          "namespaces": {
+            "center_line": {
+              "visible": true
+            }
+          }
+        },
+        "/brains2/viz/control": {
+          "visible": true,
+          "namespaces": {
+            "traj_pred": {
+              "visible": true
+            },
+            "": {
+              "visible": false
+            }
+          }
+        },
+        "/move_base_simple/goal": {
+          "visible": false
+        },
+        "/studio/input_pose": {
+          "visible": true
+        },
+        "/studio/input_pose_cov": {
           "visible": true
         }
       },
@@ -409,9 +456,9 @@
       },
       "publish": {
         "type": "point",
-        "poseTopic": "/move_base_simple/goal",
-        "pointTopic": "/clicked_point",
-        "poseEstimateTopic": "/initialpose",
+        "poseTopic": "/studio/input_pose",
+        "pointTopic": "/studio/input_position",
+        "poseEstimateTopic": "/studio/input_pose_cov",
         "poseEstimateXDeviation": 0.5,
         "poseEstimateYDeviation": 0.5,
         "poseEstimateThetaDeviation": 0.26179939
@@ -419,64 +466,92 @@
       "imageMode": {},
       "followTf": "car"
     },
-    "DiagnosticStatusPanel!1u4b6x5": {
-      "topicToRender": "/brains2/diagnostics"
-    },
-    "RawMessages!2ijdo78": {
-      "diffEnabled": false,
-      "diffMethod": "custom",
-      "diffTopicPath": "",
-      "showFullMessageForDiff": false,
-      "topicPath": "/brains2/acceleration.a_x",
-      "fontSize": 12
-    },
-    "RawMessages!2h6k884": {
-      "diffEnabled": false,
-      "diffMethod": "custom",
-      "diffTopicPath": "",
-      "showFullMessageForDiff": false,
-      "topicPath": "/brains2/acceleration.a_y",
-      "fontSize": 12
-    },
-    "CallService!3b5o1lu": {
-      "requestPayload": "{}",
-      "layout": "horizontal",
-      "foxglovePanelTitle": "reset",
-      "serviceName": "/brains2/reset",
-      "buttonText": "reset this bad boy",
-      "buttonTooltip": "",
-      "buttonColor": "#c32e2e",
-      "timeoutSeconds": 10
-    },
-    "CallService!40wh11s": {
-      "requestPayload": "{}",
-      "layout": "horizontal",
-      "buttonText": "publish them cones",
-      "serviceName": "/brains2/publish_cones_markers",
-      "foxglovePanelTitle": "publish cones",
-      "buttonTooltip": "",
-      "buttonColor": "#1b9300",
-      "timeoutSeconds": 10
-    },
-    "Plot!btytc4": {
+    "Plot!3ra6qj8": {
       "paths": [
         {
-          "value": "/brains2/current_controls.tau_fr",
-          "enabled": true,
           "timestampMethod": "headerStamp",
-          "label": "tau"
+          "value": "/brains2/target_controls.delta",
+          "enabled": true,
+          "color": "#4e98e2",
+          "label": "u_delta"
         },
         {
           "timestampMethod": "headerStamp",
-          "value": "/brains2/alternative_target_controls.linear.x",
+          "value": "/brains2/current_controls.delta",
           "enabled": true,
-          "label": "u_tau"
-        },
+          "color": "#f5774d",
+          "label": "delta"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "xAxisPath": {
+        "value": "/brains2/acceleration.a_y"
+      },
+      "followingViewWidth": 10,
+      "foxglovePanelTitle": "steering (rad)"
+    },
+    "Plot!3lwo8o7": {
+      "paths": [
+        {
+          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"control_node\"}.values[:]{key==\"runtime (ms)\"}.value",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "label": "runtime"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "runtime (ms)",
+      "followingViewWidth": 10
+    },
+    "Plot!21y01bi": {
+      "paths": [
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/velocity.v_x",
+          "enabled": true,
+          "color": "#4e98e2"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "followingViewWidth": 10,
+      "foxglovePanelTitle": "speed (m/s)"
+    },
+    "Plot!1zeuiyp": {
+      "paths": [
         {
           "timestampMethod": "headerStamp",
           "value": "/brains2/target_controls.tau_fl",
           "enabled": true,
+          "color": "#4e98e2",
           "label": "u_tau"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/current_controls.tau_rl",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "tau"
         }
       ],
       "showXAxisLabels": true,
@@ -490,74 +565,21 @@
       "followingViewWidth": 10,
       "foxglovePanelTitle": "torque per wheel (Nm)"
     },
-    "Plot!3mjjvvt": {
-      "paths": [
-        {
-          "value": "/brains2/current_controls.delta",
-          "enabled": true,
-          "timestampMethod": "headerStamp",
-          "showLine": true,
-          "label": "delta"
-        },
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/alternative_target_controls.angular.z",
-          "enabled": true,
-          "label": "u_delta"
-        },
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/target_controls.delta",
-          "enabled": true,
-          "label": "u_delta"
-        }
-      ],
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showLegend": false,
-      "legendDisplay": "floating",
-      "showPlotValuesInLegend": false,
-      "isSynced": true,
-      "xAxisVal": "timestamp",
-      "sidebarDimension": 240,
-      "foxglovePanelTitle": "steering angle (rad)",
-      "followingViewWidth": 10
+    "Brains2 Extensions.Call Service Button!2wnmi6j": {
+      "service": "/brains2/reset",
+      "buttonLabel": "reset",
+      "buttonColor": "#ff0087",
+      "foxglovePanelTitle": "Reset simulation"
     },
-    "Plot!3qhslh1": {
-      "paths": [
-        {
-          "value": "/brains2/velocity.v_x",
-          "enabled": true,
-          "timestampMethod": "headerStamp",
-          "label": "v_x (m/s)"
-        },
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/velocity.v_y",
-          "enabled": true,
-          "label": "v_y (m/s)"
-        },
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/velocity.omega",
-          "enabled": true,
-          "label": "omega (rad/s)"
-        }
-      ],
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showLegend": false,
-      "legendDisplay": "floating",
-      "showPlotValuesInLegend": false,
-      "isSynced": true,
-      "xAxisVal": "timestamp",
-      "sidebarDimension": 240,
-      "followingViewWidth": 10,
-      "foxglovePanelTitle": "velocity"
+    "Brains2 Extensions.Call Service Button!3tt1tjl": {
+      "service": "/brains2/publish_cones_markers",
+      "buttonLabel": "publish",
+      "buttonColor": "#007bff",
+      "foxglovePanelTitle": "Publish cones"
     },
     "TopicGraph!1mts4d4": {},
     "Tab!3yrtgon": {
-      "activeTabIdx": 0,
+      "activeTabIdx": 1,
       "tabs": [
         {
           "title": "demo",
@@ -583,48 +605,37 @@
               "splitPercentage": 82.29329173166927
             },
             "direction": "column",
-            "splitPercentage": 77.06626954579299
+            "splitPercentage": 64.58087367178277
           }
         },
         {
-          "title": "main",
+          "title": "control",
           "layout": {
-            "first": {
-              "first": {
-                "first": "3D!4bkb5sl",
-                "second": "DiagnosticStatusPanel!1u4b6x5",
-                "direction": "row",
-                "splitPercentage": 68.94977168949772
-              },
-              "second": {
-                "first": {
-                  "first": {
-                    "first": "RawMessages!2ijdo78",
-                    "second": "RawMessages!2h6k884",
-                    "direction": "column"
-                  },
-                  "second": "CallService!3b5o1lu",
-                  "direction": "column"
-                },
-                "second": "CallService!40wh11s",
-                "direction": "column",
-                "splitPercentage": 67.8516228748068
-              },
-              "direction": "row",
-              "splitPercentage": 74.48979591836735
-            },
+            "first": "3D!2u59b2d",
             "second": {
               "first": {
-                "first": "Plot!btytc4",
-                "second": "Plot!3mjjvvt",
+                "first": {
+                  "first": "Plot!3ra6qj8",
+                  "second": "Plot!3lwo8o7",
+                  "direction": "column"
+                },
+                "second": {
+                  "first": "Plot!21y01bi",
+                  "second": "Plot!1zeuiyp",
+                  "direction": "column"
+                },
                 "direction": "row"
               },
-              "second": "Plot!3qhslh1",
+              "second": {
+                "first": "Brains2 Extensions.Call Service Button!2wnmi6j",
+                "second": "Brains2 Extensions.Call Service Button!3tt1tjl",
+                "direction": "column"
+              },
               "direction": "row",
-              "splitPercentage": 67.55102040816327
+              "splitPercentage": 91.44021739130434
             },
             "direction": "column",
-            "splitPercentage": 76.56804733727812
+            "splitPercentage": 64.69893742621015
           }
         },
         {
