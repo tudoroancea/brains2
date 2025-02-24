@@ -20,7 +20,7 @@ jobs:
   build:
     name: Build with conda (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    if: github.event.label.name == 'run_build_ci'
+    if: false # github.event.label.name == 'run_build_ci'
     strategy:
       fail-fast: false
       matrix:
@@ -101,7 +101,7 @@ jobs:
   build3:
     name: Build with micromamba (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    if: false # github.event.label.name == 'run_build_ci'
+    if: github.event.label.name == 'run_build_ci'
     strategy:
       fail-fast: false
       matrix:
@@ -113,12 +113,10 @@ jobs:
 
       - uses: mamba-org/setup-micromamba@v2
         with:
-          micromamba-version: 2.0.5-0
-          environment-file: conda-lock.yml
+          micromamba-version: 1.5.12-0
           environment-name: brains2
+          environment-file: conda-lock.yml
           init-shell: bash
-          create-args: -v
-          log-level: debug
 
       - name: Build workspace
         run: |
