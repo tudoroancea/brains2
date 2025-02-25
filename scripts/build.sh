@@ -7,6 +7,9 @@ fi
 
 # build acados
 colcon build --packages-select acados --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev
+if [ $? -ne 0 ]; then
+    exit $?
+fi
 
 # makes sure that the correct python interpreter is called in CMake
 PYTHON_EXE=$(which python3)
@@ -15,6 +18,9 @@ echo "Using python interpreter: $PYTHON_EXE"
 # build brains2
 export PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources
 colcon build --packages-select brains2 --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev
+if [ $? -ne 0 ]; then
+    exit $?
+fi
 
 # setup environment variables (useful for acados' python interface)
 echo "export ACADOS_SOURCE_DIR=$(pwd)/src/acados" >> "install/setup.sh"

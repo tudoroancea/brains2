@@ -1,0 +1,11 @@
+# Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+name: brains2
+channels:
+  - conda-forge
+  - robostack-staging
+  - robostack-humble
+dependencies:
+  # dependency management
+  - conda-lock
+  # python dependencies
+  - python=3.11
