@@ -117,6 +117,7 @@ private:
         this->state =
             brains2::sim::Sim::State{0.0, 0.0, M_PI_2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         this->accels = brains2::sim::Sim::Accels{0.0, 0.0};
+        this->control = brains2::sim::Sim::Control{0.0, 0.0, 0.0, 0.0, 0.0};
         // Reset lap timing
         this->last_lap_time_stamp = rclcpp::Time(0, 0);
     }
@@ -195,6 +196,7 @@ private:
         this->tf_broadcaster->sendTransform(this->transform);
 
         // publish diagnostics
+        diag_msg.header.stamp = this->now();
         diag_msg.status[0].values[0].value = std::to_string(1000 * (end - start).seconds());
         diag_msg.status[0].values[1].value = this->get_parameter("track_name").as_string();
         diag_msg.status[0].values[2].value = std::to_string(this->last_lap_time);

@@ -5,7 +5,6 @@
 We receive from the estimation module (or the simulation in certain scenarios):
 
 - the car's pose $X,Y,\varphi$ in global cartesian coordinates
-- the car's longitudinal and lateral accelerations $a_x,a_y$ (in local coordinates)
 - the car's longitudinal, lateral and angular velocity $v_x,v_y,\omega$ (in local coordinates)
 - an estimate of the track around us in the form of splines of degree 1 for the
   center line, its heading, its curvature, and the track width:
@@ -19,8 +18,6 @@ We receive from the estimation module (or the simulation in certain scenarios):
   expect the same number of points for this representations to facilitate the
   usage of splines in the OCP implementation.
 
-  > [!NOTE] Roughly 200 points should be enough for up to 15m of local track.
-
   The track progress values $s_i$ are also supposed to be consistent throughout
   the drive. This means that they should be extracted from the same global
   representation of the track, in such a way that a certain position would have
@@ -28,106 +25,106 @@ We receive from the estimation module (or the simulation in certain scenarios):
 
 ## Concept
 
-#### V1
+We formulate an OCP by taking inspiration from the paper [**_"NMPC for
+Racing Using a Singularity-Free Path-Parametric Model with Obstacle
+Avoidance"_**](https://www.sciencedirect.com/science/article/pii/S2405896320317845).
+This formulation has the advantage of being computationally simpler than MPCC
+because of its quadratic cost function and the curvilinear model that simplifies
+the state constraints formulation.
 
-- We only follow the center line with a certain target velocity.
-- We use a curvilinear temporal model.
-- We formulate an OCP by taking inspiration from the paper [**_"NMPC for
-  Racing Using a Singularity-Free Path-Parametric Model with Obstacle
-  Avoidance"_**](https://www.sciencedirect.com/science/article/pii/S2405896320317845),
-  where the 'racing objective' is implemented as a simple quadratic cost with
-  respect to a target progress variable $s^\mathrm{ref}_f$ slightly out of reach.
-- The track constraints are simple bounds on the lateral deviation (we ignore
-  heading for the moment).
-- For the moment, we put a high enough cost on lateral deviation such that we
-  track the center line instead of actually racing it.
+In milestone v0, we chose not to focus on actual racing, but rather on simply 
+tracking the center line. The quadratic cost function of the paper above allows
+us to eventually transition from one goal to the other by simply changing the 
+reference states and cost tuning.
 
-#### Later versions
+In this milestone, we also use the state ground truth, which makes the optimal
+state and control trajectories quite smooth with respect to the initial conditions,
+thus allowing us to omit some details for now.
 
-- [ ] Incorporate heading into track contraints
-- [ ] Retune to do racing instead of center-line tracking
-- [ ] **global race line optimization**
-      After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
-      we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
+Concretely, our formulation:
+- uses a 4DOF kinematic bicycle model in the Frenet frame (curvilinear
+  coordinates) and no actuator dynamics.
+- only follow the center line with a certain target velocity.
+- choses evenly spaced points on the center line as state reference.
+- includes hard constraints on the velocity, lateral deviation and controls.
+- doesn't include any control rate constraints or penalties because the .
+- 
 
-    > [!WARNING]: during the first lap the first and last points will not be the same !!!!!
+This already constitutes a working first implementation that lets us test the
+other modules.
+Once we implement the estimation modules and build up a more comprehensive test
+suite (both unit and integration tests) and are able to better figure out the
+edge cases not covered by the current formulation, we will progressively
+include the following improvements:
+- soft constraints on velocity and track constraints
+- control rate constraints and penalties
+- local racing line optimization by choosing a state reference slightly out of
+  reach.
+- **global race line optimization**
+  After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
+  we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
 
-    ⇒ we stitch the last prediction with the beginning of the lap
+  > [!WARNING]
+  > during the first lap the first and last points will not be the same !!!!!
 
-    we compute the curvature values outside of the OCP, based on the initial guess, constructed based on the last prediction extended by the same control
+  ⇒ we stitch the last prediction with the beginning of the lap
 
-    we could use this not as reference but as terminal target
+  we compute the curvature values outside of the OCP, based on the initial guess, constructed based on the last prediction extended by the same control
+
+  we could use this not as reference but as terminal target
 
 ## OCP Description
 
 ### State and control variables
 
+The state and control variables are:
 ```math
 \begin{aligned}
-x &= (s, n, \psi, v_x, v_y, \omega, \delta, \tau)^T, \\
-u &= (u_\delta, u_\tau)^T
+x &= (\Delta s, n, \psi, v)^T, \\
+u &= (\delta, \tau)^T,
 \end{aligned}
 ```
 
-where $s$ is the progress along the center line, $n$ is the lateral deviation from the center line, $\psi$ is the heading deviation from the center line.
-These three variabels form the _Frenet pose_.
-
-Based on the center line data $X^\mathrm{cen}(s), Y^\mathrm{cen}(s), \varphi^\mathrm{cen}(s)$ and the _cartesian pose_ $(X, Y, \varphi)$, we can compute the
-Frenet pose with:
-
-```math
-\begin{aligned}
-s &= \argmin_{\sigma} \sqrt{(X^\mathrm{cen}(\sigma) - X)^2 + (Y^\mathrm{cen}(\sigma) - Y)^2}, \\
-n &= -(X-X^\mathrm{cen}(s)) \sin(\varphi^\mathrm{cen}(s)) + (Y-Y^\mathrm{cen}(s)) \cos(\varphi^\mathrm{cen}(s)), \\
-\psi &= \varphi - \varphi^\mathrm{cen}(s)
-\end{aligned}
-```
+where $\Delta s = s - s_0$ is the track progress since the first OCP stage
+(i.e. the current state), $n$ is the lateral deviation from the center line,
+$\psi$ is the heading deviation from the center line, and
+$v = \sqrt{v_x^2+v_y^2}$ is the absolute velocity.
 
 ### Dynamics
 
 ```math
 \begin{aligned}
-\dot{s} &= \frac{v_x \cos(\psi) - v_y \sin(\psi)}{1-n \kappa^\mathrm{cen}(s)}, \\
-\dot{n} &= v_x \sin(\psi) + v_y \cos(\psi), \\
-\dot{\psi} &= \omega - \kappa^\mathrm{cen}(s) \dot{s}, \\
-\dot{v}_x &= \dot{v} \cos(\beta) - v_y \dot{\beta}, \\
-\dot{v}_y &= \dot{v} \sin(\beta) + v_x \dot{\beta}, \\
-\dot{\omega} &= \frac{1}{l_R}(\dot{v} \sin(\beta) + v_x \dot{\beta}), \\
-\dot{\delta} &= \frac{1}{t_\delta}(u_\delta - \delta), \\
-\dot{\tau} &= \frac{1}{t_\tau}(u_\tau - \tau)
+\Delta \dot{s} &= \dot{s} = \frac{v \cos(\psi + beta)}{1 + n \kappa^\mathrm{cen}(s)}, \\
+\dot{n} &= v \sin(\psi + \beta), \\
+\dot{\psi} &= \frac{v \sin(\beta)}{l_R} + \kappa^\mathrm{cen}(s) \dot{s}, \\
+\dot{v} &= \frac{1}{m}(C_\mathrm{m0}\tau - (C_\mathrm{r0} + C_\mathrm{r1} v + C_\mathrm{r2} v^2)), \\
 \end{aligned}
 ```
 
-where $\beta = \frac{l_R}{l_R + l_F}\delta$ is the slip angle, $\dot{\beta} = \frac{l_R}{l_R + l_F} \dot{\delta}$ its derivative,
-$\dot{v}=\frac{1}{m}(\cos(\beta) (\frac{1}{2}F_\mathrm{motor}+F_\mathrm{drag}) + \frac{1}{2}\sin(\beta)F_\mathrm{motor})$ is the
-derivative of the absolute velocity $v=\sqrt{v_x^2+v_y^2}$, $F_\mathrm{motor}=C_\mathrm{m0}\tau$ is the force produce by the drivetrain,
-and finally $F_\mathrm{drag}=-C_\mathrm{r0} - C_\mathrm{r1} v_x - C_\mathrm{r2} v_x^2$ is the drag force.
+where $\beta = \frac{l_R}{l_R + l_F}\delta$ is the slip angle.
 
 ### Objective function
 
 We formulate a quadratic objective function as follows:
 
 ```math
-J(\mathbf{x},\mathbf{u}) = \|x_N-x^\mathrm{ref}_N\|^2_{Q_f} + \sum_{k=0}^{N-1} \|x_k-x^\mathrm{ref}_k\|^2_Q + \|u_k-u^\mathrm{ref}_k\|^2_{R_u} + \|\dot{u}_k\|^2_{R_{du}}
+J(\mathbf{x},\mathbf{u}) = \|x_N-x^\mathrm{ref}_N\|^2_{Q_f} + \sum_{k=0}^{N-1} \|x_k-x^\mathrm{ref}_k\|^2_Q + \|u_k-u^\mathrm{ref}_k\|^2_R
 ```
 
-where we denote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and the reference states and controls are chosen as follows:
+where the reference states and controls are chosen as follows:
 
 - The reference states $x^\mathrm{ref}_k$ are chosen as
 
   ```math
-  x^\mathrm{ref}_k = (s_0 + \frac{k}{N}\Delta s^\mathrm{ref}, 0, 0, v^\mathrm{ref}_x, 0,0, 0, \tau^\mathrm{ref})^T
+  x^\mathrm{ref}_k = (k \Delta t v^\mathrm{ref}, 0, 0, v^\mathrm{ref})^T
   ```
 
-  where $v^\mathrm{ref}_x$ and $\Delta s^\mathrm{ref}$ are two tuning parameters that
-  one should choose to be respectively _the expected velocity throughout the
-  horizon_ and _a length slightly larger than the expected progress over the
-  horizon_.
+  where $v^\mathrm{ref}$ is the reference velocity and $\Delta t$ is the sampling
+  time.
 
-  A simple practical choice for a sampling time of $\Delta t$ is 
-  ```math
-  \Delta s^\mathrm{ref} \approx \frac{3}{2} N_f \Delta t v^\mathrm{ref}_x .
-  ```
+  > [!NOTE]
+  > Since we chose to represent the state as $\Delta s$ instead of $s$, we
+  > can use the same reference and initial guess at every call to the controller.
 
 - The reference controls $u^\mathrm{ref}_k$ are chosen as
 
@@ -136,15 +133,33 @@ where we denote $\dot{u}=(\dot{\delta}, \dot{\tau})^T$ the control rates, and th
   ```
 
   where $\tau^\mathrm{ref}$ is the steady state torque to be applied for the
-  velocity $v^\mathrm{ref}_x$.
+  velocity $v^\mathrm{ref}$.
 
 ### Constraints
 
 For the moment, we only impose:
 
-- **velocity constraints**: $0 \leq v_x \leq v^\mathrm{max}_x$ ,
-- **track constraints**: $-w^{\mathrm{cen}} \leq n \leq w^{\mathrm{cen}}$, where $w^{\mathrm{cen}}$ is the track width (at the current track progress $s$) ,
+- **velocity constraints**: $0 \leq v \leq v_\mathrm{max}$ ,
+- **track constraints**: $-w^{\mathrm{cen}}(s) \leq n \leq w^{\mathrm{cen}}(s)$, where $w^{\mathrm{cen}}$ is the track width,
 - **control input constraints**: $-\delta_\mathrm{max} \leq \delta \leq \delta_\mathrm{max}$ and $-\tau_\mathrm{max} \leq \tau \leq \tau_\mathrm{max}$ ,
-- **control rate constrains**: $\dot{\delta}_\mathrm{max} \leq \dot{\delta} \leq \dot{\delta}_\mathrm{max}$ and $\dot{\tau}_\mathrm{max} \leq \dot{\tau} \leq \dot{\tau}_\mathrm{max}$ .
 
-> In the future, we may also incoporate the heading in the track contraints.
+## Implementation
+
+We implement the OCP formulation directly in C++ using the `Opti` class in
+`casadi` and the `fatrop` solver. For performance reasons, we should 
+eventually migrate to generated C code (in particular to improve the function 
+evaluation runtime). We have however not yet found a proper way to access the
+solver exit flag using code generated via `Opti::to_function()`.
+
+The provided initial guess is exactly the state and control reference, which
+should be sufficiently close to the optimal solution. This strategy has been 
+observed to work well in practice, and has the advantage of being _stateless_,
+in the sense that we don't need to store any state between calls to the
+controller and there should not be erros that can be propagated from one call
+to the next.
+
+To simplify the optimization problem and the runtime, we evaluate all the
+variables depending on $s$ (like the curavture $kappa^\mathrm{cen}(s)$
+and the track width $w^\mathrm{cen}(s)$) outside of the OCP, and fix the
+values at each stage throughout the optimization.
+The values of $s$ are chosen based on the initial guess.

@@ -11,6 +11,7 @@ namespace common {
 
 double clip(double n, double lower, double upper);
 Eigen::VectorXd atan2(const Eigen::VectorXd &y, const Eigen::VectorXd &x);
+double teds_projection(double x, double a);
 double wrap_to_pi(double x);
 Eigen::VectorXd wrap_to_pi(const Eigen::VectorXd &x);
 float deg2rad(float deg);

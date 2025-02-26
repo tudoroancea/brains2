@@ -1,0 +1,93 @@
+launch:
+  - arg:
+      name: "track_name"
+      default: "alpha"
+  - arg:
+      name: "Nf"
+      default: "20"
+  - arg:
+      name: "freq"
+      default: "20"
+  - arg:
+      name: "v_ref"
+      default: "6.0"
+  - arg:
+      name: "q_s"
+      default: "10.0"
+  - arg:
+      name: "q_n"
+      default: "20.0"
+  - arg:
+      name: "q_psi"
+      default: "50.0"
+  - arg:
+      name: "q_v"
+      default: "20.0"
+  - arg:
+      name: "r_delta"
+      default: "2.0"
+  - arg:
+      name: "r_tau"
+      default: "0.001"
+  - arg:
+      name: "final_mul"
+      default: "1000.0"
+  - arg:
+      name: "bag_file"
+      default: ""
+  - executable:
+      cmd: "ros2 bag record -s mcap -e '(brains2)|(tf)|(parameter_events)|(rosout)' -o $(var bag_file)"
+      if: $(eval "'$(var bag_file)' != ''")
+  - timer:
+      period: 1.0
+      children:
+        - node:
+            pkg: "brains2"
+            exec: "sim_node"
+            param:
+              - name: "track_name"
+                value: $(var track_name)
+        - node:
+            pkg: "brains2"
+            exec: "fake_track_estimation_node"
+            param:
+              - name: "track_name"
+                value: $(var track_name)
+              - name: "dist_front"
+                value: $(eval "1.5 * $(var Nf) * $(var v_ref) / $(var freq)")
+              - name: "dist_back"
+                value: 2.0
+        - node:
+            pkg: "brains2"
+            exec: "control_node"
+            param:
+              - name: "solver"
+                value: "fatrop"
+              - name: "jit"
+                value: false
+              - name: "Nf"
+                value: $(var Nf)
+              - name: "v_ref"
+                value: $(var v_ref)
+              - name: "tau_max"
+                value: 200.0
+              - name: "q_s"
+                value: $(var q_s)
+              - name: "q_n"
+                value: $(var q_n)
+              - name: "q_psi"
+                value: $(var q_psi)
+              - name: "q_v"
+                value: $(var q_v)
+              - name: "r_delta"
+                value: $(var r_delta)
+              - name: "r_tau"
+                value: $(var r_tau)
+              - name: "q_s_f"
+                value: $(eval "$(var final_mul) * $(var q_s)")
+              - name: "q_n_f"
+                value: $(eval "$(var final_mul) * $(var q_n)")
+              - name: "q_psi_f"
+                value: $(eval "$(var final_mul) * $(var q_psi)")
+              - name: "q_v_f"
+                value: $(eval "$(var final_mul) * $(var q_v)")

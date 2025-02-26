@@ -42,6 +42,8 @@ find_package(nlohmann_json REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # the following assumes acados has already been installed (automatically done in build.sh)
 find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
+find_package(casadi REQUIRED)
+find_package(fatrop REQUIRED)
 
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
@@ -117,6 +119,23 @@ target_link_libraries(sim_node
 ####################################################################################################
 # control
 ####################################################################################################
+
+ament_auto_add_library(brains2_control SHARED src/control/controller.cpp)
+target_link_libraries(brains2_control m casadi fatrop)
+
+ament_auto_add_executable(control_node src/control/control_node.cpp)
+target_link_libraries(control_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  yaml-cpp::yaml-cpp
+  brains2_common
+  brains2_control
+  brains2_sim
+)
+
+if (CMAKE_TESTING_ENABLED)
+  ament_add_gtest(test_controller tests/control/test_controller.cpp)
+  target_link_libraries(test_controller brains2_common brains2_control)
+endif()
 
 ####################################################################################################
 # estimation

@@ -1,9 +1,13 @@
+#include <algorithm>
 #include <cmath>
 #include <Eigen/Dense>
 #include <memory>
+#include <numeric>
 #include <rclcpp/logging.hpp>
 #include "brains2/common/marker_color.hpp"
+#include "brains2/common/math.hpp"
 #include "brains2/common/tracks.hpp"
+#include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
 #include "brains2/msg/pose.hpp"
 #include "brains2/msg/track_estimate.hpp"
@@ -22,27 +26,61 @@ using rclcpp::Subscription;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 
+template <typename InputIt>
+void adjust_heading_range(InputIt start, InputIt end) {
+    if (start == end) {
+        return;
+    }
+    adjacent_difference(start, end, start);  // first element stays the same
+    const auto wrap = [](double diff) {
+        if (diff > M_PI) {
+            return diff - 2 * M_PI;
+        } else if (diff < -M_PI) {
+            return diff + 2 * M_PI;
+        }
+        return diff;
+    };
+    transform_inclusive_scan(next(start), end, start, std::plus<double>{}, wrap, *start);
+}
+
+void adjust_heading(vector<double> &headings, size_t ref_id) {
+    if (ref_id < 0 || ref_id >= headings.size()) {
+        return;
+    }
+    adjust_heading_range(headings.begin() + ref_id, headings.end());
+    adjust_heading_range(headings.rbegin() + (headings.size() - 1 - ref_id), headings.rend());
+}
+
 class FakeTrackEstimationNode : public rclcpp::Node {
 private:
     Subscription<Pose>::SharedPtr pose_sub;
     Publisher<TrackEstimate>::SharedPtr track_estimate_pub;
     Publisher<MarkerArray>::SharedPtr viz_pub;
+    rclcpp::TimerBase::SharedPtr timer;
 
     double last_s = 0.0;
-    tl::optional<Track> track;
+    unique_ptr<Track> track;
     TrackEstimate track_estimate_msg;
     MarkerArray viz_msg;
+    shared_ptr<const Pose> last_pose;
 
     void on_pose(Pose::ConstSharedPtr msg) {
+        last_pose = msg;
+    }
+    void timer_cb() {
+        if (!last_pose) {
+            return;
+        }
         // Project pose onto track
-        auto [s_proj, _] = track->project(Eigen::Vector2d(msg->x, msg->y), this->last_s, 30.0);
+        auto [s_proj, _] = track->project(last_pose->x, last_pose->y, this->last_s, 30.0);
 
         // Update last s value (don't forget the Track here represents 3 laps)
-        this->last_s = std::fmod(s_proj, this->track->length() / 3);
+        this->last_s = std::fmod(s_proj, track->length() / 3);
 
         // Take 5m behind and 10 in front
         size_t start_id =
                    track->find_interval(s_proj - this->get_parameter("dist_back").as_double()),
+               proj_id = track->find_interval(s_proj),
                end_id =
                    track->find_interval(s_proj + this->get_parameter("dist_front").as_double()) + 1;
         const auto npoints = end_id - start_id;
@@ -75,6 +113,14 @@ private:
                   track->get_vals_width().data() + end_id,
                   track_estimate_msg.w_cen.begin());
 
+        // post-process the heading values phi such that they all lie "around" current phi
+        // for this, wrap all in interval [phi-pi, phi+pi) and then remove discontinuities
+        const auto tpr = last_pose->phi - M_PI;
+        for (auto &phi_cen : track_estimate_msg.phi_cen) {
+            phi_cen = teds_projection(phi_cen, tpr);
+        }
+        adjust_heading(track_estimate_msg.phi_cen, proj_id);
+
         // Publish track estimate
         track_estimate_pub->publish(track_estimate_msg);
 
@@ -99,24 +145,29 @@ private:
     }
 
 public:
-    FakeTrackEstimationNode() : Node("fake_track_estimation_node"), track_estimate_msg{} {
-        auto track_name = this->declare_parameter("track_name", "alpha");
+    FakeTrackEstimationNode()
+        : Node("fake_track_estimation_node"), track_estimate_msg{}, viz_msg{}, last_pose(nullptr) {
         this->declare_parameter("dist_front", 10.0);
         this->declare_parameter("dist_back", 5.0);
 
         // Load track
 #ifdef TRACK_DATABASE_PATH
         std::filesystem::path center_line_file(TRACK_DATABASE_PATH);
+        const auto track_name = this->declare_parameter("track_name", "alpha");
         center_line_file /= (track_name + "_center_line.csv");
         if (!std::filesystem::exists(center_line_file)) {
             throw std::runtime_error("Track " + track_name + " not found in TRACK_DATABASE_PATH");
         }
-        this->track = Track::from_file(center_line_file.string());
-        if (!this->track.has_value()) {
+        const auto track_expected = Track::from_file(center_line_file.string());
+        if (!track_expected.has_value()) {
             throw std::runtime_error(
                 "Track " + track_name +
-                " could not be loaded because not all columns have the same length");
+                " could not be loaded because of error: " + to_string(track_expected.error()));
         }
+        // NOTE: this will effectively copy the instance of Track. This is necessary because the
+        // previous object was allocated on the stack and will be destroyed at the end of the
+        // constructor.
+        this->track = std::make_unique<Track>(track_expected.value());
 #else
 #error TRACK_DATABASE_PATH is not defined
 #endif
@@ -131,6 +182,11 @@ public:
             "/brains2/pose",
             10,
             std::bind(&FakeTrackEstimationNode::on_pose, this, std::placeholders::_1));
+
+        // Create timer
+        const auto timer_period = 1 / this->declare_parameter<double>("freq", 10.0);
+        this->timer = this->create_wall_timer(std::chrono::duration<double>(timer_period),
+                                              bind(&FakeTrackEstimationNode::timer_cb, this));
     }
 };
 
