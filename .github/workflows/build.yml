@@ -58,5 +58,6 @@ jobs:
           path: logs-${{ matrix.os }}.zip
 
       - name: Cleanup micromamba-bin
-        if: ${{ matrix.os }} == 'self-hosted'
+        # see https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#always
+        if: always() && matrix.os == 'self-hosted'
         run: rm -rf ~/micromamba-bin
