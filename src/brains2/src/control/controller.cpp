@@ -139,11 +139,11 @@ Controller::Controller(size_t Nf,
         opti.subject_to(opti.bounded(-limits.delta_max, u[i](0), limits.delta_max));
         opti.subject_to(opti.bounded(-limits.tau_max, u[i](1), limits.tau_max));
         if (i > 0) {
-            // opti.subject_to(opti.bounded(-w_cen(i), x[i](1), w_cen(i)));
+            opti.subject_to(opti.bounded(-w_cen(i), x[i](1), w_cen(i)));
             opti.subject_to(opti.bounded(0.0, x[i](3), limits.v_x_max));
         }
     }
-    // opti.subject_to(opti.bounded(-w_cen(Nf), x[Nf](1), w_cen(Nf)));
+    opti.subject_to(opti.bounded(-w_cen(Nf), x[Nf](1), w_cen(Nf)));
     opti.subject_to(opti.bounded(0.0, x[Nf](3), limits.v_x_max));
 
     ///////////////////////////////////////////////////////////////////
@@ -203,7 +203,7 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
 
     try {
         // Call solver
-        auto sol = this->opti.solve_limited();
+        auto sol = this->opti.solve();
 
         // Check solver status
         const auto stats = this->opti.stats();
