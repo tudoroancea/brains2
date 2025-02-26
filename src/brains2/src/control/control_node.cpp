@@ -185,9 +185,10 @@ private:
                                                        msg->kappa_cen,
                                                        msg->w_cen);
         if (!track_expected) {
-            RCLCPP_ERROR(this->get_logger(),
-                         "Could not construct Track object from received message (arrays with "
-                         "different lengths ?)");
+            RCLCPP_ERROR(
+                this->get_logger(),
+                "Could not construct Track object from received message because of error: %s",
+                to_string(track_expected.error()).c_str());
         }
         this->track = std::make_unique<Track>(track_expected.value());
     }
@@ -197,25 +198,21 @@ private:
             return;
         }
         if (this->control_counter == 0) {
-            // Project current position
-            // TODO: optimize this by keeping track of the last projection
-            const auto [s, pos_proj] =
-                track->project(pose_msg->x, pose_msg->y, track->s_min(), track->length());
-
-            // Convert to Frenet pose
-            const auto phi_proj = track->eval_phi(s);
-            const double n = -(pose_msg->x - pos_proj(0)) * sin(phi_proj) +
-                             (pose_msg->y - pos_proj(1)) * cos(phi_proj),
-                         psi = wrap_to_pi(pose_msg->phi - phi_proj);
+            // Convert CartesianPose to FrenetPose
+            const auto [frenet_pose, projected_cartesian_pose] =
+                track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi});
 
             // Construct current state
-            const Controller::State state{s, n, psi, std::hypot(vel_msg->v_x, vel_msg->v_y)};
+            const Controller::State state{frenet_pose.s,
+                                          frenet_pose.n,
+                                          frenet_pose.psi,
+                                          std::hypot(vel_msg->v_x, vel_msg->v_y)};
 
             // Compute control
             const auto start = this->now();
             auto controls = this->controller->compute_control(state, *(this->track));
             const auto end = this->now();
-            if (!controls.has_value()) {
+            if (!controls) {
                 RCLCPP_ERROR(this->get_logger(),
                              "Error in MPC solver: %s",
                              to_string(controls.error()).c_str());
@@ -249,13 +246,14 @@ private:
             const auto x_ref = this->controller->get_x_ref();
             for (long i = 0; i < x_opt.cols(); ++i) {
                 // predicted trajectory
-                const auto [X, Y, phi] =
-                    track->frenet_to_cartesian(s + x_opt(0, i), x_opt(1, i), x_opt(2, i));
-                viz_msg.markers[0].points[i].x = X;
-                viz_msg.markers[0].points[i].y = Y;
+                const auto [pose, _] = track->frenet_to_cartesian(
+                    FrenetPose{frenet_pose.s + x_opt(0, i), x_opt(1, i), x_opt(2, i)});
+                viz_msg.markers[0].points[i].x = pose.X;
+                viz_msg.markers[0].points[i].y = pose.Y;
                 viz_msg.markers[0].points[i].z = 0.1;
+
                 // reference trajectory
-                const auto s_ref = s + x_ref(0, i), X_ref = track->eval_X(s_ref),
+                const auto s_ref = frenet_pose.s + x_ref(0, i), X_ref = track->eval_X(s_ref),
                            Y_ref = track->eval_Y(s_ref);
                 viz_msg.markers[1].points[i].x = X_ref;
                 viz_msg.markers[1].points[i].y = Y_ref;

@@ -7,6 +7,7 @@
 #include <vector>
 #include "brains2/common/math.hpp"
 #include "brains2/external/icecream.hpp"
+#include "brains2/external/optional.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
 namespace brains2::common {
@@ -104,14 +105,19 @@ tl::expected<Track, Track::Error> Track::from_file(const std::filesystem::path& 
                               doc.GetColumn<double>("w"));
 }
 
+size_t Track::size() const {
+    return vals_s.size();
+}
+
 double Track::length() const {
     // This class usually represents 'open' tracks. When it is used to represent a closed track, the
     // length will be slightly off as we should add
     //  std::hypot(vals_X(size - 1) - vals_X(0), vals_Y(size - 1) - vals_Y(0))
     return vals_s(vals_s.size() - 1) - vals_s(0);
 }
-size_t Track::size() const {
-    return vals_s.size();
+
+double Track::s_min() const {
+    return vals_s(0);
 }
 
 static double angle3pt(const Eigen::Vector2d& a,
@@ -127,6 +133,10 @@ double Track::interp(const Eigen::MatrixXd& coeffs, double s, int ind) const {
     }
     // find the value of the spline at s
     return coeffs(ind, 0) + coeffs(ind, 1) * (s - vals_s(ind));
+}
+
+size_t Track::find_interval(double s) const {
+    return std::upper_bound(vals_s.data(), vals_s.data() + vals_s.size(), s) - vals_s.data() - 1;
 }
 
 std::tuple<double, Eigen::Vector2d> Track::project(double X,
@@ -217,24 +227,6 @@ double Track::eval_width(double s) const {
     return this->interp(this->coeffs_width, s);
 }
 
-std::tuple<double, double, double> Track::frenet_to_cartesian(const double s,
-                                                              const double n,
-                                                              const double psi) const {
-    double X = this->interp(this->coeffs_X, s);
-    double Y = this->interp(this->coeffs_Y, s);
-    double phi = this->interp(this->coeffs_phi, s);
-    return std::make_tuple(X - n * sin(phi), Y + n * cos(phi), psi + phi);
-}
-
-Eigen::Vector3d Track::frenet_to_cartesian(const Eigen::Vector3d& frenet_pose) const {
-    auto [X, Y, phi] = this->frenet_to_cartesian(frenet_pose(0), frenet_pose(1), frenet_pose(2));
-    return Eigen::Vector3d(X, Y, phi);
-}
-
-size_t Track::find_interval(double s) const {
-    return std::upper_bound(vals_s.data(), vals_s.data() + vals_s.size(), s) - vals_s.data() - 1;
-}
-
 const Eigen::VectorXd& Track::get_vals_s() const {
     return this->vals_s;
 }
@@ -259,9 +251,31 @@ const Eigen::VectorXd& Track::get_vals_width() const {
     return this->vals_width;
 }
 
-double Track::s_min() const {
-    return vals_s(0);
+std::pair<CartesianPose, CartesianPose> Track::frenet_to_cartesian(
+    const FrenetPose& frenet_pose) const {
+    double X_proj = this->eval_X(frenet_pose.s);
+    double Y_proj = this->eval_Y(frenet_pose.s);
+    double phi_proj = this->eval_phi(frenet_pose.s);
+    double X = X_proj - frenet_pose.n * sin(phi_proj);
+    double Y = Y_proj + frenet_pose.n * cos(phi_proj);
+    double psi = frenet_pose.psi + phi_proj;
+    return std::make_pair(CartesianPose{X, Y, psi}, CartesianPose{X, Y, psi});
 }
+
+std::pair<FrenetPose, CartesianPose> Track::cartesian_to_frenet(const CartesianPose& cartesian_pose,
+                                                                tl::optional<double> s_guess,
+                                                                tl::optional<double> s_tol) const {
+    const auto [s, pos_proj] = this->project(cartesian_pose.X,
+                                             cartesian_pose.Y,
+                                             s_guess ? *s_guess : this->s_min(),
+                                             s_tol ? *s_tol : this->length());
+    const auto phi_proj = this->eval_phi(s);
+    const double n = -(cartesian_pose.X - pos_proj(0)) * sin(phi_proj) +
+                     (cartesian_pose.Y - pos_proj(1)) * cos(phi_proj);
+    const double psi = wrap_to_pi(cartesian_pose.phi - phi_proj);
+    return std::make_pair(FrenetPose{s, n, psi}, CartesianPose{pos_proj(0), pos_proj(1), phi_proj});
+}
+
 std::string to_string(const Track::Error& error) {
     switch (error) {
         case Track::Error::DIFFERENT_SIZES:

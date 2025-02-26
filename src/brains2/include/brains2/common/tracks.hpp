@@ -5,10 +5,19 @@
 #include <filesystem>
 #include <tuple>
 #include "brains2/external/expected.hpp"
+#include "brains2/external/optional.hpp"
 #include "Eigen/Dense"
 
 namespace brains2 {
 namespace common {
+
+struct CartesianPose {
+    double X, Y, phi;
+};
+
+struct FrenetPose {
+    double s, n, psi;
+};
 
 /*
  * @brief Class representing a portion of the track
@@ -138,18 +147,10 @@ public:
      */
     const Eigen::VectorXd &get_vals_width() const;
 
+    /*
+     * @brief Find the index of the spline interval containing the given track progress
+     */
     size_t find_interval(double s) const;
-
-    /*
-     *  @brief Converts a pose in Frenet coordinates to a Cartesian coordinates
-     */
-    std::tuple<double, double, double> frenet_to_cartesian(const double s,
-                                                           const double n,
-                                                           const double psi) const;
-    /*
-     *  @brief Converts a pose in Frenet coordinates to a Cartesian coordinates
-     */
-    Eigen::Vector3d frenet_to_cartesian(const Eigen::Vector3d &frenet_pose) const;
 
     /*
          * @brief Compute orthogonal projection of a point onto the track
@@ -164,6 +165,22 @@ public:
                                                 double Y,
                                                 double s_guess,
                                                 double s_tol) const;
+
+    /*
+     *  @brief Converts a pose in Frenet coordinates to Cartesian coordinates and returns the
+     *         corresponding projection on the track.
+     */
+    std::pair<CartesianPose, CartesianPose> frenet_to_cartesian(
+        const FrenetPose &frenet_pose) const;
+
+    /*
+     *  @brief Converts a pose in Cartesian coordinates to Frenet coordinates and returns the
+     *         corresponding projection on the track.
+     */
+    std::pair<FrenetPose, CartesianPose> cartesian_to_frenet(
+        const CartesianPose &cartesian_pose,
+        tl::optional<double> s_guess = tl::nullopt,
+        tl::optional<double> s_tol = tl::nullopt) const;
 };
 
 std::string to_string(const Track::Error &error);
