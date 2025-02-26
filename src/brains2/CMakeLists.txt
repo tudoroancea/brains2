@@ -120,11 +120,8 @@ target_link_libraries(sim_node
 # control
 ####################################################################################################
 
-file(GLOB_RECURSE generated_sources src/control/generated/*.c)
-message(STATUS "Generated sources: ${generated_sources}")
-ament_auto_add_library(brains2_control SHARED src/control/controller.cpp ${generated_sources})
+ament_auto_add_library(brains2_control SHARED src/control/controller.cpp)
 target_link_libraries(brains2_control m casadi fatrop)
-target_include_directories(brains2_control PUBLIC src/control)
 
 ament_auto_add_executable(control_node src/control/control_node.cpp)
 target_link_libraries(control_node
