@@ -64,7 +64,8 @@ include the following improvements:
   After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
   we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
 
-  > [!WARNING]: during the first lap the first and last points will not be the same !!!!!
+  > [!WARNING]
+  > during the first lap the first and last points will not be the same !!!!!
 
   ⇒ we stitch the last prediction with the beginning of the lap
 
@@ -145,7 +146,10 @@ For the moment, we only impose:
 ## Implementation
 
 We implement the OCP formulation directly in C++ using the `Opti` class in
-`casadi` and the `fatrop` solver.
+`casadi` and the `fatrop` solver. For performance reasons, we should 
+eventually migrate to generated C code (in particular to improve the function 
+evaluation runtime). We have however not yet found a proper way to access the
+solver exit flag using code generated via `Opti::to_function()`.
 
 The provided initial guess is exactly the state and control reference, which
 should be sufficiently close to the optimal solution. This strategy has been 
@@ -155,7 +159,7 @@ controller and there should not be erros that can be propagated from one call
 to the next.
 
 To simplify the optimization problem and the runtime, we evaluate all the
-variables depending on `s` (like the curavture `kappa^\mathrm{cen}(s)`
-and the track width `w^\mathrm{cen}(s)`) outside of the OCP, and fix the
+variables depending on $s$ (like the curavture $kappa^\mathrm{cen}(s)$
+and the track width $w^\mathrm{cen}(s)$) outside of the OCP, and fix the
 values at each stage throughout the optimization.
-The values of `s` are chosen based on the initial guess.
+The values of $s$ are chosen based on the initial guess.
