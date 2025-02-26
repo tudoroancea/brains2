@@ -160,7 +160,6 @@ public:
         }
         const auto track_expected = Track::from_file(center_line_file.string());
         if (!track_expected.has_value()) {
-            track_expected.error();
             throw std::runtime_error(
                 "Track " + track_name +
                 " could not be loaded because of error: " + to_string(track_expected.error()));
