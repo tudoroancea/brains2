@@ -18,11 +18,12 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto n = split[1];
     auto psi = split[2];
     auto v = split[3];
+    auto delta = split[4];
 
     // control variables
     auto u = casadi::MX::sym("u", Controller::nu);
     split = vertsplit(u);
-    auto delta = split[0];
+    auto u_delta = split[0];
     auto tau = split[1];
 
     // parameters
@@ -34,12 +35,12 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto f_cont = casadi::Function(
         "f_cont",
         {x, u, kappa_cen},
-        {casadi::MX::vertcat({
-            s_dot,
-            v * sin(psi + beta),
-            v * sin(beta) / params.l_R + kappa_cen * s_dot,
-            (params.C_m0 * tau - (params.C_r0 + params.C_r1 * v + params.C_r2 * v * v)) / params.m,
-        })});
+        {casadi::MX::vertcat(
+            {s_dot,
+             v * sin(psi + beta),
+             v * sin(beta) / params.l_R + kappa_cen * s_dot,
+             (params.C_m0 * tau - (params.C_r0 + params.C_r1 * v + params.C_r2 * v * v)) / params.m,
+             (u_delta - delta) / params.t_delta})});
 
     // Discretize with RK4
     auto xnext = x;
@@ -114,12 +115,15 @@ Controller::Controller(size_t Nf,
         cost_function += mtimes(u_diff.T(), mtimes(R, u_diff));
         if (i > 0) {
             const auto x_diff =
-                x[i] - casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i)});
+                x[i] -
+                casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i), x_ref(4, i)});
             cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
         }
     }
     {
-        auto x_diff = x[Nf] - casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)});
+        auto x_diff =
+            x[Nf] -
+            casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf), x_ref(4, Nf)});
         cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
     }
     opti.minimize(cse(cost_function));
@@ -138,6 +142,9 @@ Controller::Controller(size_t Nf,
             opti.bounded(-contraints_params.delta_max, u[i](0), contraints_params.delta_max));
         opti.subject_to(
             opti.bounded(-contraints_params.tau_max, u[i](1), contraints_params.tau_max));
+        opti.subject_to(opti.bounded(-contraints_params.delta_dot_max * model_params.t_delta,
+                                     u[i](0) - x[i](0),
+                                     contraints_params.delta_dot_max * model_params.t_delta));
         if (i > 0) {
             opti.subject_to(opti.bounded(-w_cen(i) + contraints_params.car_width / 2,
                                          x[i](1),
@@ -183,18 +190,20 @@ Controller::Controller(size_t Nf,
     // Set initial guess
     ///////////////////////////////////////////////////////////////////
     for (size_t i = 0; i < Nf; ++i) {
-        this->opti.set_initial(this->x[i],
-                               casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i)}));
+        this->opti.set_initial(
+            this->x[i],
+            casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i), x_ref(4, i)}));
         this->opti.set_initial(this->u[i], casadi::DM({u_ref(0, i), u_ref(1, i)}));
     }
-    this->opti.set_initial(this->x[Nf],
-                           casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)}));
+    this->opti.set_initial(
+        this->x[Nf],
+        casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf), x_ref(4, Nf)}));
 }
 
 tl::expected<Controller::Control, Controller::Error> Controller::compute_control(
     const Controller::State& state, const brains2::common::Track& track) {
     // Set current state
-    this->opti.set_value(this->x0, casadi::DM({0.0, state.n, state.psi, state.v}));
+    this->opti.set_value(this->x0, casadi::DM({0.0, state.n, state.psi, state.v, state.delta}));
 
     // Compute parameter values
     std::vector<double> kappa_cen_val(Nf + 1), w_cen_val(Nf + 1);
@@ -249,7 +258,7 @@ std::string to_string(const Controller::Error& error) {
 }
 
 brains2::sim::Sim::Control to_sim_control(const Controller::Control& control) {
-    return brains2::sim::Sim::Control{control.delta,
+    return brains2::sim::Sim::Control{control.u_delta,
                                       control.tau / 4,
                                       control.tau / 4,
                                       control.tau / 4,

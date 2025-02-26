@@ -115,6 +115,10 @@ public:
             "/brains2/velocity",
             10,
             std::bind(&ControlNode::vel_cb, this, std::placeholders::_1));
+        this->current_controls_sub = this->create_subscription<Controls>(
+            "/brains2/current_controls",
+            10,
+            std::bind(&ControlNode::current_controls_cb, this, std::placeholders::_1));
 
         // Diagnostics
         this->diag_msg.status.resize(1);
@@ -154,6 +158,7 @@ private:
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
     Subscription<Pose>::SharedPtr pose_sub;
     Subscription<Velocity>::SharedPtr vel_sub;
+    Subscription<Controls>::SharedPtr current_controls_sub;
 
     // messages
     brains2::msg::Controls controls_msg;
@@ -164,6 +169,7 @@ private:
     unique_ptr<Track> track;
     Pose::ConstSharedPtr pose_msg;
     Velocity::ConstSharedPtr vel_msg;
+    Controls::ConstSharedPtr current_controls_msg;
     rclcpp::TimerBase::SharedPtr control_timer;
     unique_ptr<brains2::control::Controller> controller;
 
@@ -204,10 +210,15 @@ private:
         this->vel_msg = vel_msg;
     }
 
+    void current_controls_cb(const Controls::ConstSharedPtr controls_msg) {
+        this->current_controls_msg = controls_msg;
+    }
+
     void control_cb() {
-        if (!this->pose_msg || !this->vel_msg) {
+        if (!this->pose_msg || !this->vel_msg || !this->current_controls_msg) {
             RCLCPP_INFO(this->get_logger(),
-                        "Pose or velocity message not received; skipping control computation");
+                        "Pose, velocity, or current controls message not received; skipping "
+                        "control computation");
             return;
         }
         if (!this->track) {
@@ -223,7 +234,8 @@ private:
         const Controller::State state{frenet_pose.s,
                                       frenet_pose.n,
                                       frenet_pose.psi,
-                                      std::hypot(vel_msg->v_x, vel_msg->v_y)};
+                                      std::hypot(vel_msg->v_x, vel_msg->v_y),
+                                      current_controls_msg->delta};
 
         // Compute control
         const auto start = this->now();
