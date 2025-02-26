@@ -182,7 +182,7 @@ private:
     uint8_t error_counter = 0;
     static constexpr uint8_t MAX_ERROR_COUNT = 5;
 
-    void track_estimate_cb(const TrackEstimate::SharedPtr msg) {
+    void track_estimate_cb(const TrackEstimate::ConstSharedPtr msg) {
         const auto track_expected = Track::from_values(msg->s_cen,
                                                        msg->x_cen,
                                                        msg->y_cen,
@@ -198,12 +198,13 @@ private:
         this->track = std::make_unique<Track>(track_expected.value());
     }
 
-    void state_cb(const Pose::SharedPtr pose_msg, const Velocity::SharedPtr vel_msg) {
-        if (!this->track) {
-            RCLCPP_INFO(this->get_logger(), "Track not initialized; skipping control computation");
-            return;
-        }
+    void state_cb(const Pose::ConstSharedPtr pose_msg, const Velocity::ConstSharedPtr vel_msg) {
         if (this->control_counter == 0) {
+            if (!this->track) {
+                RCLCPP_INFO(this->get_logger(),
+                            "Track not initialized; skipping control computation");
+                return;
+            }
             // Convert CartesianPose to FrenetPose
             const auto [frenet_pose, _] =
                 track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi});
@@ -217,11 +218,11 @@ private:
             // Compute control
             const auto start = this->now();
             const auto control = this->controller->compute_control(state, *(this->track))
-                                     .and_then([this](const auto& control) {
+                                     .transform([this](const auto& control) {
                                          error_counter = 0;
                                          return to_sim_control(control);
                                      })
-                                     .or_else([this](const auto& error) {
+                                     .transform_error([this](const auto& error) {
                                          RCLCPP_ERROR(this->get_logger(),
                                                       "Error in MPC solver: %s",
                                                       to_string(error).c_str());

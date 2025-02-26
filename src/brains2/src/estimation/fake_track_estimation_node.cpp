@@ -62,7 +62,7 @@ private:
     unique_ptr<Track> track;
     TrackEstimate track_estimate_msg;
     MarkerArray viz_msg;
-    shared_ptr<Pose> last_pose;
+    shared_ptr<const Pose> last_pose;
 
     void on_pose(Pose::ConstSharedPtr msg) {
         last_pose = msg;
