@@ -6,7 +6,7 @@ if [ $(basename "$PWD") != "brains2" ]; then
 fi
 
 # build acados
-colcon build --packages-select acados --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=$CONDA_PREFIX/bin/clang -DCMAKE_CXX_COMPILER=$CONDA_PREFIX/bin/clang++
+colcon build --packages-select acados --cmake-args -GNinja -DCMAKE_BUILD_TYPE=Release -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=$CONDA_PREFIX/bin/clang -DCMAKE_CXX_COMPILER=$CONDA_PREFIX/bin/clang++
 if [ $? -ne 0 ]; then
     exit $?
 fi
@@ -17,7 +17,7 @@ echo "Using python interpreter: $PYTHON_EXE"
 
 # build brains2
 export PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources
-colcon build --packages-select brains2 --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev -DCMAKE_BUILD_TYPE=Release -Wno-dev -DCMAKE_C_COMPILER=$CONDA_PREFIX/bin/clang -DCMAKE_CXX_COMPILER=$CONDA_PREFIX/bin/clang++
+colcon build --packages-select brains2 --cmake-args -DPython3_EXECUTABLE=$PYTHON_EXE -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev -DCMAKE_BUILD_TYPE=Release -Wno-dev -DCMAKE_C_COMPILER=$CONDA_PREFIX/bin/clang -DCMAKE_CXX_COMPILER=$CONDA_PREFIX/bin/clang++
 if [ $? -ne 0 ]; then
     exit $?
 fi
