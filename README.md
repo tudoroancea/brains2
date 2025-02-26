@@ -99,3 +99,5 @@ and [`scripts/env_sync.sh`](scripts/env_sync.sh).
 > There is a known bug in `conda-lock` that prevents you from locking the environment
 > for `linux-64` platforms. Currently, if you want to do it you have to modify a file
 > in the source code of `conda-lock`, as in the [following PR](https://github.com/conda/conda-lock/pull/776).
+>
+> ahhaha
