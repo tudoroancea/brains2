@@ -97,7 +97,7 @@ private:
     double last_lap_time = 0.0, best_lap_time = 0.0;
     rclcpp::Time last_lap_time_stamp = rclcpp::Time(0, 0);
 
-    void controls_callback(const brains2::msg::Controls::SharedPtr msg) {
+    void controls_callback(brains2::msg::Controls::ConstSharedPtr msg) {
         control.u_tau_FL = msg->tau_fl;
         control.u_tau_FR = msg->tau_fr;
         control.u_tau_RL = msg->tau_rl;
@@ -106,12 +106,12 @@ private:
     }
 
     void publish_cones_srv_cb(
-        [[maybe_unused]] const std_srvs::srv::Empty::Request::SharedPtr request,
+        [[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
         [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
         this->viz_pub->publish(cones_marker_array);
     }
 
-    void reset_srv_cb([[maybe_unused]] const std_srvs::srv::Empty::Request::SharedPtr request,
+    void reset_srv_cb([[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
                       [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
         // Reset the state and accelerations
         this->state =
