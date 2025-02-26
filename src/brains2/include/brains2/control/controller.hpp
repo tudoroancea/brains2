@@ -21,9 +21,25 @@ public:
     struct CostParams {
         double v_ref, q_s, q_n, q_psi, q_v, r_delta, r_tau, q_s_f, q_n_f, q_psi_f, q_v_f;
     };
-    struct Limits {
-        double v_x_max, delta_max, tau_max;
+    struct ConstraintsParams {
+        double v_x_max, delta_max, tau_max, car_width;
     };
+    struct SolverParams {
+        bool jit;
+        std::string solver;
+    };
+
+    Controller() = delete;
+    Controller(const Controller&) = delete;
+    Controller& operator=(const Controller&) = delete;
+    virtual ~Controller() = default;
+
+    Controller(size_t Nf,
+               const ModelParams& model_params,
+               const ConstraintsParams& limits,
+               const CostParams& cost_params,
+               const SolverParams& solver_params = {false, "fatrop"});
+
     struct State {
         static constexpr uint8_t dim = 4;
         double s, n, psi, v;
@@ -36,19 +52,6 @@ public:
     static constexpr uint8_t nu = Control::dim;
     typedef Eigen::Matrix<double, nx, Eigen::Dynamic> StateHorizonMatrix;
     typedef Eigen::Matrix<double, nu, Eigen::Dynamic> ControlHorizonMatrix;
-
-    Controller() = delete;
-    Controller(const Controller&) = delete;
-    Controller& operator=(const Controller&) = delete;
-    virtual ~Controller() = default;
-
-    Controller(size_t Nf,
-               const ModelParams& model_params,
-               const Limits& limits,
-               const CostParams& cost_params,
-               size_t rk_steps = 1,
-               bool jit = false,
-               const std::string solver = "fatrop");
 
     /*
      * @brief All the errors that may occur in the MPC.

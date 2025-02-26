@@ -57,11 +57,9 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
 
 Controller::Controller(size_t Nf,
                        const Controller::ModelParams& model_params,
-                       const Controller::Limits& limits,
+                       const Controller::ConstraintsParams& contraints_params,
                        const Controller::CostParams& cost_params,
-                       size_t rk_steps,
-                       bool jit,
-                       const std::string solver)
+                       const Controller::SolverParams& solver_params)
     : Nf(Nf),
       dt(model_params.dt),
       v_ref(cost_params.v_ref),
@@ -95,7 +93,7 @@ Controller::Controller(size_t Nf,
     ///////////////////////////////////////////////////////////////////
     // Generate model
     ///////////////////////////////////////////////////////////////////
-    auto f_disc = generate_model(model_params, rk_steps);
+    auto f_disc = generate_model(model_params);
 
     ///////////////////////////////////////////////////////////////////
     // Construct cost function
@@ -136,20 +134,26 @@ Controller::Controller(size_t Nf,
         if (i == 0) {
             opti.subject_to(x[0] == x0);
         }
-        opti.subject_to(opti.bounded(-limits.delta_max, u[i](0), limits.delta_max));
-        opti.subject_to(opti.bounded(-limits.tau_max, u[i](1), limits.tau_max));
+        opti.subject_to(
+            opti.bounded(-contraints_params.delta_max, u[i](0), contraints_params.delta_max));
+        opti.subject_to(
+            opti.bounded(-contraints_params.tau_max, u[i](1), contraints_params.tau_max));
         if (i > 0) {
-            opti.subject_to(opti.bounded(-w_cen(i), x[i](1), w_cen(i)));
-            opti.subject_to(opti.bounded(0.0, x[i](3), limits.v_x_max));
+            opti.subject_to(opti.bounded(-w_cen(i) + contraints_params.car_width / 2,
+                                         x[i](1),
+                                         w_cen(i) - contraints_params.car_width / 2));
+            opti.subject_to(opti.bounded(0.0, x[i](3), contraints_params.v_x_max));
         }
     }
-    opti.subject_to(opti.bounded(-w_cen(Nf), x[Nf](1), w_cen(Nf)));
-    opti.subject_to(opti.bounded(0.0, x[Nf](3), limits.v_x_max));
+    opti.subject_to(opti.bounded(-w_cen(Nf) - contraints_params.car_width / 2,
+                                 x[Nf](1),
+                                 w_cen(Nf) - contraints_params.car_width / 2));
+    opti.subject_to(opti.bounded(0.0, x[Nf](3), contraints_params.v_x_max));
 
     ///////////////////////////////////////////////////////////////////
     // Solver and options
     ///////////////////////////////////////////////////////////////////
-    if (solver == "fatrop") {
+    if (solver_params.solver == "fatrop") {
         opti.solver(
             "fatrop",
             {
@@ -158,17 +162,17 @@ Controller::Controller(size_t Nf,
                 {"debug", false},
                 {"structure_detection", "auto"},
                 {"fatrop", casadi::Dict({{"print_level", 1}})},
-                {"jit", jit},
+                {"jit", solver_params.jit},
                 {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
             });
-    } else if (solver == "ipopt") {
+    } else if (solver_params.solver == "ipopt") {
         opti.solver(
             "ipopt",
             {
                 {"print_time", 0},
                 {"expand", true},
                 {"ipopt", casadi::Dict({{"print_level", 0}})},
-                {"jit", jit},
+                {"jit", solver_params.jit},
                 {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
             });
     } else {

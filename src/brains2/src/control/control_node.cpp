@@ -47,12 +47,6 @@ public:
         const auto dt = 1 / this->declare_parameter("freq", 20.0);
         const auto Nf = this->declare_parameter("Nf", 10);
 
-        // Limits
-        const brains2::control::Controller::Limits limits{
-            this->declare_parameter("v_x_max", 10.0),
-            this->declare_parameter("delta_max", 0.5),
-            this->declare_parameter("tau_max", 100.0)};
-
         // load yaml file with car constants
 #ifdef CAR_CONSTANTS_PATH
         YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
@@ -68,6 +62,13 @@ public:
             car_constants["drivetrain"]["C_r2"].as<double>(),
         };
 
+        // Limits
+        const brains2::control::Controller::ConstraintsParams constraints_params{
+            this->declare_parameter("v_x_max", 10.0),
+            this->declare_parameter("delta_max", 0.5),
+            this->declare_parameter("tau_max", 100.0),
+            car_constants["geometry"]["car_width"].as<double>() +
+                this->declare_parameter("car_width_inflation", 0.0)};
 #else
 #error CAR_CONSTANTS_PATH is not defined
 #endif
@@ -87,15 +88,17 @@ public:
             this->declare_parameter("q_v_f", 1.0),
         };
 
-        // Create controller object
-        this->controller = std::make_unique<brains2::control::Controller>(
-            static_cast<size_t>(Nf),
-            model_params,
-            limits,
-            cost_params,
-            1,
+        const brains2::control::Controller::SolverParams solver_params{
             this->declare_parameter("jit", false),
-            this->declare_parameter("solver", "fatrop"));
+            this->declare_parameter("solver", "fatrop"),
+        };
+
+        // Create controller object
+        this->controller = std::make_unique<brains2::control::Controller>(static_cast<size_t>(Nf),
+                                                                          model_params,
+                                                                          constraints_params,
+                                                                          cost_params,
+                                                                          solver_params);
 
         // Publishers and subscribers
         this->target_controls_pub =
@@ -202,7 +205,7 @@ private:
         }
         if (this->control_counter == 0) {
             // Convert CartesianPose to FrenetPose
-            const auto [frenet_pose, projected_cartesian_pose] =
+            const auto [frenet_pose, _] =
                 track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi});
 
             // Construct current state

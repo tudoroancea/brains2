@@ -47,10 +47,11 @@ protected:
                                                       20.0,
                                                       3.0,
                                                   },
-                                                  Controller::Limits{
+                                                  Controller::ConstraintsParams{
                                                       10.0,
                                                       0.5,
                                                       100.0,
+                                                      1.55,
                                                   },
                                                   Controller::CostParams{
                                                       3.0,
@@ -64,8 +65,7 @@ protected:
                                                       1.0,
                                                       1.0,
                                                       1.0,
-                                                  },
-                                                  1);
+                                                  });
         auto curvature = GetParam();
         const auto track_expected = generate_constant_curvature_track(curvature, 4.0, 5);
         if (!track_expected) {
