@@ -132,6 +132,7 @@ target_link_libraries(control_node
   yaml-cpp::yaml-cpp
   brains2_common
   brains2_control
+  brains2_sim
 )
 
 if (CMAKE_TESTING_ENABLED)

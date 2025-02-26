@@ -65,10 +65,13 @@ Controller::Controller(size_t Nf,
     : Nf(Nf),
       dt(model_params.dt),
       v_ref(cost_params.v_ref),
-      x_opt(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
-      u_opt(Controller::ControlHorizonMatrix::Zero(nu, Nf)),
+      tau_ref((model_params.C_r0 + model_params.C_r1 * cost_params.v_ref +
+               model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
+              model_params.C_m0),
       x_ref(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
-      u_ref(Controller::ControlHorizonMatrix::Zero(nu, Nf)) {
+      u_ref(Controller::ControlHorizonMatrix::Zero(nu, Nf)),
+      x_opt(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
+      u_opt(Controller::ControlHorizonMatrix::Zero(nu, Nf)) {
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem
     ///////////////////////////////////////////////////////////////////
@@ -98,9 +101,6 @@ Controller::Controller(size_t Nf,
     // Construct cost function
     ///////////////////////////////////////////////////////////////////
     // Create reference
-    tau_ref = (model_params.C_r0 + model_params.C_r1 * cost_params.v_ref +
-               model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
-              model_params.C_m0;
     u_ref.row(1).array() = tau_ref;
     x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt * v_ref);
     x_ref.row(3).array() = v_ref;
@@ -242,6 +242,14 @@ std::string to_string(const Controller::Error& error) {
         case Controller::Error::UNKNOWN_ERROR:
             return "UNKNOWN_ERROR";
     }
+}
+
+brains2::sim::Sim::Control to_sim_control(const Controller::Control& control) {
+    return brains2::sim::Sim::Control{control.delta,
+                                      control.tau / 4,
+                                      control.tau / 4,
+                                      control.tau / 4,
+                                      control.tau / 4};
 }
 
 }  // namespace brains2::control

@@ -171,9 +171,11 @@ private:
     std::unique_ptr<Track> track;
     std::unique_ptr<brains2::control::Controller> controller;
 
-    // only treat one in 5 messages
+    // Counters used throughout the code
+    // Counter to only compute the control every 5 state messages
     uint8_t control_counter = 0;
-    static constexpr uint8_t CONTROL_EVERY_STEPS = 5;  // every 5 pose messages
+    static constexpr uint8_t CONTROL_EVERY_STEPS = 5;
+    // Counter to throw an error after 5 consecutive errors
     uint8_t error_counter = 0;
     static constexpr uint8_t MAX_ERROR_COUNT = 5;
 
@@ -195,6 +197,7 @@ private:
 
     void state_cb(const Pose::SharedPtr pose_msg, const Velocity::SharedPtr vel_msg) {
         if (!this->track) {
+            RCLCPP_INFO(this->get_logger(), "Track not initialized; skipping control computation");
             return;
         }
         if (this->control_counter == 0) {
@@ -210,30 +213,32 @@ private:
 
             // Compute control
             const auto start = this->now();
-            auto controls = this->controller->compute_control(state, *(this->track));
+            const auto control = this->controller->compute_control(state, *(this->track))
+                                     .transform([this](const auto& control) {
+                                         error_counter = 0;
+                                         return to_sim_control(control);
+                                     })
+                                     .transform_error([this](const auto& error) {
+                                         RCLCPP_ERROR(this->get_logger(),
+                                                      "Error in MPC solver: %s",
+                                                      to_string(error).c_str());
+                                         ++error_counter;
+                                         if (error_counter >= MAX_ERROR_COUNT) {
+                                             throw std::runtime_error("Failed to compute control " +
+                                                                      to_string(MAX_ERROR_COUNT) +
+                                                                      " times in a row. Aborting.");
+                                         }
+                                     })
+                                     .value_or(brains2::sim::Sim::Control{0, 0, 0, 0, 0});
             const auto end = this->now();
-            if (!controls) {
-                RCLCPP_ERROR(this->get_logger(),
-                             "Error in MPC solver: %s",
-                             to_string(controls.error()).c_str());
-                controls = Controller::Control{0, 0};
-                ++error_counter;
-                if (error_counter >= MAX_ERROR_COUNT) {
-                    throw std::runtime_error("Failed to compute control " +
-                                             to_string(MAX_ERROR_COUNT) +
-                                             " times in a row. Aborting.");
-                }
-            } else {
-                error_counter = 0;
-            }
 
             // Publish controls
             controls_msg.header.stamp = this->now();
-            controls_msg.tau_fl = controls->tau / 4;
-            controls_msg.tau_fr = controls->tau / 4;
-            controls_msg.tau_rl = controls->tau / 4;
-            controls_msg.tau_rr = controls->tau / 4;
-            controls_msg.delta = controls->delta;
+            controls_msg.tau_fl = control.u_tau_FL;
+            controls_msg.tau_fr = control.u_tau_FR;
+            controls_msg.tau_rl = control.u_tau_RL;
+            controls_msg.tau_rr = control.u_tau_RR;
+            controls_msg.delta = control.u_delta;
             this->target_controls_pub->publish(controls_msg);
 
             // Publish diagnostics
@@ -265,12 +270,12 @@ private:
     }
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<ControlNode>();
     try {
         rclcpp::spin(node);
-    } catch (std::exception &e) {
+    } catch (std::exception& e) {
         RCLCPP_FATAL(node->get_logger(), "Caught exception: %s", e.what());
     }
     rclcpp::shutdown();

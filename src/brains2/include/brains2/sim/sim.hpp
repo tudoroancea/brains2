@@ -2,8 +2,8 @@
 #ifndef BRAINS2_SIM_SIM_HPP
 #define BRAINS2_SIM_SIM_HPP
 
-#include <string>
 #include <array>
+#include <string>
 #include "acados/sim/sim_common.h"
 #include "brains2/external/expected.hpp"
 #include "casadi/mem.h"
@@ -13,7 +13,6 @@ namespace sim {
 
 class Sim {
 public:
-    /* */
     struct State {
         static constexpr int dim = 11;
         double X, Y, phi, v_x, v_y, omega, delta, tau_FL, tau_FR, tau_RL, tau_RR;

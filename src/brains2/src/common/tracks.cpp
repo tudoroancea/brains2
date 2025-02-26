@@ -253,12 +253,12 @@ const Eigen::VectorXd& Track::get_vals_width() const {
 
 std::pair<CartesianPose, CartesianPose> Track::frenet_to_cartesian(
     const FrenetPose& frenet_pose) const {
-    double X_proj = this->eval_X(frenet_pose.s);
-    double Y_proj = this->eval_Y(frenet_pose.s);
-    double phi_proj = this->eval_phi(frenet_pose.s);
-    double X = X_proj - frenet_pose.n * sin(phi_proj);
-    double Y = Y_proj + frenet_pose.n * cos(phi_proj);
-    double psi = frenet_pose.psi + phi_proj;
+    const double X_proj = this->eval_X(frenet_pose.s);
+    const double Y_proj = this->eval_Y(frenet_pose.s);
+    const double phi_proj = this->eval_phi(frenet_pose.s);
+    const double X = X_proj - frenet_pose.n * sin(phi_proj);
+    const double Y = Y_proj + frenet_pose.n * cos(phi_proj);
+    const double psi = frenet_pose.psi + phi_proj;
     return std::make_pair(CartesianPose{X, Y, psi}, CartesianPose{X, Y, psi});
 }
 

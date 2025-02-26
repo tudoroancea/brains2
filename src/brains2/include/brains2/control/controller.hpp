@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 #include "brains2/common/tracks.hpp"
 #include "brains2/external/expected.hpp"
+#include "brains2/sim/sim.hpp"
 #include "casadi/casadi.hpp"
 
 namespace brains2 {
@@ -52,7 +53,7 @@ public:
     /*
      * @brief All the errors that may occur in the MPC.
      */
-    enum class Error : uint8_t {
+    enum class Error {
         MAX_ITER,
         NANS_IN_SOLVER,
         INFEASIBLE_PROBLEM,
@@ -67,11 +68,6 @@ public:
      */
     tl::expected<Control, Error> compute_control(const State& current_state,
                                                  const brains2::common::Track& track);
-
-    /*
-     * @brief Get the predicted positions of the vehicle in Cartesian coordinates.
-     */
-    Eigen::Matrix<double, 2, Eigen::Dynamic> get_predicted_positions() const;
 
     /*
      * @brief Const ref getter to the optimal state trajectory. May contain outdated data if
@@ -104,21 +100,30 @@ public:
     }
 
 private:
+    // cached controller parameters
     size_t Nf;
     double dt, v_ref, tau_ref;
-    StateHorizonMatrix x_opt;
-    ControlHorizonMatrix u_opt;
+    // reference state and control trajectories
     StateHorizonMatrix x_ref;
     ControlHorizonMatrix u_ref;
+    // optimal state and control trajectories
+    StateHorizonMatrix x_opt;
+    ControlHorizonMatrix u_opt;
+    // casadi symbolic variables for optimization variables and params
     casadi::Opti opti;
     casadi::MX cost_function;
-    // optimization variables
     std::vector<casadi::MX> x, u;
-    // params
     casadi::MX x0, kappa_cen, w_cen;
 };
 
 std::string to_string(const Controller::Error& error);
+
+/*
+ * @brief Converts the control command internally used by the controller to the format used by the
+ *        simulator. Concretely, it splits the global torque command into four torques (one for each
+ *        wheel). For the moment it does so by evenly splitting them, without any torque vectoring.
+ */
+brains2::sim::Sim::Control to_sim_control(const Controller::Control& control);
 
 }  // namespace control
 }  // namespace brains2
