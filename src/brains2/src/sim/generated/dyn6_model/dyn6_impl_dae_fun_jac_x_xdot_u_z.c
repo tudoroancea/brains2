@@ -40,6 +40,7 @@ extern "C" {
 #define casadi_s5 CASADI_PREFIX(s5)
 #define casadi_s6 CASADI_PREFIX(s6)
 #define casadi_s7 CASADI_PREFIX(s7)
+#define casadi_s8 CASADI_PREFIX(s8)
 #define casadi_sign CASADI_PREFIX(sign)
 #define casadi_sq CASADI_PREFIX(sq)
 
@@ -82,14 +83,15 @@ casadi_real casadi_sign(casadi_real x) { return x<0 ? -1 : x>0 ? 1 : x;}
 
 static const casadi_int casadi_s0[15] = {11, 1, 0, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 static const casadi_int casadi_s1[9] = {5, 1, 0, 5, 0, 1, 2, 3, 4};
-static const casadi_int casadi_s2[3] = {0, 0, 0};
-static const casadi_int casadi_s3[21] = {17, 1, 0, 17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-static const casadi_int casadi_s4[48] = {11, 11, 0, 0, 0, 2, 7, 12, 16, 20, 24, 28, 31, 34, 0, 1, 0, 1, 3, 4, 5, 0, 1, 3, 4, 5, 2, 3, 4, 5, 3, 4, 5, 6, 3, 4, 5, 7, 3, 4, 5, 8, 3, 5, 9, 3, 5, 10};
-static const casadi_int casadi_s5[29] = {11, 11, 0, 1, 2, 3, 6, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 3, 4, 5, 5, 6, 7, 8, 9, 10};
-static const casadi_int casadi_s6[13] = {11, 5, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-static const casadi_int casadi_s7[3] = {11, 0, 0};
+static const casadi_int casadi_s2[4] = {0, 1, 0, 0};
+static const casadi_int casadi_s3[3] = {0, 0, 0};
+static const casadi_int casadi_s4[21] = {17, 1, 0, 17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+static const casadi_int casadi_s5[48] = {11, 11, 0, 0, 0, 2, 7, 12, 16, 20, 24, 28, 31, 34, 0, 1, 0, 1, 3, 4, 5, 0, 1, 3, 4, 5, 2, 3, 4, 5, 3, 4, 5, 6, 3, 4, 5, 7, 3, 4, 5, 8, 3, 5, 9, 3, 5, 10};
+static const casadi_int casadi_s6[29] = {11, 11, 0, 1, 2, 3, 6, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 3, 4, 5, 5, 6, 7, 8, 9, 10};
+static const casadi_int casadi_s7[13] = {11, 5, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+static const casadi_int casadi_s8[3] = {11, 0, 0};
 
-/* dyn6_impl_dae_fun_jac_x_xdot_u_z:(i0[11],i1[11],i2[5],i3[],i4[],i5[17])->(o0[11],o1[11x11,34nz],o2[11x11,15nz],o3[11x5,5nz],o4[11x0]) */
+/* dyn6_impl_dae_fun_jac_x_xdot_u_z:(i0[11],i1[11],i2[5],i3[0],i4[],i5[17])->(o0[11],o1[11x11,34nz],o2[11x11,15nz],o3[11x5,5nz],o4[11x0]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a2, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a3, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a4, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a5, a50, a51, a52, a53, a54, a55, a56, a57, a58, a59, a6, a60, a61, a62, a63, a64, a65, a66, a67, a68, a69, a7, a70, a71, a72, a73, a74, a75, a76, a77, a78, a79, a8, a80, a81, a82, a83, a84, a85, a86, a9;
   a0=arg[1]? arg[1][0] : 0;
@@ -911,8 +913,8 @@ CASADI_SYMBOL_EXPORT const casadi_int* dyn6_impl_dae_fun_jac_x_xdot_u_z_sparsity
     case 1: return casadi_s0;
     case 2: return casadi_s1;
     case 3: return casadi_s2;
-    case 4: return casadi_s2;
-    case 5: return casadi_s3;
+    case 4: return casadi_s3;
+    case 5: return casadi_s4;
     default: return 0;
   }
 }
@@ -920,10 +922,10 @@ CASADI_SYMBOL_EXPORT const casadi_int* dyn6_impl_dae_fun_jac_x_xdot_u_z_sparsity
 CASADI_SYMBOL_EXPORT const casadi_int* dyn6_impl_dae_fun_jac_x_xdot_u_z_sparsity_out(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
-    case 1: return casadi_s4;
-    case 2: return casadi_s5;
-    case 3: return casadi_s6;
-    case 4: return casadi_s7;
+    case 1: return casadi_s5;
+    case 2: return casadi_s6;
+    case 3: return casadi_s7;
+    case 4: return casadi_s8;
     default: return 0;
   }
 }
