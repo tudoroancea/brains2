@@ -34,6 +34,9 @@ jobs:
         with:
           submodules: "recursive"
 
+      - name: Cleanup residual micromamba-installation
+        run: rm -rf ~/micromamba-bin
+
       - uses: mamba-org/setup-micromamba@v2
         with:
           micromamba-version: 1.5.12-0
@@ -56,8 +59,3 @@ jobs:
         with:
           name: logs-${{ matrix.os }}
           path: logs-${{ matrix.os }}.zip
-
-      - name: Cleanup micromamba-bin
-        # see https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#always
-        if: always() && matrix.os == 'self-hosted'
-        run: rm -rf ~/micromamba-bin
