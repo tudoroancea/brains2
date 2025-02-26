@@ -17,9 +17,6 @@
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "Eigen/Dense"
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "message_filters/subscriber.h"
-#include "message_filters/sync_policies/approximate_time.h"
-#include "message_filters/time_synchronizer.h"
 #include "rclcpp/node.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -37,9 +34,6 @@ using rclcpp::Publisher;
 using rclcpp::Subscription;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
-
-typedef message_filters::sync_policies::ApproximateTime<Pose, Velocity> StateMsgSyncPolicy;
-typedef message_filters::Synchronizer<StateMsgSyncPolicy> StateMsgSync;
 
 class ControlNode : public rclcpp::Node {
 public:
@@ -113,17 +107,14 @@ public:
             "/brains2/track_estimate",
             10,
             std::bind(&ControlNode::track_estimate_cb, this, std::placeholders::_1));
-        this->pose_sub =
-            std::make_shared<message_filters::Subscriber<Pose>>(this,
-                                                                "/brains2/pose",
-                                                                rmw_qos_profile_default);
-        this->vel_sub =
-            std::make_shared<message_filters::Subscriber<Velocity>>(this,
-                                                                    "/brains2/velocity",
-                                                                    rmw_qos_profile_default);
-        this->sync =
-            std::make_shared<StateMsgSync>(StateMsgSyncPolicy(10), *this->pose_sub, *this->vel_sub);
-        this->sync->registerCallback(&ControlNode::state_cb, this);
+        this->pose_sub = this->create_subscription<Pose>(
+            "/brains2/pose",
+            10,
+            std::bind(&ControlNode::pose_cb, this, std::placeholders::_1));
+        this->vel_sub = this->create_subscription<Velocity>(
+            "/brains2/velocity",
+            10,
+            std::bind(&ControlNode::vel_cb, this, std::placeholders::_1));
 
         // Diagnostics
         this->diag_msg.status.resize(1);
@@ -161,9 +152,8 @@ private:
 
     // subscribers
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
-    shared_ptr<message_filters::Subscriber<Pose>> pose_sub;
-    shared_ptr<message_filters::Subscriber<Velocity>> vel_sub;
-    shared_ptr<StateMsgSync> sync;
+    Subscription<Pose>::SharedPtr pose_sub;
+    Subscription<Velocity>::SharedPtr vel_sub;
 
     // messages
     brains2::msg::Controls controls_msg;
@@ -171,13 +161,12 @@ private:
     diagnostic_msgs::msg::DiagnosticArray diag_msg;
 
     // controller
-    std::unique_ptr<Track> track;
-    std::unique_ptr<brains2::control::Controller> controller;
+    unique_ptr<Track> track;
+    Pose::ConstSharedPtr pose_msg;
+    Velocity::ConstSharedPtr vel_msg;
+    rclcpp::TimerBase::SharedPtr control_timer;
+    unique_ptr<brains2::control::Controller> controller;
 
-    // Counters used throughout the code
-    // Counter to only compute the control every 5 state messages
-    uint8_t control_counter = 0;
-    static constexpr uint8_t CONTROL_EVERY_STEPS = 5;
     // Counter to throw an error after 5 consecutive errors
     uint8_t error_counter = 0;
     static constexpr uint8_t MAX_ERROR_COUNT = 5;
@@ -194,84 +183,103 @@ private:
                 this->get_logger(),
                 "Could not construct Track object from received message because of error: %s",
                 to_string(track_expected.error()).c_str());
+        } else {
+            this->track = std::make_unique<Track>(track_expected.value());
         }
-        this->track = std::make_unique<Track>(track_expected.value());
     }
 
-    void state_cb(const Pose::ConstSharedPtr pose_msg, const Velocity::ConstSharedPtr vel_msg) {
-        if (this->control_counter == 0) {
-            if (!this->track) {
-                RCLCPP_INFO(this->get_logger(),
-                            "Track not initialized; skipping control computation");
-                return;
-            }
-            // Convert CartesianPose to FrenetPose
-            const auto [frenet_pose, _] =
-                track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi});
-
-            // Construct current state
-            const Controller::State state{frenet_pose.s,
-                                          frenet_pose.n,
-                                          frenet_pose.psi,
-                                          std::hypot(vel_msg->v_x, vel_msg->v_y)};
-
-            // Compute control
-            const auto start = this->now();
-            const auto control = this->controller->compute_control(state, *(this->track))
-                                     .transform([this](const auto& control) {
-                                         error_counter = 0;
-                                         return to_sim_control(control);
-                                     })
-                                     .transform_error([this](const auto& error) {
-                                         RCLCPP_ERROR(this->get_logger(),
-                                                      "Error in MPC solver: %s",
-                                                      to_string(error).c_str());
-                                         ++error_counter;
-                                         if (error_counter >= MAX_ERROR_COUNT) {
-                                             throw std::runtime_error("Failed to compute control " +
-                                                                      to_string(MAX_ERROR_COUNT) +
-                                                                      " times in a row. Aborting.");
-                                         }
-                                         return error;
-                                     })
-                                     .value_or(brains2::sim::Sim::Control{0, 0, 0, 0, 0});
-            const auto end = this->now();
-
-            // Publish controls
-            controls_msg.header.stamp = this->now();
-            controls_msg.tau_fl = control.u_tau_FL;
-            controls_msg.tau_fr = control.u_tau_FR;
-            controls_msg.tau_rl = control.u_tau_RL;
-            controls_msg.tau_rr = control.u_tau_RR;
-            controls_msg.delta = control.u_delta;
-            this->target_controls_pub->publish(controls_msg);
-
-            // Publish diagnostics
-            diag_msg.header.stamp = this->now();
-            diag_msg.status[0].values[0].value = to_string(1000 * (end - start).seconds());
-            diagnostics_pub->publish(diag_msg);
-
-            // Publish visualization
-            const auto x_opt = this->controller->get_x_opt();
-            const auto x_ref = this->controller->get_x_ref();
-            for (long i = 0; i < x_opt.cols(); ++i) {
-                // predicted trajectory
-                const auto [pose, _] = track->frenet_to_cartesian(
-                    FrenetPose{frenet_pose.s + x_opt(0, i), x_opt(1, i), x_opt(2, i)});
-                viz_msg.markers[0].points[i].x = pose.X;
-                viz_msg.markers[0].points[i].y = pose.Y;
-                viz_msg.markers[0].points[i].z = 0.1;
-
-                // reference trajectory
-                const auto s_ref = frenet_pose.s + x_ref(0, i), X_ref = track->eval_X(s_ref),
-                           Y_ref = track->eval_Y(s_ref);
-                viz_msg.markers[1].points[i].x = X_ref;
-                viz_msg.markers[1].points[i].y = Y_ref;
-                viz_msg.markers[1].points[i].z = 0.05;
-            }
-            viz_pub->publish(viz_msg);
+    void pose_cb(const Pose::ConstSharedPtr pose_msg) {
+        this->pose_msg = pose_msg;
+        // We launch the control timer upon receiving the first pose message and not velocity
+        // message because eventually (when we will have SLAM), the pose messages will likely be the
+        // ones that will be "late".
+        if (!this->control_timer) {
+            this->control_timer = this->create_wall_timer(
+                std::chrono::duration<double>(1 / this->get_parameter("freq").as_double()),
+                std::bind(&ControlNode::control_cb, this));
         }
-        this->control_counter = (this->control_counter + 1) % CONTROL_EVERY_STEPS;
+    }
+
+    void vel_cb(const Velocity::ConstSharedPtr vel_msg) {
+        this->vel_msg = vel_msg;
+    }
+
+    void control_cb() {
+        if (!this->pose_msg || !this->vel_msg) {
+            RCLCPP_INFO(this->get_logger(),
+                        "Pose or velocity message not received; skipping control computation");
+            return;
+        }
+        if (!this->track) {
+            RCLCPP_INFO(this->get_logger(), "Track not initialized; skipping control computation");
+            return;
+        }
+        // Convert CartesianPose to FrenetPose
+        const auto frenet_pose =
+            track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi})
+                .first;
+
+        // Construct current state
+        const Controller::State state{frenet_pose.s,
+                                      frenet_pose.n,
+                                      frenet_pose.psi,
+                                      std::hypot(vel_msg->v_x, vel_msg->v_y)};
+
+        // Compute control
+        const auto start = this->now();
+        const auto control = this->controller->compute_control(state, *(this->track))
+                                 .transform([this](const auto& control) {
+                                     error_counter = 0;
+                                     return to_sim_control(control);
+                                 })
+                                 .transform_error([this](const auto& error) {
+                                     RCLCPP_ERROR(this->get_logger(),
+                                                  "Error in MPC solver: %s",
+                                                  to_string(error).c_str());
+                                     ++error_counter;
+                                     if (error_counter >= MAX_ERROR_COUNT) {
+                                         throw std::runtime_error("Failed to compute control " +
+                                                                  to_string(MAX_ERROR_COUNT) +
+                                                                  " times in a row. Aborting.");
+                                     }
+                                     return error;
+                                 })
+                                 .value_or(brains2::sim::Sim::Control{0, 0, 0, 0, 0});
+        const auto end = this->now();
+
+        // Publish controls
+        controls_msg.header.stamp = this->now();
+        controls_msg.tau_fl = control.u_tau_FL;
+        controls_msg.tau_fr = control.u_tau_FR;
+        controls_msg.tau_rl = control.u_tau_RL;
+        controls_msg.tau_rr = control.u_tau_RR;
+        controls_msg.delta = control.u_delta;
+        this->target_controls_pub->publish(controls_msg);
+
+        // Publish diagnostics
+        diag_msg.header.stamp = this->now();
+        diag_msg.status[0].values[0].value = to_string(1000 * (end - start).seconds());
+        diagnostics_pub->publish(diag_msg);
+
+        // Publish visualization
+        const auto x_opt = this->controller->get_x_opt();
+        const auto x_ref = this->controller->get_x_ref();
+        for (long i = 0; i < x_opt.cols(); ++i) {
+            // predicted trajectory
+            const auto [pose, _] = track->frenet_to_cartesian(
+                FrenetPose{frenet_pose.s + x_opt(0, i), x_opt(1, i), x_opt(2, i)});
+            viz_msg.markers[0].points[i].x = pose.X;
+            viz_msg.markers[0].points[i].y = pose.Y;
+            viz_msg.markers[0].points[i].z = 0.1;
+
+            // reference trajectory
+            const auto s_ref = frenet_pose.s + x_ref(0, i), X_ref = track->eval_X(s_ref),
+                       Y_ref = track->eval_Y(s_ref);
+            viz_msg.markers[1].points[i].x = X_ref;
+            viz_msg.markers[1].points[i].y = Y_ref;
+            viz_msg.markers[1].points[i].z = 0.05;
+        }
+        viz_pub->publish(viz_msg);
     }
 };
 
