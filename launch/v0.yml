@@ -27,6 +27,9 @@ launch:
       name: "r_delta"
       default: "2.0"
   - arg:
+      name: "r_delta_dot"
+      default: "10.0"
+  - arg:
       name: "r_tau"
       default: "0.001"
   - arg:

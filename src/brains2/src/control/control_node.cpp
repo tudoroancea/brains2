@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
@@ -54,12 +55,14 @@ public:
             car_constants["drivetrain"]["C_r0"].as<double>(),
             car_constants["drivetrain"]["C_r1"].as<double>(),
             car_constants["drivetrain"]["C_r2"].as<double>(),
+            car_constants["actuators"]["steering_time_constant"].as<double>(),
         };
 
         // Limits
         const brains2::control::Controller::ConstraintsParams constraints_params{
             this->declare_parameter("v_x_max", 10.0),
-            this->declare_parameter("delta_max", 0.5),
+            car_constants["actuators"]["steering_max"].as<double>(),
+            car_constants["actuators"]["steering_rate_max"].as<double>(),
             this->declare_parameter("tau_max", 100.0),
             car_constants["geometry"]["car_width"].as<double>() +
                 this->declare_parameter("car_width_inflation", 0.0)};
@@ -75,6 +78,7 @@ public:
             this->declare_parameter("q_psi", 1.0),
             this->declare_parameter("q_v", 1.0),
             this->declare_parameter("r_delta", 1.0),
+            this->declare_parameter("r_delta_dot", 1.0),
             this->declare_parameter("r_tau", 1.0),
             this->declare_parameter("q_s_f", 1.0),
             this->declare_parameter("q_n_f", 1.0),
@@ -115,6 +119,10 @@ public:
             "/brains2/velocity",
             10,
             std::bind(&ControlNode::vel_cb, this, std::placeholders::_1));
+        this->current_controls_sub = this->create_subscription<Controls>(
+            "/brains2/current_controls",
+            10,
+            std::bind(&ControlNode::current_controls_cb, this, std::placeholders::_1));
 
         // Diagnostics
         this->diag_msg.status.resize(1);
@@ -154,6 +162,7 @@ private:
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
     Subscription<Pose>::SharedPtr pose_sub;
     Subscription<Velocity>::SharedPtr vel_sub;
+    Subscription<Controls>::SharedPtr current_controls_sub;
 
     // messages
     brains2::msg::Controls controls_msg;
@@ -164,6 +173,7 @@ private:
     unique_ptr<Track> track;
     Pose::ConstSharedPtr pose_msg;
     Velocity::ConstSharedPtr vel_msg;
+    Controls::ConstSharedPtr current_controls_msg;
     rclcpp::TimerBase::SharedPtr control_timer;
     unique_ptr<brains2::control::Controller> controller;
 
@@ -204,10 +214,15 @@ private:
         this->vel_msg = vel_msg;
     }
 
+    void current_controls_cb(const Controls::ConstSharedPtr controls_msg) {
+        this->current_controls_msg = controls_msg;
+    }
+
     void control_cb() {
-        if (!this->pose_msg || !this->vel_msg) {
+        if (!this->pose_msg || !this->vel_msg || !this->current_controls_msg) {
             RCLCPP_INFO(this->get_logger(),
-                        "Pose or velocity message not received; skipping control computation");
+                        "Pose, velocity, or current controls message not received; skipping "
+                        "control computation");
             return;
         }
         if (!this->track) {
@@ -223,37 +238,41 @@ private:
         const Controller::State state{frenet_pose.s,
                                       frenet_pose.n,
                                       frenet_pose.psi,
-                                      std::hypot(vel_msg->v_x, vel_msg->v_y)};
+                                      std::hypot(vel_msg->v_x, vel_msg->v_y),
+                                      current_controls_msg->delta};
 
         // Compute control
         const auto start = this->now();
-        const auto control = this->controller->compute_control(state, *(this->track))
-                                 .transform([this](const auto& control) {
-                                     error_counter = 0;
-                                     return to_sim_control(control);
-                                 })
-                                 .transform_error([this](const auto& error) {
-                                     RCLCPP_ERROR(this->get_logger(),
-                                                  "Error in MPC solver: %s",
-                                                  to_string(error).c_str());
-                                     ++error_counter;
-                                     if (error_counter >= MAX_ERROR_COUNT) {
-                                         throw std::runtime_error("Failed to compute control " +
-                                                                  to_string(MAX_ERROR_COUNT) +
-                                                                  " times in a row. Aborting.");
-                                     }
-                                     return error;
-                                 })
-                                 .value_or(brains2::sim::Sim::Control{0, 0, 0, 0, 0});
+
+        const auto control = this->controller->compute_control(state, *(this->track));
+        if (control) {
+            error_counter = 0;
+            const auto sim_control = to_sim_control(*control);
+            controls_msg.tau_fl = sim_control.u_tau_FL;
+            controls_msg.tau_fr = sim_control.u_tau_FR;
+            controls_msg.tau_rl = sim_control.u_tau_RL;
+            controls_msg.tau_rr = sim_control.u_tau_RR;
+            controls_msg.delta = sim_control.u_delta;
+        } else {
+            RCLCPP_ERROR(this->get_logger(),
+                         "Error in MPC solver: %s; sending the old control",
+                         to_string(control.error()).c_str());
+            ++error_counter;
+            if (error_counter >= MAX_ERROR_COUNT) {
+                controls_msg.tau_fl = 0.0;
+                controls_msg.tau_fr = 0.0;
+                controls_msg.tau_rl = 0.0;
+                controls_msg.tau_rr = 0.0;
+                controls_msg.delta = 0.0;
+                this->target_controls_pub->publish(controls_msg);
+                throw std::runtime_error("Failed to compute control " + to_string(MAX_ERROR_COUNT) +
+                                         " times in a row. Aborting.");
+            }
+        }
         const auto end = this->now();
 
         // Publish controls
         controls_msg.header.stamp = this->now();
-        controls_msg.tau_fl = control.u_tau_FL;
-        controls_msg.tau_fr = control.u_tau_FR;
-        controls_msg.tau_rl = control.u_tau_RL;
-        controls_msg.tau_rr = control.u_tau_RR;
-        controls_msg.delta = control.u_delta;
         this->target_controls_pub->publish(controls_msg);
 
         // Publish diagnostics

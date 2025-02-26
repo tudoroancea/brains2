@@ -16,13 +16,14 @@ namespace control {
 class Controller {
 public:
     struct ModelParams {
-        double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2;
+        double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta;
     };
     struct CostParams {
-        double v_ref, q_s, q_n, q_psi, q_v, r_delta, r_tau, q_s_f, q_n_f, q_psi_f, q_v_f;
+        double v_ref, q_s, q_n, q_psi, q_v, r_delta, r_delta_dot, r_tau, q_s_f, q_n_f, q_psi_f,
+            q_v_f;
     };
     struct ConstraintsParams {
-        double v_x_max, delta_max, tau_max, car_width;
+        double v_max, delta_max, delta_dot_max, tau_max, car_width;
     };
     struct SolverParams {
         bool jit;
@@ -41,15 +42,13 @@ public:
                const SolverParams& solver_params = {false, "fatrop"});
 
     struct State {
-        static constexpr uint8_t dim = 4;
-        double s, n, psi, v;
+        double s, n, psi, v, delta;
     };
     struct Control {
-        static constexpr uint8_t dim = 2;
-        double delta, tau;
+        double u_delta, tau;
     };
-    static constexpr uint8_t nx = State::dim;
-    static constexpr uint8_t nu = Control::dim;
+    static constexpr uint8_t nx = sizeof(State) / sizeof(double);
+    static constexpr uint8_t nu = sizeof(Control) / sizeof(double);
     typedef Eigen::Matrix<double, nx, Eigen::Dynamic> StateHorizonMatrix;
     typedef Eigen::Matrix<double, nu, Eigen::Dynamic> ControlHorizonMatrix;
 
