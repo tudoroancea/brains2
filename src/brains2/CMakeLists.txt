@@ -19,6 +19,8 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(include)
+add_compile_options(--system-header-prefix=brains2/external/)
+
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
 add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 
