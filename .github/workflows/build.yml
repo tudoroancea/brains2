@@ -1,0 +1,57 @@
+on:
+  pull_request:
+    branches:
+      - main
+    types: [labeled]
+  workflow_dispatch:
+
+jobs:
+  remove_workflow_label:
+    name: Remove workflow label
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove workflow label
+        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label run_build_ci
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: github.event.label.name == 'run_build_ci'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: 1.5.12-0
+          environment-name: brains2
+          environment-file: conda-lock.yml
+          init-shell: bash
+          cache-environment: true
+
+      - name: Build workspace
+        run: |
+          chmod +x ./scripts/build.sh
+          ./scripts/build.sh
+
+      - name: Zip log folder
+        run: |
+          zip -r logs-${{ matrix.os }}.zip log/
+
+      - name: Upload zipped log folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.os }}
+          path: logs-${{ matrix.os }}.zip
