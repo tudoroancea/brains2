@@ -14,7 +14,7 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     // State variables
     auto x = casadi::MX::sym("x", Controller::nx);
     auto split = vertsplit(x);
-    auto s = split[0];
+    auto Delta_s = split[0];
     auto n = split[1];
     auto psi = split[2];
     auto v = split[3];
