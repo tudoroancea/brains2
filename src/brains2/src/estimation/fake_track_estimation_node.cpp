@@ -33,7 +33,7 @@ private:
     TrackEstimate track_estimate_msg;
     MarkerArray viz_msg;
 
-    void on_pose(const Pose::SharedPtr msg) {
+    void on_pose(Pose::ConstSharedPtr msg) {
         // Project pose onto track
         auto [s_proj, _] = track->project(Eigen::Vector2d(msg->x, msg->y), this->last_s, 30.0);
 
