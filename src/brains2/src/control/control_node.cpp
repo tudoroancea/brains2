@@ -217,11 +217,11 @@ private:
             // Compute control
             const auto start = this->now();
             const auto control = this->controller->compute_control(state, *(this->track))
-                                     .transform([this](const auto& control) {
+                                     .and_then([this](const auto& control) {
                                          error_counter = 0;
                                          return to_sim_control(control);
                                      })
-                                     .transform_error([this](const auto& error) {
+                                     .or_else([this](const auto& error) {
                                          RCLCPP_ERROR(this->get_logger(),
                                                       "Error in MPC solver: %s",
                                                       to_string(error).c_str());
@@ -231,6 +231,7 @@ private:
                                                                       to_string(MAX_ERROR_COUNT) +
                                                                       " times in a row. Aborting.");
                                          }
+                                         return error;
                                      })
                                      .value_or(brains2::sim::Sim::Control{0, 0, 0, 0, 0});
             const auto end = this->now();

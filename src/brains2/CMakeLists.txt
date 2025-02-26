@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(brains2)
 
-set(CMAKE_C_COMPILER $ENV{CONDA_PREFIX}/bin/clang CACHE STRING "C compiler" FORCE)
-set(CMAKE_CXX_COMPILER $ENV{CONDA_PREFIX}/bin/clang++ CACHE STRING "C++ compiler" FORCE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
@@ -19,6 +17,8 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(include)
+add_compile_options(--system-header-prefix=brains2/external/)
+
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
 add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 

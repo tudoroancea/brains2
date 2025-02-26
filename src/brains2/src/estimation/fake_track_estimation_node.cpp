@@ -64,7 +64,7 @@ private:
     MarkerArray viz_msg;
     shared_ptr<Pose> last_pose;
 
-    void on_pose(const Pose::SharedPtr msg) {
+    void on_pose(Pose::ConstSharedPtr msg) {
         last_pose = msg;
     }
     void timer_cb() {

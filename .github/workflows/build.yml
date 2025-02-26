@@ -9,18 +9,19 @@ jobs:
   remove_workflow_label:
     name: Remove workflow label
     runs-on: ubuntu-latest
+    if: github.event.label.name == 'ci:run_build'
     steps:
       - uses: actions/checkout@v4
 
       - name: Remove workflow label
-        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label run_build_ci
+        run: gh pr edit ${{ github.event.pull_request.number }} --remove-label "ci:run_build"
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    if: github.event.label.name == 'run_build_ci'
+    if: github.event.label.name == 'ci:run_build'
     strategy:
       fail-fast: false
       matrix:
