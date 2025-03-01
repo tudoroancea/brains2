@@ -88,16 +88,17 @@ private:
     geometry_msgs::msg::TransformStamped transform;
     diagnostic_msgs::msg::DiagnosticArray diag_msg;
 
-    // cones
+    // visualization
     visualization_msgs::msg::MarkerArray cones_marker_array;
     visualization_msgs::msg::MarkerArray car_markers_msg;
+    rclcpp::TimerBase::SharedPtr cones_viz_timer;
 
     // lap timing
     std::pair<double, double> last_position, start_line_pos_1, start_line_pos_2;
     double last_lap_time = 0.0, best_lap_time = 0.0;
     rclcpp::Time last_lap_time_stamp = rclcpp::Time(0, 0);
 
-    void controls_callback(brains2::msg::Controls::ConstSharedPtr msg) {
+    void target_controls_cb(brains2::msg::Controls::ConstSharedPtr msg) {
         control.u_tau_FL = msg->tau_fl;
         control.u_tau_FR = msg->tau_fr;
         control.u_tau_RL = msg->tau_rl;
@@ -105,9 +106,7 @@ private:
         control.u_delta = msg->delta;
     }
 
-    void publish_cones_srv_cb(
-        [[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
-        [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
+    void publish_cones_cb() {
         this->viz_pub->publish(cones_marker_array);
     }
 
@@ -426,18 +425,18 @@ public:
         this->target_controls_sub = this->create_subscription<brains2::msg::Controls>(
             "/brains2/target_controls",
             10,
-            std::bind(&SimNode::controls_callback, this, std::placeholders::_1));
+            std::bind(&SimNode::target_controls_cb, this, std::placeholders::_1));
 
         // Create ros services.
         this->reset_srv = this->create_service<std_srvs::srv::Empty>(
             "/brains2/reset",
             std::bind(&SimNode::reset_srv_cb, this, std::placeholders::_1, std::placeholders::_2));
-        this->publish_cones_srv =
-            this->create_service<std_srvs::srv::Empty>("/brains2/publish_cones_markers",
-                                                       std::bind(&SimNode::publish_cones_srv_cb,
-                                                                 this,
-                                                                 std::placeholders::_1,
-                                                                 std::placeholders::_2));
+        this->publish_cones_srv = this->create_service<std_srvs::srv::Empty>(
+            "/brains2/publish_cones_markers",
+            [this](std_srvs::srv::Empty::Request::ConstSharedPtr request,
+                   std_srvs::srv::Empty::Response::SharedPtr response) {
+                this->publish_cones_cb();
+            });
         // Create messages
         this->create_diagnostics_message();
         this->create_car_markers();
@@ -446,12 +445,16 @@ public:
         this->create_cones_markers(this->get_parameter("track_name").as_string());
 
         // call once the the publish cones service
-        this->publish_cones_srv_cb(nullptr, nullptr);
+        this->publish_cones_cb();
 
         // create a timer for the simulation loop (one simulation step and
         // publishing the car mesh)
         this->sim_timer = this->create_wall_timer(std::chrono::duration<double>(dt),
                                                   std::bind(&SimNode::sim_timer_cb, this));
+
+        this->cones_viz_timer =
+            this->create_wall_timer(std::chrono::seconds(1),
+                                    std::bind(&SimNode::publish_cones_cb, this));
     }
 };
 

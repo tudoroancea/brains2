@@ -16,7 +16,7 @@ namespace control {
 class Controller {
 public:
     struct ModelParams {
-        double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta;
+        double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2, t_delta, C_downforce, z_CG, axle_track;
     };
     struct CostParams {
         double v_ref, q_s, q_n, q_psi, q_v, r_delta, r_delta_dot, r_tau, q_s_f, q_n_f, q_psi_f,
@@ -126,6 +126,14 @@ std::string to_string(const Controller::Error& error);
  *        wheel). For the moment it does so by evenly splitting them, without any torque vectoring.
  */
 brains2::sim::Sim::Control to_sim_control(const Controller::Control& control);
+
+brains2::sim::Sim::Control torque_vectoring_llc(const Controller::State& state,
+                                                const double r,
+                                                const double K_tv,
+                                                const double a_x,
+                                                const double a_y,
+                                                const Controller::Control& control,
+                                                const Controller::ModelParams& params);
 
 }  // namespace control
 }  // namespace brains2

@@ -94,3 +94,5 @@ launch:
                 value: $(eval "$(var final_mul) * $(var q_psi)")
               - name: "q_v_f"
                 value: $(eval "$(var final_mul) * $(var q_v)")
+              - name: "K_tv"
+                value: 300.0

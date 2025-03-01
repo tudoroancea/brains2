@@ -10,6 +10,7 @@
 #include "brains2/control/controller.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
+#include "brains2/msg/acceleration.hpp"
 #include "brains2/msg/controls.hpp"
 #include "brains2/msg/detail/velocity__struct.hpp"
 #include "brains2/msg/pose.hpp"
@@ -40,12 +41,13 @@ class ControlNode : public rclcpp::Node {
 public:
     ControlNode() : Node("control_node") {
         const auto dt = 1 / this->declare_parameter("freq", 20.0);
-        const auto Nf = this->declare_parameter("Nf", 10);
+        Nf = this->declare_parameter("Nf", 10);
+        this->declare_parameter("K_tv", 300.0);
 
         // load yaml file with car constants
 #ifdef CAR_CONSTANTS_PATH
         YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
-        const brains2::control::Controller::ModelParams model_params{
+        model_params = Controller::ModelParams{
             dt,
             car_constants["inertia"]["mass"].as<double>(),
             car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
@@ -56,10 +58,12 @@ public:
             car_constants["drivetrain"]["C_r1"].as<double>(),
             car_constants["drivetrain"]["C_r2"].as<double>(),
             car_constants["actuators"]["steering_time_constant"].as<double>(),
-        };
+            car_constants["aero"]["C_downforce"].as<double>(),
+            car_constants["geometry"]["cog_height"].as<double>(),
+            car_constants["geometry"]["axle_track"].as<double>()};
 
         // Limits
-        const brains2::control::Controller::ConstraintsParams constraints_params{
+        const Controller::ConstraintsParams constraints_params{
             this->declare_parameter("v_x_max", 10.0),
             car_constants["actuators"]["steering_max"].as<double>(),
             car_constants["actuators"]["steering_rate_max"].as<double>(),
@@ -71,7 +75,7 @@ public:
 #endif
 
         // cost params
-        const brains2::control::Controller::CostParams cost_params{
+        const Controller::CostParams cost_params{
             this->declare_parameter("v_ref", 5.0),
             this->declare_parameter("q_s", 1.0),
             this->declare_parameter("q_n", 1.0),
@@ -119,6 +123,10 @@ public:
             "/brains2/velocity",
             10,
             std::bind(&ControlNode::vel_cb, this, std::placeholders::_1));
+        this->accel_sub = this->create_subscription<Acceleration>(
+            "/brains2/acceleration",
+            10,
+            std::bind(&ControlNode::accel_cb, this, std::placeholders::_1));
         this->current_controls_sub = this->create_subscription<Controls>(
             "/brains2/current_controls",
             10,
@@ -162,6 +170,7 @@ private:
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
     Subscription<Pose>::SharedPtr pose_sub;
     Subscription<Velocity>::SharedPtr vel_sub;
+    Subscription<Acceleration>::SharedPtr accel_sub;
     Subscription<Controls>::SharedPtr current_controls_sub;
 
     // messages
@@ -173,13 +182,15 @@ private:
     unique_ptr<Track> track;
     Pose::ConstSharedPtr pose_msg;
     Velocity::ConstSharedPtr vel_msg;
+    Acceleration::ConstSharedPtr accel_msg;
     Controls::ConstSharedPtr current_controls_msg;
     rclcpp::TimerBase::SharedPtr control_timer;
+    size_t Nf;
+    Controller::ModelParams model_params;
     unique_ptr<brains2::control::Controller> controller;
 
     // Counter to throw an error after 5 consecutive errors
     uint8_t error_counter = 0;
-    static constexpr uint8_t MAX_ERROR_COUNT = 5;
 
     void track_estimate_cb(const TrackEstimate::ConstSharedPtr msg) {
         const auto track_expected = Track::from_values(msg->s_cen,
@@ -212,6 +223,10 @@ private:
 
     void vel_cb(const Velocity::ConstSharedPtr vel_msg) {
         this->vel_msg = vel_msg;
+    }
+
+    void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
+        this->accel_msg = accel_msg;
     }
 
     void current_controls_cb(const Controls::ConstSharedPtr controls_msg) {
@@ -247,7 +262,14 @@ private:
         const auto control = this->controller->compute_control(state, *(this->track));
         if (control) {
             error_counter = 0;
-            const auto sim_control = to_sim_control(*control);
+            // const auto sim_control = to_sim_control(*control);
+            const auto sim_control = torque_vectoring_llc(state,
+                                                          vel_msg->omega,
+                                                          this->get_parameter("K_tv").as_double(),
+                                                          accel_msg->a_x,
+                                                          accel_msg->a_y,
+                                                          *control,
+                                                          model_params);
             controls_msg.tau_fl = sim_control.u_tau_FL;
             controls_msg.tau_fr = sim_control.u_tau_FR;
             controls_msg.tau_rl = sim_control.u_tau_RL;
@@ -258,14 +280,27 @@ private:
                          "Error in MPC solver: %s; sending the old control",
                          to_string(control.error()).c_str());
             ++error_counter;
-            if (error_counter >= MAX_ERROR_COUNT) {
+            if (error_counter < Nf) {
+                const auto& u_opt = this->controller->get_u_opt();
+                const auto sim_control = to_sim_control(Controller::Control{
+                    u_opt(0, error_counter),
+                    u_opt(1, error_counter),
+                });
+                controls_msg.tau_fl = sim_control.u_tau_FL;
+                controls_msg.tau_fr = sim_control.u_tau_FR;
+                controls_msg.tau_rl = sim_control.u_tau_RL;
+                controls_msg.tau_rr = sim_control.u_tau_RR;
+                controls_msg.delta = sim_control.u_delta;
+            } else {
+                // TODO: move this to also send diagnostics?
                 controls_msg.tau_fl = 0.0;
                 controls_msg.tau_fr = 0.0;
                 controls_msg.tau_rl = 0.0;
                 controls_msg.tau_rr = 0.0;
                 controls_msg.delta = 0.0;
+                controls_msg.header.stamp = this->now();
                 this->target_controls_pub->publish(controls_msg);
-                throw std::runtime_error("Failed to compute control " + to_string(MAX_ERROR_COUNT) +
+                throw std::runtime_error("Failed to compute control " + to_string(Nf) +
                                          " times in a row. Aborting.");
             }
         }

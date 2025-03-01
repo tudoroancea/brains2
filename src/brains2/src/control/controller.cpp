@@ -46,11 +46,11 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto xnext = x;
     auto scaled_dt = params.dt / rk_steps;
     for (size_t i = 0; i < rk_steps; ++i) {
-        auto k1 = f_cont({x, u, kappa_cen})[0];
-        auto k2 = f_cont({x + scaled_dt / 2 * k1, u, kappa_cen})[0];
-        auto k3 = f_cont({x + scaled_dt / 2 * k2, u, kappa_cen})[0];
-        auto k4 = f_cont({x + scaled_dt * k3, u, kappa_cen})[0];
-        xnext = x + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+        auto k1 = f_cont({xnext, u, kappa_cen})[0];
+        auto k2 = f_cont({xnext + scaled_dt / 2 * k1, u, kappa_cen})[0];
+        auto k3 = f_cont({xnext + scaled_dt / 2 * k2, u, kappa_cen})[0];
+        auto k4 = f_cont({xnext + scaled_dt * k3, u, kappa_cen})[0];
+        xnext = xnext + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
     }
     auto f_disc = casadi::Function("f_disc", {x, u, kappa_cen}, {cse(xnext)});
     return f_disc;
@@ -94,7 +94,7 @@ Controller::Controller(size_t Nf,
     ///////////////////////////////////////////////////////////////////
     // Generate model
     ///////////////////////////////////////////////////////////////////
-    auto f_disc = generate_model(model_params);
+    auto f_disc = generate_model(model_params, 10);
 
     ///////////////////////////////////////////////////////////////////
     // Construct cost function
@@ -229,12 +229,6 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
         // Call solver
         auto sol = this->opti.solve();
 
-        // Check solver status
-        const auto stats = this->opti.stats();
-        if (!stats.at("success").as_bool()) {
-            throw std::runtime_error("Solver failed");
-        }
-
         // Extract solution
         casadi::DM tpr;
         for (size_t i = 0; i < Nf; ++i) {
@@ -245,6 +239,7 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
         }
         tpr = sol.value(this->x[Nf]);
         std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
+
         return Control{u_opt(0, 0), u_opt(1, 0)};
     } catch (const std::exception& e) {
         IC(e.what());
@@ -276,4 +271,36 @@ brains2::sim::Sim::Control to_sim_control(const Controller::Control& control) {
                                       control.tau / 4};
 }
 
+brains2::sim::Sim::Control torque_vectoring_llc(const Controller::State& state,
+                                                const double r,
+                                                const double K_tv,
+                                                const double a_x,
+                                                const double a_y,
+                                                const Controller::Control& control,
+                                                const Controller::ModelParams& params) {
+    const double wheelbase = params.l_F + params.l_R;
+    const auto beta = params.l_R / wheelbase * state.delta;
+    const double r_kin = state.v * sin(beta) / params.l_R;
+    const double delta_tau = K_tv * (r_kin - r);
+    const double v_x = state.v * cos(beta);
+    const double F_downforce = 0.5 * params.C_downforce * v_x * v_x;
+    const double static_weight = 0.5 * params.m * 9.81 * params.l_F / wheelbase;
+    const double front_weight_distribution = params.l_F / wheelbase;
+    const double rear_weight_distribution = params.l_R / wheelbase;
+    const double longitudinal_weight_transfer = params.m * a_x * params.z_CG / wheelbase;
+    const double lateral_weight_transfer = params.m * a_y * params.z_CG / params.axle_track;
+    const double F_z_FL = 0.5 * (front_weight_distribution * (static_weight + F_downforce) -
+                                 longitudinal_weight_transfer - lateral_weight_transfer);
+    const double F_z_FR = 0.5 * (front_weight_distribution * (static_weight + F_downforce) -
+                                 longitudinal_weight_transfer + lateral_weight_transfer);
+    const double F_z_RL = 0.5 * (rear_weight_distribution * (static_weight + F_downforce) +
+                                 longitudinal_weight_transfer - lateral_weight_transfer);
+    const double F_z_RR = 0.5 * (rear_weight_distribution * (static_weight + F_downforce) +
+                                 longitudinal_weight_transfer + lateral_weight_transfer);
+    return {control.u_delta,
+            (control.tau - delta_tau) * F_z_FL / (static_weight + F_downforce),
+            (control.tau + delta_tau) * F_z_FR / (static_weight + F_downforce),
+            (control.tau - delta_tau) * F_z_RL / (static_weight + F_downforce),
+            (control.tau + delta_tau) * F_z_RR / (static_weight + F_downforce)};
+}
 }  // namespace brains2::control
