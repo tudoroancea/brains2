@@ -20,7 +20,7 @@ int main() {
     const std::string path_output = "src/brains2/src/estimation/interpolated_spline_alpha.csv";
     // const std::string path_output = "src/brains2/src/estimation/interpolated_spline.csv";
     // const std::string path_output = "src/brains2/src/estimation/circle_spline.csv";
-    const size_t resample_points = 100;
+    const size_t resample_points = 300;
     const double curv_weight = 0.1;
     const bool verbose = false;
 
@@ -134,6 +134,7 @@ int main() {
                                                     spline_interp_yellow.Y,
                                                     curv_weight,
                                                     resample_points,
+                                                    5,
                                                     verbose);
     if (!expected_center_line) {
         std::cerr << "Error computing center line: " << to_string(expected_center_line.error())
@@ -141,7 +142,7 @@ int main() {
         return 1;
     }
 
-    VectorPair center_line = expected_center_line.value();
+    CenterLine center_line = expected_center_line.value();
 
     auto excpected_heading_blue =
         blue_spline_fitter.get_heading(spline_interp_blue.idx, spline_interp_blue.t);
@@ -184,6 +185,10 @@ int main() {
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "Elapsed time: " << elapsed_seconds.count() << "s\n";
 
+    std::cout << "Size blue: " << spline_interp_blue.X.size() << "\n";
+    std::cout << "Size yellow: " << spline_interp_yellow.X.size() << "\n";
+    std::cout << "Size center: " << center_line.center_line.first.size() << "\n";
+
     // Output the interpolated points to CSV or visualize them
     // For example, write to CSV:
     std::ofstream file(path_output);
@@ -194,8 +199,13 @@ int main() {
     for (int i = 0; i < spline_interp_yellow.X.size(); ++i) {
         file << "yellow," << spline_interp_yellow.X(i) << "," << spline_interp_yellow.Y(i) << "\n";
     }
-    for (int i = 0; i < center_line.first.size(); ++i) {
-        file << "center," << center_line.first(i) << "," << center_line.second(i) << "\n";
+    for (int i = 0; i < center_line.center_line.first.size(); ++i) {
+        file << "center," << center_line.center_line.first(i) << ","
+             << center_line.center_line.second(i) << "\n";
+    }
+    for (int i = 0; i < center_line.track_width.first.size(); ++i) {
+        file << "track_width," << center_line.track_width.first(i) << ","
+             << center_line.track_width.second(i) << "\n";
     }
     file.close();
 
