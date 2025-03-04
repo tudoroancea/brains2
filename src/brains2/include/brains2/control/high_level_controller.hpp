@@ -7,13 +7,12 @@
 #include <Eigen/Dense>
 #include "brains2/common/tracks.hpp"
 #include "brains2/external/expected.hpp"
-#include "brains2/sim/sim.hpp"
 #include "casadi/casadi.hpp"
 
 namespace brains2 {
 namespace control {
 
-class Controller {
+class HighLevelController {
 public:
     struct ModelParams {
         double dt, m, l_R, l_F, C_m0, C_r0, C_r1, C_r2;
@@ -29,16 +28,16 @@ public:
         std::string solver;
     };
 
-    Controller() = delete;
-    Controller(const Controller&) = delete;
-    Controller& operator=(const Controller&) = delete;
-    virtual ~Controller() = default;
+    HighLevelController() = delete;
+    HighLevelController(const HighLevelController&) = delete;
+    HighLevelController& operator=(const HighLevelController&) = delete;
+    virtual ~HighLevelController() = default;
 
-    Controller(size_t Nf,
-               const ModelParams& model_params,
-               const ConstraintsParams& limits,
-               const CostParams& cost_params,
-               const SolverParams& solver_params = {false, "fatrop"});
+    HighLevelController(size_t Nf,
+                        const ModelParams& model_params,
+                        const ConstraintsParams& limits,
+                        const CostParams& cost_params,
+                        const SolverParams& solver_params = {false, "fatrop"});
 
     struct State {
         double s, n, psi, v;
@@ -124,14 +123,9 @@ private:
     casadi::MX x0, kappa_cen, w_cen;
 };
 
-std::string to_string(const Controller::Error& error);
+typedef HighLevelController HLC;
 
-/*
- * @brief Converts the control command internally used by the controller to the format used by the
- *        simulator. Concretely, it splits the global torque command into four torques (one for each
- *        wheel). For the moment it does so by evenly splitting them, without any torque vectoring.
- */
-brains2::sim::Sim::Control to_sim_control(const Controller::Control& control);
+std::string to_string(const HLC::Error& error);
 
 }  // namespace control
 }  // namespace brains2

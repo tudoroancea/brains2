@@ -7,9 +7,11 @@
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
 #include "brains2/common/tracks.hpp"
-#include "brains2/control/controller.hpp"
+#include "brains2/control/high_level_controller.hpp"
+#include "brains2/control/low_level_controller.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
+#include "brains2/msg/acceleration.hpp"
 #include "brains2/msg/controller_debug_info.hpp"
 #include "brains2/msg/controls.hpp"
 #include "brains2/msg/pose.hpp"
@@ -43,59 +45,65 @@ public:
         const auto dt = 1 / this->declare_parameter("freq", 20.0);
         const auto Nf = this->declare_parameter("Nf", 20);
 
-        // load yaml file with car constants
 #ifdef CAR_CONSTANTS_PATH
+        // load yaml file with car constants
         YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
-        const Controller::ModelParams model_params{
-            dt,
-            car_constants["inertia"]["mass"].as<double>(),
-            car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
-            car_constants["geometry"]["wheelbase"].as<double>() -
-                car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
-            car_constants["drivetrain"]["C_m0"].as<double>(),
-            car_constants["drivetrain"]["C_r0"].as<double>(),
-            car_constants["drivetrain"]["C_r1"].as<double>(),
-            car_constants["drivetrain"]["C_r2"].as<double>(),
-        };
-
-        // Limits
-        const Controller::ConstraintsParams constraints_params{
-            this->declare_parameter("v_x_max", 10.0),
-            this->declare_parameter("delta_max", 0.5),
-            this->declare_parameter("tau_max", 100.0),
-            car_constants["geometry"]["car_width"].as<double>() +
-                this->declare_parameter("car_width_inflation", 0.0)};
         this->car_width = car_constants["geometry"]["car_width"].as<double>();
+
+        // Create high level controller (HLC)
+        this->hlc = std::make_unique<HLC>(
+            static_cast<size_t>(Nf),
+            HLC::ModelParams{
+                dt,
+                car_constants["inertia"]["mass"].as<double>(),
+                car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+                car_constants["geometry"]["wheelbase"].as<double>() -
+                    car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+                car_constants["drivetrain"]["C_m0"].as<double>(),
+                car_constants["drivetrain"]["C_r0"].as<double>(),
+                car_constants["drivetrain"]["C_r1"].as<double>(),
+                car_constants["drivetrain"]["C_r2"].as<double>(),
+            },
+            HLC::ConstraintsParams{this->declare_parameter("v_x_max", 10.0),
+                                   this->declare_parameter("delta_max", 0.5),
+                                   this->declare_parameter("tau_max", 100.0),
+                                   car_constants["geometry"]["car_width"].as<double>() +
+                                       this->declare_parameter("car_width_inflation", 0.0)},
+            HLC::CostParams{
+                this->declare_parameter("v_ref", 5.0),
+                this->declare_parameter("q_s", 1.0),
+                this->declare_parameter("q_n", 1.0),
+                this->declare_parameter("q_psi", 1.0),
+                this->declare_parameter("q_v", 1.0),
+                this->declare_parameter("r_delta", 1.0),
+                this->declare_parameter("r_tau", 1.0),
+                this->declare_parameter("q_s_f", 1.0),
+                this->declare_parameter("q_n_f", 1.0),
+                this->declare_parameter("q_psi_f", 1.0),
+                this->declare_parameter("q_v_f", 1.0),
+            },
+            HLC::SolverParams{
+                this->declare_parameter("jit", false),
+                this->declare_parameter("solver", "fatrop"),
+            });
+
+        // Create low level controller
+        this->llc = std::make_unique<LLC>(
+            this->declare_parameter("K_tv", 300.0),
+            LLC::ModelParams{
+                car_constants["inertia"]["mass"].as<double>(),
+                car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+                car_constants["geometry"]["wheelbase"].as<double>() -
+                    car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+                car_constants["geometry"]["axle_track"].as<double>(),
+                car_constants["geometry"]["cog_height"].as<double>(),
+                car_constants["aero"]["C_downforce"].as<double>(),
+                car_constants["actuators"]["torque_max"].as<double>(),
+            });
+
 #else
 #error CAR_CONSTANTS_PATH is not defined
 #endif
-
-        // cost params
-        const Controller::CostParams cost_params{
-            this->declare_parameter("v_ref", 5.0),
-            this->declare_parameter("q_s", 1.0),
-            this->declare_parameter("q_n", 1.0),
-            this->declare_parameter("q_psi", 1.0),
-            this->declare_parameter("q_v", 1.0),
-            this->declare_parameter("r_delta", 1.0),
-            this->declare_parameter("r_tau", 1.0),
-            this->declare_parameter("q_s_f", 1.0),
-            this->declare_parameter("q_n_f", 1.0),
-            this->declare_parameter("q_psi_f", 1.0),
-            this->declare_parameter("q_v_f", 1.0),
-        };
-
-        const Controller::SolverParams solver_params{
-            this->declare_parameter("jit", false),
-            this->declare_parameter("solver", "fatrop"),
-        };
-
-        // Create controller object
-        this->controller = std::make_unique<Controller>(static_cast<size_t>(Nf),
-                                                        model_params,
-                                                        constraints_params,
-                                                        cost_params,
-                                                        solver_params);
 
         // Publishers and subscribers
         this->target_controls_pub =
@@ -120,6 +128,10 @@ public:
             "/brains2/velocity",
             10,
             std::bind(&ControlNode::vel_cb, this, std::placeholders::_1));
+        this->accel_sub = this->create_subscription<Acceleration>(
+            "/brains2/acceleration",
+            10,
+            std::bind(&ControlNode::accel_cb, this, std::placeholders::_1));
 
         // Initialize messages
         this->create_viz_msg();
@@ -156,6 +168,14 @@ private:
         this->vel_msg = vel_msg;
     }
 
+    // Acceleration
+    Subscription<Acceleration>::SharedPtr accel_sub;
+    Acceleration::ConstSharedPtr accel_msg;
+
+    void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
+        this->accel_msg = accel_msg;
+    }
+
     // Track Estimate
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
     unique_ptr<Track> track;
@@ -183,14 +203,15 @@ private:
     Publisher<Controls>::SharedPtr target_controls_pub;
     Controls controls_msg;
     rclcpp::TimerBase::SharedPtr control_timer;
-    unique_ptr<Controller> controller;
+    unique_ptr<HLC> hlc;
+    unique_ptr<LLC> llc;
     double car_width;
     // Counter to throw an error after 5 consecutive errors
     uint8_t error_counter = 0;
     static constexpr uint8_t MAX_ERROR_COUNT = 5;
 
     void control_cb() {
-        if (!this->pose_msg || !this->vel_msg) {
+        if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
             RCLCPP_INFO(this->get_logger(),
                         "Pose or velocity message not received; skipping control computation");
             return;
@@ -204,41 +225,42 @@ private:
             track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi})
                 .first;
 
-        // Construct current state
-        const Controller::State state{frenet_pose.s,
-                                      frenet_pose.n,
-                                      frenet_pose.psi,
-                                      std::hypot(vel_msg->v_x, vel_msg->v_y)};
-
-        // Compute control
+        // Compute high level control
         const auto start = this->now();
-        const auto control = this->controller->compute_control(state, *(this->track))
-                                 .transform([this](const auto &control) {
-                                     error_counter = 0;
-                                     return to_sim_control(control);
-                                 })
-                                 .transform_error([this](const auto &error) {
-                                     RCLCPP_ERROR(this->get_logger(),
-                                                  "Error in MPC solver: %s",
-                                                  to_string(error).c_str());
-                                     ++error_counter;
-                                     if (error_counter >= MAX_ERROR_COUNT) {
-                                         throw std::runtime_error("Failed to compute control " +
-                                                                  to_string(MAX_ERROR_COUNT) +
-                                                                  " times in a row. Aborting.");
-                                     }
-                                     return error;
-                                 })
-                                 .value_or(brains2::sim::Sim::Control{0, 0, 0, 0, 0});
+        const auto hlc_control =
+            this->hlc->compute_control(HLC::State{frenet_pose.s,
+                                                  frenet_pose.n,
+                                                  frenet_pose.psi,
+                                                  std::hypot(vel_msg->v_x, vel_msg->v_y)},
+                                       *(this->track));
+        if (hlc_control) {
+            error_counter = 0;
+        } else {
+            // TODO: add different behaviors based on error mode (nominal, using last prediction,
+            // etc.)
+            RCLCPP_ERROR(this->get_logger(),
+                         "Error in MPC solver: %s",
+                         to_string(hlc_control.error()).c_str());
+            ++error_counter;
+            if (error_counter >= MAX_ERROR_COUNT) {
+                throw std::runtime_error("Failed to compute control " + to_string(MAX_ERROR_COUNT) +
+                                         " times in a row. Aborting.");
+            }
+        }
         const auto end = this->now();
+
+        // transform to low level control
+        const auto llc_control = this->llc->compute_control(
+            LLC::State{vel_msg->v_x, vel_msg->v_y, vel_msg->omega, accel_msg->a_x, accel_msg->a_y},
+            *hlc_control);
 
         // Publish controls
         this->controls_msg.header.stamp = this->now();
-        this->controls_msg.tau_fl = control.u_tau_FL;
-        this->controls_msg.tau_fr = control.u_tau_FR;
-        this->controls_msg.tau_rl = control.u_tau_RL;
-        this->controls_msg.tau_rr = control.u_tau_RR;
-        this->controls_msg.delta = control.u_delta;
+        this->controls_msg.tau_fl = llc_control.u_tau_FL;
+        this->controls_msg.tau_fr = llc_control.u_tau_FR;
+        this->controls_msg.tau_rl = llc_control.u_tau_RL;
+        this->controls_msg.tau_rr = llc_control.u_tau_RR;
+        this->controls_msg.delta = llc_control.u_delta;
         this->target_controls_pub->publish(this->controls_msg);
 
         // Publish diagnostics
@@ -246,16 +268,14 @@ private:
         this->diagnostics_pub->publish(this->diag_msg);
 
         // Publish visualization
-        this->update_viz_msg(frenet_pose.s,
-                             this->controller->get_x_ref(),
-                             this->controller->get_x_opt());
+        this->update_viz_msg(frenet_pose.s, this->hlc->get_x_ref(), this->hlc->get_x_opt());
         this->viz_pub->publish(this->viz_msg);
 
         // Publish other debug information
-        this->update_debug_info_msg(this->controller->get_x_ref(),
-                                    this->controller->get_u_ref(),
-                                    this->controller->get_x_opt(),
-                                    this->controller->get_u_opt());
+        this->update_debug_info_msg(this->hlc->get_x_ref(),
+                                    this->hlc->get_u_ref(),
+                                    this->hlc->get_x_opt(),
+                                    this->hlc->get_u_opt());
         this->debug_info_pub->publish(this->debug_info_msg);
     }
 
@@ -270,7 +290,7 @@ private:
         this->viz_msg.markers[0].ns = "traj_pred";
         this->viz_msg.markers[0].action = visualization_msgs::msg::Marker::MODIFY;
         this->viz_msg.markers[0].type = visualization_msgs::msg::Marker::LINE_STRIP;
-        this->viz_msg.markers[0].points.resize(this->controller->horizon_size() + 1);
+        this->viz_msg.markers[0].points.resize(this->hlc->horizon_size() + 1);
         this->viz_msg.markers[0].scale.x = 0.05;
         this->viz_msg.markers[0].color = marker_colors("green");
 
@@ -279,7 +299,7 @@ private:
         this->viz_msg.markers[1].ns = "traj_ref";
         this->viz_msg.markers[1].action = visualization_msgs::msg::Marker::MODIFY;
         this->viz_msg.markers[1].type = visualization_msgs::msg::Marker::LINE_STRIP;
-        this->viz_msg.markers[1].points.resize(this->controller->horizon_size() + 1);
+        this->viz_msg.markers[1].points.resize(this->hlc->horizon_size() + 1);
         this->viz_msg.markers[1].scale.x = 0.05;
         this->viz_msg.markers[1].color = marker_colors("orange");
 
@@ -288,7 +308,7 @@ private:
         this->viz_msg.markers[2].ns = "boundary_left";
         this->viz_msg.markers[2].action = visualization_msgs::msg::Marker::MODIFY;
         this->viz_msg.markers[2].type = visualization_msgs::msg::Marker::LINE_STRIP;
-        this->viz_msg.markers[2].points.resize(this->controller->horizon_size() + 1);
+        this->viz_msg.markers[2].points.resize(this->hlc->horizon_size() + 1);
         this->viz_msg.markers[2].scale.x = 0.05;
         this->viz_msg.markers[2].color = marker_colors("blue");
 
@@ -297,18 +317,18 @@ private:
         this->viz_msg.markers[3].ns = "boundary_right";
         this->viz_msg.markers[3].action = visualization_msgs::msg::Marker::MODIFY;
         this->viz_msg.markers[3].type = visualization_msgs::msg::Marker::LINE_STRIP;
-        this->viz_msg.markers[3].points.resize(this->controller->horizon_size() + 1);
+        this->viz_msg.markers[3].points.resize(this->hlc->horizon_size() + 1);
         this->viz_msg.markers[3].scale.x = 0.05;
         this->viz_msg.markers[3].color = marker_colors("yellow");
     }
 
     void update_viz_msg(const double s,
-                        const Controller::StateHorizonMatrix &x_ref,
-                        const Controller::StateHorizonMatrix &x_opt) {
+                        const HLC::StateHorizonMatrix &x_ref,
+                        const HLC::StateHorizonMatrix &x_opt) {
         if (!track) {
             return;
         }
-        for (long i = 0; i < this->controller->horizon_size() + 1; ++i) {
+        for (long i = 0; i < this->hlc->horizon_size() + 1; ++i) {
             // reference trajectory
             const auto s_ref = s + x_ref(0, i), X_ref = track->eval_X(s_ref),
                        Y_ref = track->eval_Y(s_ref);
@@ -359,7 +379,7 @@ private:
     Publisher<ControllerDebugInfo>::SharedPtr debug_info_pub;
 
     void create_debug_info_msg() {
-        const auto Nf = this->controller->horizon_size();
+        const auto Nf = this->hlc->horizon_size();
         this->debug_info_msg.s_ref.resize(Nf + 1);
         this->debug_info_msg.n_ref.resize(Nf + 1);
         this->debug_info_msg.psi_ref.resize(Nf + 1);
@@ -374,12 +394,12 @@ private:
         this->debug_info_msg.tau_pred.resize(Nf);
     }
 
-    void update_debug_info_msg(const Controller::StateHorizonMatrix &x_ref,
-                               const Controller::ControlHorizonMatrix &u_ref,
-                               const Controller::StateHorizonMatrix &x_pred,
-                               const Controller::ControlHorizonMatrix &u_pred) {
+    void update_debug_info_msg(const HLC::StateHorizonMatrix &x_ref,
+                               const HLC::ControlHorizonMatrix &u_ref,
+                               const HLC::StateHorizonMatrix &x_pred,
+                               const HLC::ControlHorizonMatrix &u_pred) {
         this->debug_info_msg.header.stamp = this->now();
-        const auto Nf = this->controller->horizon_size();
+        const auto Nf = this->hlc->horizon_size();
         for (size_t i = 0; i < Nf + 1; ++i) {
             this->debug_info_msg.s_ref[i] = x_ref(0, i);
             this->debug_info_msg.n_ref[i] = x_ref(1, i);
