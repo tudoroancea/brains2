@@ -37,35 +37,35 @@ protected:
     std::unique_ptr<Track> track;
     void SetUp() override {
         controller = std::make_unique<HighLevelController>(10,
-                                                  HighLevelController::ModelParams{
-                                                      0.05,
-                                                      230.0,
-                                                      0.7853,
-                                                      0.7853,
-                                                      4.950,
-                                                      350.0,
-                                                      20.0,
-                                                      3.0,
-                                                  },
-                                                  HighLevelController::ConstraintsParams{
-                                                      10.0,
-                                                      0.5,
-                                                      100.0,
-                                                      1.55,
-                                                  },
-                                                  HighLevelController::CostParams{
-                                                      3.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                      1.0,
-                                                  });
+                                                           HighLevelController::ModelParams{
+                                                               0.05,
+                                                               230.0,
+                                                               0.7853,
+                                                               0.7853,
+                                                               4.950,
+                                                               350.0,
+                                                               20.0,
+                                                               3.0,
+                                                           },
+                                                           HighLevelController::ConstraintsParams{
+                                                               10.0,
+                                                               0.5,
+                                                               100.0,
+                                                               1.55,
+                                                           },
+                                                           HighLevelController::CostParams{
+                                                               3.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                               1.0,
+                                                           });
         auto curvature = GetParam();
         const auto track_expected = generate_constant_curvature_track(curvature, 4.0, 5);
         if (!track_expected) {
@@ -78,7 +78,7 @@ protected:
 TEST_P(ControllerConstantCurvatureTest, bruh) {
     auto res = controller->compute_control(HighLevelController::State{0.0, 0.0, 0.0, 0.0}, *track);
     ASSERT_TRUE(res.has_value());
-    IC(*res, controller->get_x_opt(), controller->get_u_opt());
+    // IC(*res, controller->get_x_opt(), controller->get_u_opt());
 }
 
 INSTANTIATE_TEST_SUITE_P(

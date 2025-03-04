@@ -66,8 +66,8 @@ public:
      * @param track The current track estimate.
      * @return A control command or an error.
      */
-    tl::expected<Control, Error> compute_control(const State& current_state,
-                                                 const brains2::common::Track& track);
+    tl::expected<std::vector<Control>, Error> compute_control(const State& current_state,
+                                                              const brains2::common::Track& track);
 
     /*
      * @brief Get the horizon size.

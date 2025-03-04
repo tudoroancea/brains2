@@ -1,8 +1,8 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
 #include <cstdint>
 #include <memory>
-#include <rclcpp/logging.hpp>
 #include <tuple>
+#include <vector>
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
@@ -204,12 +204,17 @@ private:
     Publisher<Controls>::SharedPtr target_controls_pub;
     Controls controls_msg;
     rclcpp::TimerBase::SharedPtr control_timer;
+    std::vector<HLC::Control> controls_prediction;
     unique_ptr<HLC> hlc;
     unique_ptr<LLC> llc;
+
     double car_width;
-    // Counter to throw an error after 5 consecutive errors
-    uint8_t error_counter = 0;
-    static constexpr uint8_t MAX_ERROR_COUNT = 5;
+    uint8_t hlc_error_counter = 0;
+    enum class ControlStatus {
+        NOMINAL,
+        SENDING_LAST_PREDICTION,
+        NO_MORE_PREDICTIONS,
+    } control_status = ControlStatus::NOMINAL;
 
     void control_cb() {
         if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
@@ -227,35 +232,45 @@ private:
             track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi})
                 .first;
 
-        // Compute high level control
-        auto start = this->now();
-        const auto hlc_control =
-            this->hlc->compute_control(HLC::State{frenet_pose.s,
-                                                  frenet_pose.n,
-                                                  frenet_pose.psi,
-                                                  std::hypot(vel_msg->v_x, vel_msg->v_y)},
-                                       *(this->track));
-        if (hlc_control) {
-            error_counter = 0;
-        } else {
-            // TODO: add different behaviors based on error mode (nominal, using last prediction,
-            // etc.)
-            RCLCPP_ERROR(this->get_logger(),
-                         "Error in MPC solver: %s",
-                         to_string(hlc_control.error()).c_str());
-            ++error_counter;
-            if (error_counter >= MAX_ERROR_COUNT) {
-                throw std::runtime_error("Failed to compute control " + to_string(MAX_ERROR_COUNT) +
-                                         " times in a row. Aborting.");
+        // Try computing high level control
+        double hlc_runtime = 0.0;
+        if (control_status != ControlStatus::NO_MORE_PREDICTIONS) {
+            // Compute high level control
+            const auto start = this->now();
+            const auto hlc_controls =
+                this->hlc->compute_control(HLC::State{frenet_pose.s,
+                                                      frenet_pose.n,
+                                                      frenet_pose.psi,
+                                                      std::hypot(vel_msg->v_x, vel_msg->v_y)},
+                                           *(this->track));
+            hlc_runtime = 1000 * (this->now() - start).seconds();
+
+            // Check for errors
+            if (hlc_controls) {
+                hlc_error_counter = 0;
+                this->controls_prediction = std::move(*hlc_controls);
+                control_status = ControlStatus::NOMINAL;
+            } else {
+                RCLCPP_ERROR(this->get_logger(),
+                             "Error in MPC solver: %s",
+                             to_string(hlc_controls.error()).c_str());
+                ++hlc_error_counter;
+                if (hlc_error_counter < this->controls_prediction.size()) {
+                    control_status = ControlStatus::SENDING_LAST_PREDICTION;
+                } else {
+                    control_status = ControlStatus::NO_MORE_PREDICTIONS;
+                }
             }
         }
-        const auto hlc_runtime = 1000 * (this->now() - start).seconds();
+        const auto hlc_control = control_status == ControlStatus::NO_MORE_PREDICTIONS
+                                     ? HLC::Control{0.0, 0.0}
+                                     : this->controls_prediction[hlc_error_counter];
 
         // transform to low level control
-        start = this->now();
+        const auto start = this->now();
         const auto [llc_control, llc_info] = this->llc->compute_control(
             LLC::State{vel_msg->v_x, vel_msg->v_y, vel_msg->omega, accel_msg->a_x, accel_msg->a_y},
-            *hlc_control);
+            hlc_control);
         const auto llc_runtime = 1000 * (this->now() - start).seconds();
 
         // Publish controls
@@ -268,19 +283,21 @@ private:
         this->target_controls_pub->publish(this->controls_msg);
 
         // Publish diagnostics
-        this->update_diag_msg(hlc_runtime, llc_runtime, llc_info);
+        this->update_diag_msg(control_status, hlc_runtime, llc_runtime, llc_info);
         this->diagnostics_pub->publish(this->diag_msg);
 
-        // Publish visualization
-        this->update_viz_msg(frenet_pose.s, this->hlc->get_x_ref(), this->hlc->get_x_opt());
-        this->viz_pub->publish(this->viz_msg);
+        if (control_status == ControlStatus::NOMINAL) {
+            // Publish visualization
+            this->update_viz_msg(frenet_pose.s, this->hlc->get_x_ref(), this->hlc->get_x_opt());
+            this->viz_pub->publish(this->viz_msg);
 
-        // Publish other debug information
-        this->update_debug_info_msg(this->hlc->get_x_ref(),
-                                    this->hlc->get_u_ref(),
-                                    this->hlc->get_x_opt(),
-                                    this->hlc->get_u_opt());
-        this->debug_info_pub->publish(this->debug_info_msg);
+            // Publish other debug information
+            this->update_debug_info_msg(this->hlc->get_x_ref(),
+                                        this->hlc->get_u_ref(),
+                                        this->hlc->get_x_opt(),
+                                        this->hlc->get_u_opt());
+            this->debug_info_pub->publish(this->debug_info_msg);
+        }
     }
 
     Publisher<MarkerArray>::SharedPtr viz_pub;
@@ -375,13 +392,26 @@ private:
         this->diag_msg.status[1].values[2].key = "delta_tau (Nm)";
     }
 
-    void update_diag_msg(const double hlc_runtime_ms,
+    void update_diag_msg(const ControlStatus control_status,
+                         const double hlc_runtime_ms,
                          const double llc_runtime_ms,
                          const LLC::Info &llc_info) {
         this->diag_msg.header.stamp = this->now();
         // TODO: report internal status here (nominal, sending last prediction, crashed)
-        this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-        this->diag_msg.status[0].message = "nominal";
+        switch (control_status) {
+            case ControlStatus::NOMINAL:
+                this->diag_msg.status[0].message = "nominal";
+                this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+                break;
+            case ControlStatus::SENDING_LAST_PREDICTION:
+                this->diag_msg.status[0].message = "sending last prediction";
+                this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+                break;
+            case ControlStatus::NO_MORE_PREDICTIONS:
+                this->diag_msg.status[0].message = "no more predictions";
+                this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+                break;
+        }
         this->diag_msg.status[0].values[0].value = to_string(hlc_runtime_ms);
         this->diag_msg.status[1].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
         this->diag_msg.status[1].message = "nominal";
