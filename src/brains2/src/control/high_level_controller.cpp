@@ -1,5 +1,5 @@
 // Copyright (c) 2024. Tudor Oancea, Matteo Berthet
-#include "brains2/control/controller.hpp"
+#include "brains2/control/high_level_controller.hpp"
 #include <cmath>
 #include <iterator>
 #include "brains2/common/tracks.hpp"
@@ -10,9 +10,10 @@
 
 namespace brains2::control {
 
-static casadi::Function generate_model(const Controller::ModelParams& params, size_t rk_steps = 1) {
+static casadi::Function generate_model(const HighLevelController::ModelParams& params,
+                                       size_t rk_steps = 1) {
     // State variables
-    auto x = casadi::MX::sym("x", Controller::nx);
+    auto x = casadi::MX::sym("x", HighLevelController::nx);
     auto split = vertsplit(x);
     auto Delta_s = split[0];
     auto n = split[1];
@@ -20,7 +21,7 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto v = split[3];
 
     // control variables
-    auto u = casadi::MX::sym("u", Controller::nu);
+    auto u = casadi::MX::sym("u", HighLevelController::nu);
     split = vertsplit(u);
     auto delta = split[0];
     auto tau = split[1];
@@ -55,21 +56,22 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     return f_disc;
 }
 
-Controller::Controller(size_t Nf,
-                       const Controller::ModelParams& model_params,
-                       const Controller::ConstraintsParams& constraints_params,
-                       const Controller::CostParams& cost_params,
-                       const Controller::SolverParams& solver_params)
+HighLevelController::HighLevelController(
+    size_t Nf,
+    const HighLevelController::ModelParams& model_params,
+    const HighLevelController::ConstraintsParams& constraints_params,
+    const HighLevelController::CostParams& cost_params,
+    const HighLevelController::SolverParams& solver_params)
     : Nf(Nf),
       dt(model_params.dt),
       v_ref(cost_params.v_ref),
       tau_ref((model_params.C_r0 + model_params.C_r1 * cost_params.v_ref +
                model_params.C_r2 * cost_params.v_ref * cost_params.v_ref) /
               model_params.C_m0),
-      x_ref(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
-      u_ref(Controller::ControlHorizonMatrix::Zero(nu, Nf)),
-      x_opt(Controller::StateHorizonMatrix::Zero(nx, Nf + 1)),
-      u_opt(Controller::ControlHorizonMatrix::Zero(nu, Nf)) {
+      x_ref(HighLevelController::StateHorizonMatrix::Zero(nx, Nf + 1)),
+      u_ref(HighLevelController::ControlHorizonMatrix::Zero(nu, Nf)),
+      x_opt(HighLevelController::StateHorizonMatrix::Zero(nx, Nf + 1)),
+      u_opt(HighLevelController::ControlHorizonMatrix::Zero(nu, Nf)) {
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem
     ///////////////////////////////////////////////////////////////////
@@ -78,15 +80,15 @@ Controller::Controller(size_t Nf,
     // NOTE: the optimization variables have to be declared stage by stage
     // for fatrop to auto-detect the problem structure
     for (size_t i = 0; i < Nf; ++i) {
-        x[i] = opti.variable(Controller::nx);
-        u[i] = opti.variable(Controller::nu);
+        x[i] = opti.variable(HighLevelController::nx);
+        u[i] = opti.variable(HighLevelController::nu);
     }
-    x[Nf] = opti.variable(Controller::nx);
+    x[Nf] = opti.variable(HighLevelController::nx);
 
     ///////////////////////////////////////////////////////////////////
     // Create optimization problem parameters
     ///////////////////////////////////////////////////////////////////
-    x0 = opti.parameter(Controller::nx);
+    x0 = opti.parameter(HighLevelController::nx);
     kappa_cen = opti.parameter(Nf + 1);
     w_cen = opti.parameter(Nf + 1);
 
@@ -191,8 +193,9 @@ Controller::Controller(size_t Nf,
                            casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)}));
 }
 
-tl::expected<Controller::Control, Controller::Error> Controller::compute_control(
-    const Controller::State& state, const brains2::common::Track& track) {
+tl::expected<HighLevelController::Control, HighLevelController::Error>
+HighLevelController::compute_control(const HighLevelController::State& state,
+                                     const brains2::common::Track& track) {
     // Set current state
     this->opti.set_value(this->x0, casadi::DM({0.0, state.n, state.psi, state.v}));
 
@@ -231,29 +234,21 @@ tl::expected<Controller::Control, Controller::Error> Controller::compute_control
         // TODO: handle all types of return status
         const auto stats = this->opti.stats();
         IC(stats.at("unified_return_status"), opti.return_status());
-        return tl::make_unexpected(Controller::Error::UNKNOWN_ERROR);
+        return tl::make_unexpected(HighLevelController::Error::UNKNOWN_ERROR);
     }
 }
 
-std::string to_string(const Controller::Error& error) {
+std::string to_string(const HighLevelController::Error& error) {
     switch (error) {
-        case Controller::Error::MAX_ITER:
+        case HighLevelController::Error::MAX_ITER:
             return "MAX_ITER";
-        case Controller::Error::NANS_IN_SOLVER:
+        case HighLevelController::Error::NANS_IN_SOLVER:
             return "NANS_IN_SOLVER";
-        case Controller::Error::INFEASIBLE_PROBLEM:
+        case HighLevelController::Error::INFEASIBLE_PROBLEM:
             return "INFEASIBLE_PROBLEM";
-        case Controller::Error::UNKNOWN_ERROR:
+        case HighLevelController::Error::UNKNOWN_ERROR:
             return "UNKNOWN_ERROR";
     }
-}
-
-brains2::sim::Sim::Control to_sim_control(const Controller::Control& control) {
-    return brains2::sim::Sim::Control{control.delta,
-                                      control.tau / 4,
-                                      control.tau / 4,
-                                      control.tau / 4,
-                                      control.tau / 4};
 }
 
 }  // namespace brains2::control

@@ -121,7 +121,7 @@ target_link_libraries(sim_node
 # control
 ####################################################################################################
 
-ament_auto_add_library(brains2_control SHARED src/control/controller.cpp)
+ament_auto_add_library(brains2_control SHARED src/control/high_level_controller.cpp src/control/low_level_controller.cpp)
 target_link_libraries(brains2_control m casadi fatrop)
 
 ament_auto_add_executable(control_node src/control/control_node.cpp)

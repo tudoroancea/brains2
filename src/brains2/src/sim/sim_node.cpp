@@ -417,9 +417,9 @@ public:
             this->create_publisher<Controls>("/brains2/current_controls", 10);
         this->viz_pub =
             this->create_publisher<visualization_msgs::msg::MarkerArray>("/brains2/viz/sim", 10);
-        this->diagnostics_pub =
-            this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/brains2/diagnostics",
-                                                                          10);
+        this->diagnostics_pub = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>(
+            "/brains2/diagnostics/sim",
+            10);
 
         // Create ros subscribers.
         this->target_controls_sub = this->create_subscription<brains2::msg::Controls>(
