@@ -250,9 +250,9 @@
     "3D!2u59b2d": {
       "cameraState": {
         "perspective": true,
-        "distance": 11.974738784767489,
-        "phi": 56.047936474693465,
-        "thetaOffset": 87.23607659729625,
+        "distance": 10.8072017532524,
+        "phi": 56.04793647469345,
+        "thetaOffset": 87.23607659729649,
         "targetOffset": [
           0,
           0,
@@ -721,14 +721,28 @@
           "value": "/brains2/target_controls.tau_fl",
           "enabled": true,
           "color": "#4e98e2",
-          "label": "u_tau"
+          "label": "tau_fl"
         },
         {
           "timestampMethod": "headerStamp",
-          "value": "/brains2/current_controls.tau_rl",
+          "value": "/brains2/target_controls.tau_fr",
           "enabled": true,
           "color": "#f5774d",
-          "label": "tau"
+          "label": "tau_fr"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.tau_rl",
+          "enabled": true,
+          "color": "#f7df71",
+          "label": "tau_rl"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.tau_rr",
+          "enabled": true,
+          "color": "#5cd6a9",
+          "label": "tau_rr"
         }
       ],
       "showXAxisLabels": true,
