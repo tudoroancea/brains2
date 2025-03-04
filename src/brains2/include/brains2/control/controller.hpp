@@ -41,15 +41,13 @@ public:
                const SolverParams& solver_params = {false, "fatrop"});
 
     struct State {
-        static constexpr uint8_t dim = 4;
         double s, n, psi, v;
     };
     struct Control {
-        static constexpr uint8_t dim = 2;
         double delta, tau;
     };
-    static constexpr uint8_t nx = State::dim;
-    static constexpr uint8_t nu = Control::dim;
+    static constexpr uint8_t nx = sizeof(State) / sizeof(double);
+    static constexpr uint8_t nu = sizeof(Control) / sizeof(double);
     typedef Eigen::Matrix<double, nx, Eigen::Dynamic> StateHorizonMatrix;
     typedef Eigen::Matrix<double, nu, Eigen::Dynamic> ControlHorizonMatrix;
 
@@ -71,6 +69,13 @@ public:
      */
     tl::expected<Control, Error> compute_control(const State& current_state,
                                                  const brains2::common::Track& track);
+
+    /*
+     * @brief Get the horizon size.
+     */
+    inline size_t horizon_size() const {
+        return Nf;
+    }
 
     /*
      * @brief Const ref getter to the optimal state trajectory. May contain outdated data if

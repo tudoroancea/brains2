@@ -88,16 +88,17 @@ private:
     geometry_msgs::msg::TransformStamped transform;
     diagnostic_msgs::msg::DiagnosticArray diag_msg;
 
-    // cones
-    visualization_msgs::msg::MarkerArray cones_marker_array;
+    // viz
+    visualization_msgs::msg::MarkerArray cones_markers_msg;
     visualization_msgs::msg::MarkerArray car_markers_msg;
+    rclcpp::TimerBase::SharedPtr cones_viz_timer;
 
     // lap timing
     std::pair<double, double> last_position, start_line_pos_1, start_line_pos_2;
     double last_lap_time = 0.0, best_lap_time = 0.0;
     rclcpp::Time last_lap_time_stamp = rclcpp::Time(0, 0);
 
-    void controls_callback(brains2::msg::Controls::ConstSharedPtr msg) {
+    void controls_cb(brains2::msg::Controls::ConstSharedPtr msg) {
         control.u_tau_FL = msg->tau_fl;
         control.u_tau_FR = msg->tau_fr;
         control.u_tau_RL = msg->tau_rl;
@@ -105,14 +106,7 @@ private:
         control.u_delta = msg->delta;
     }
 
-    void publish_cones_srv_cb(
-        [[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
-        [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
-        this->viz_pub->publish(cones_marker_array);
-    }
-
-    void reset_srv_cb([[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
-                      [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
+    void reset_cb() {
         // Reset the state and accelerations
         this->state =
             brains2::sim::Sim::State{0.0, 0.0, M_PI_2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -229,12 +223,12 @@ private:
         const auto &cones_map = cones_map_opt.value();
 
         // create new cones
-        cones_marker_array.markers.resize(cones_map.at(brains2::common::ConeColor::BLUE).rows() +
+        cones_markers_msg.markers.reserve(cones_map.at(brains2::common::ConeColor::BLUE).rows() +
                                           cones_map.at(brains2::common::ConeColor::YELLOW).rows() +
                                           cones_map.at(brains2::common::ConeColor::ORANGE).rows());
         for (auto &[color, cones] : cones_map) {
             for (int i = 0; i < cones.rows(); i++) {
-                cones_marker_array.markers.push_back(
+                cones_markers_msg.markers.push_back(
                     this->get_cone_marker(i,
                                           cones(i, 0),
                                           cones(i, 1),
@@ -244,7 +238,7 @@ private:
         }
         RCLCPP_INFO(this->get_logger(),
                     "Loaded %lu cones from %s",
-                    cones_marker_array.markers.size(),
+                    cones_markers_msg.markers.size(),
                     track_name.c_str());
 
         // TODO: may need to be reworked for tracks with a sharp corner at the start.
@@ -255,6 +249,7 @@ private:
             throw std::runtime_error("Could not find orange cones in track database.");
         }
         Eigen::MatrixX2d orange_cones(cones_map.at(brains2::common::ConeColor::ORANGE));
+
         // Find the indices that would sort the second column
         Eigen::PermutationMatrix<Eigen::Dynamic> indices = argsort(orange_cones.col(1));
         // Extract the corresponding rows
@@ -407,7 +402,11 @@ public:
 #error CAR_CONSTANTS_PATH is not defined
 #endif
         // Reset the sim to initialize state and controls
-        this->reset_srv_cb(nullptr, nullptr);
+        this->reset_cb();
+
+        // Create messages
+        this->create_diagnostics_message();
+        this->create_car_markers();
 
         // Create ros publishers.
         this->tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
@@ -426,27 +425,29 @@ public:
         this->target_controls_sub = this->create_subscription<brains2::msg::Controls>(
             "/brains2/target_controls",
             10,
-            std::bind(&SimNode::controls_callback, this, std::placeholders::_1));
+            std::bind(&SimNode::controls_cb, this, std::placeholders::_1));
 
         // Create ros services.
         this->reset_srv = this->create_service<std_srvs::srv::Empty>(
             "/brains2/reset",
-            std::bind(&SimNode::reset_srv_cb, this, std::placeholders::_1, std::placeholders::_2));
-        this->publish_cones_srv =
-            this->create_service<std_srvs::srv::Empty>("/brains2/publish_cones_markers",
-                                                       std::bind(&SimNode::publish_cones_srv_cb,
-                                                                 this,
-                                                                 std::placeholders::_1,
-                                                                 std::placeholders::_2));
-        // Create messages
-        this->create_diagnostics_message();
-        this->create_car_markers();
+            [this]([[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
+                   [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
+                this->reset_cb();
+            });
+        this->publish_cones_srv = this->create_service<std_srvs::srv::Empty>(
+            "/brains2/publish_cones_markers",
+            [this]([[maybe_unused]] std_srvs::srv::Empty::Request::ConstSharedPtr request,
+                   [[maybe_unused]] std_srvs::srv::Empty::Response::SharedPtr response) {
+                this->viz_pub->publish(this->cones_markers_msg);
+            });
 
         // load cones from track file and create the markers for the cones
         this->create_cones_markers(this->get_parameter("track_name").as_string());
 
-        // call once the the publish cones service
-        this->publish_cones_srv_cb(nullptr, nullptr);
+        // Create a timer for publishing cones markers
+        this->cones_viz_timer =
+            this->create_wall_timer(std::chrono::duration<double>(dt),
+                                    [this]() { this->viz_pub->publish(this->cones_markers_msg); });
 
         // create a timer for the simulation loop (one simulation step and
         // publishing the car mesh)

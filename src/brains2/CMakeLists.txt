@@ -57,6 +57,7 @@ endif()
 ####################################################################################################
 set(msg_files
   "msg/Acceleration.msg"
+  "msg/ControllerDebugInfo.msg"
   "msg/Controls.msg"
   "msg/Map.msg"
   "msg/Pose.msg"
