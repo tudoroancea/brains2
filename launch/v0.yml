@@ -10,7 +10,7 @@ launch:
       default: "20"
   - arg:
       name: "v_ref"
-      default: "6.0"
+      default: "6.5"
   - arg:
       name: "q_s"
       default: "10.0"

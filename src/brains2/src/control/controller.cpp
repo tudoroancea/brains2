@@ -45,11 +45,11 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
     auto xnext = x;
     auto scaled_dt = params.dt / rk_steps;
     for (size_t i = 0; i < rk_steps; ++i) {
-        auto k1 = f_cont({x, u, kappa_cen})[0];
-        auto k2 = f_cont({x + scaled_dt / 2 * k1, u, kappa_cen})[0];
-        auto k3 = f_cont({x + scaled_dt / 2 * k2, u, kappa_cen})[0];
-        auto k4 = f_cont({x + scaled_dt * k3, u, kappa_cen})[0];
-        xnext = x + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+        auto k1 = f_cont({xnext, u, kappa_cen})[0];
+        auto k2 = f_cont({xnext + scaled_dt / 2 * k1, u, kappa_cen})[0];
+        auto k3 = f_cont({xnext + scaled_dt / 2 * k2, u, kappa_cen})[0];
+        auto k4 = f_cont({xnext + scaled_dt * k3, u, kappa_cen})[0];
+        xnext = xnext + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
     }
     auto f_disc = casadi::Function("f_disc", {x, u, kappa_cen}, {cse(xnext)});
     return f_disc;
@@ -57,7 +57,7 @@ static casadi::Function generate_model(const Controller::ModelParams& params, si
 
 Controller::Controller(size_t Nf,
                        const Controller::ModelParams& model_params,
-                       const Controller::ConstraintsParams& contraints_params,
+                       const Controller::ConstraintsParams& constraints_params,
                        const Controller::CostParams& cost_params,
                        const Controller::SolverParams& solver_params)
     : Nf(Nf),
@@ -135,20 +135,20 @@ Controller::Controller(size_t Nf,
             opti.subject_to(x[0] == x0);
         }
         opti.subject_to(
-            opti.bounded(-contraints_params.delta_max, u[i](0), contraints_params.delta_max));
+            opti.bounded(-constraints_params.delta_max, u[i](0), constraints_params.delta_max));
         opti.subject_to(
-            opti.bounded(-contraints_params.tau_max, u[i](1), contraints_params.tau_max));
+            opti.bounded(-constraints_params.tau_max, u[i](1), constraints_params.tau_max));
         if (i > 0) {
-            opti.subject_to(opti.bounded(-w_cen(i) + contraints_params.car_width / 2,
+            opti.subject_to(opti.bounded(-w_cen(i) + constraints_params.car_width / 2,
                                          x[i](1),
-                                         w_cen(i) - contraints_params.car_width / 2));
-            opti.subject_to(opti.bounded(0.0, x[i](3), contraints_params.v_x_max));
+                                         w_cen(i) - constraints_params.car_width / 2));
+            opti.subject_to(opti.bounded(0.0, x[i](3), constraints_params.v_x_max));
         }
     }
-    opti.subject_to(opti.bounded(-w_cen(Nf) - contraints_params.car_width / 2,
+    opti.subject_to(opti.bounded(-w_cen(Nf) - constraints_params.car_width / 2,
                                  x[Nf](1),
-                                 w_cen(Nf) - contraints_params.car_width / 2));
-    opti.subject_to(opti.bounded(0.0, x[Nf](3), contraints_params.v_x_max));
+                                 w_cen(Nf) - constraints_params.car_width / 2));
+    opti.subject_to(opti.bounded(0.0, x[Nf](3), constraints_params.v_x_max));
 
     ///////////////////////////////////////////////////////////////////
     // Solver and options
