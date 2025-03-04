@@ -214,7 +214,8 @@ private:
     void control_cb() {
         if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
             RCLCPP_INFO(this->get_logger(),
-                        "Pose or velocity message not received; skipping control computation");
+                        "Pose, velocity or acceleration message not received; skipping control "
+                        "computation");
             return;
         }
         if (!this->track) {
