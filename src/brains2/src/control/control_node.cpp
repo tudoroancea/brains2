@@ -170,6 +170,7 @@ private:
 
     // Acceleration
     Subscription<Acceleration>::SharedPtr accel_sub;
+
     Acceleration::ConstSharedPtr accel_msg;
 
     void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
@@ -226,7 +227,7 @@ private:
                 .first;
 
         // Compute high level control
-        const auto start = this->now();
+        auto start = this->now();
         const auto hlc_control =
             this->hlc->compute_control(HLC::State{frenet_pose.s,
                                                   frenet_pose.n,
@@ -247,12 +248,14 @@ private:
                                          " times in a row. Aborting.");
             }
         }
-        const auto end = this->now();
+        const auto hlc_runtime = 1000 * (this->now() - start).seconds();
 
         // transform to low level control
-        const auto llc_control = this->llc->compute_control(
+        start = this->now();
+        const auto [llc_control, llc_info] = this->llc->compute_control(
             LLC::State{vel_msg->v_x, vel_msg->v_y, vel_msg->omega, accel_msg->a_x, accel_msg->a_y},
             *hlc_control);
+        const auto llc_runtime = 1000 * (this->now() - start).seconds();
 
         // Publish controls
         this->controls_msg.header.stamp = this->now();
@@ -264,7 +267,7 @@ private:
         this->target_controls_pub->publish(this->controls_msg);
 
         // Publish diagnostics
-        this->update_diag_msg(1000 * (end - start).seconds());
+        this->update_diag_msg(hlc_runtime, llc_runtime, llc_info);
         this->diagnostics_pub->publish(this->diag_msg);
 
         // Publish visualization
@@ -360,19 +363,30 @@ private:
     Publisher<DiagnosticArray>::SharedPtr diagnostics_pub;
 
     void create_diag_msg() {
-        this->diag_msg.status.resize(1);
+        this->diag_msg.status.resize(2);
         this->diag_msg.status[0].name = "high_level_controller";
         this->diag_msg.status[0].values.resize(1);
         this->diag_msg.status[0].values[0].key = "runtime (ms)";
-        // TODO: add second status for LLC
+        this->diag_msg.status[1].name = "low_level_controller";
+        this->diag_msg.status[1].values.resize(3);
+        this->diag_msg.status[1].values[0].key = "runtime (ms)";
+        this->diag_msg.status[1].values[1].key = "omega_err (rad/s)";
+        this->diag_msg.status[1].values[2].key = "delta_tau (Nm)";
     }
 
-    void update_diag_msg(const double runtime_ms) {
+    void update_diag_msg(const double hlc_runtime_ms,
+                         const double llc_runtime_ms,
+                         const LLC::Info &llc_info) {
         this->diag_msg.header.stamp = this->now();
         // TODO: report internal status here (nominal, sending last prediction, crashed)
         this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
         this->diag_msg.status[0].message = "nominal";
-        this->diag_msg.status[0].values[0].value = to_string(runtime_ms);
+        this->diag_msg.status[0].values[0].value = to_string(hlc_runtime_ms);
+        this->diag_msg.status[1].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+        this->diag_msg.status[1].message = "nominal";
+        this->diag_msg.status[1].values[0].value = to_string(llc_runtime_ms);
+        this->diag_msg.status[1].values[1].value = to_string(llc_info.omega_err);
+        this->diag_msg.status[1].values[2].value = to_string(llc_info.delta_tau);
     }
 
     ControllerDebugInfo debug_info_msg;

@@ -8,8 +8,8 @@ LowLevelController::LowLevelController(const double K_tv, const ModelParams& mod
     : K_tv(K_tv), model_params(model_params) {
 }
 
-LowLevelController::Control LowLevelController::compute_control(const State& state,
-                                                                const HLC::Control& control) {
+std::pair<LowLevelController::Control, LowLevelController::Info>
+LowLevelController::compute_control(const State& state, const HLC::Control& control) {
     const auto& [m, l_R, l_F, axle_track, z_CG, C_downforce, torque_max] = model_params;
     const double wheelbase = l_F + l_R;
 
@@ -36,17 +36,19 @@ LowLevelController::Control LowLevelController::compute_control(const State& sta
                                  longitudinal_weight_transfer + lateral_weight_transfer);
 
     // Adjust the torque of each wheel
-    return {control.delta,
-            clip((control.tau - delta_tau) * F_z_FL / (static_weight + F_downforce),
-                 -torque_max,
-                 torque_max),
-            clip((control.tau + delta_tau) * F_z_FR / (static_weight + F_downforce),
-                 -torque_max,
-                 torque_max),
-            clip((control.tau - delta_tau) * F_z_RL / (static_weight + F_downforce),
-                 -torque_max,
-                 torque_max),
-            clip((control.tau + delta_tau) * F_z_RR / (static_weight + F_downforce),
-                 -torque_max,
-                 torque_max)};
+    return std::make_pair(
+        Control{control.delta,
+                clip((control.tau - delta_tau) * F_z_FL / (static_weight + F_downforce),
+                     -torque_max,
+                     torque_max),
+                clip((control.tau + delta_tau) * F_z_FR / (static_weight + F_downforce),
+                     -torque_max,
+                     torque_max),
+                clip((control.tau - delta_tau) * F_z_RL / (static_weight + F_downforce),
+                     -torque_max,
+                     torque_max),
+                clip((control.tau + delta_tau) * F_z_RR / (static_weight + F_downforce),
+                     -torque_max,
+                     torque_max)},
+        Info{omega_kin - state.omega, delta_tau});
 }
