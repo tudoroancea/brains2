@@ -11,7 +11,7 @@ namespace control {
 class LowLevelController {
 public:
     struct State {
-        double v_x, v_y, omega, a_x, a_y;
+        double v_x, v_y, omega, a_x, a_y, delta;
     };
     using Control = brains2::sim::Sim::Control;
     struct ModelParams {
