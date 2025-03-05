@@ -49,6 +49,12 @@ launch:
                 value: $(var track_name)
         - node:
             pkg: "brains2"
+            exec: "coordination_node"
+            param:
+              - name: "laps"
+                value: 1
+        - node:
+            pkg: "brains2"
             exec: "fake_track_estimation_node"
             param:
               - name: "track_name"

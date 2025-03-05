@@ -51,6 +51,7 @@ public:
         // load yaml file with car constants
         YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
         this->car_width = car_constants["geometry"]["car_width"].as<double>();
+        this->torque_max = car_constants["actuators"]["torque_max"].as<double>();
 
         // Create high level controller (HLC)
         this->hlc = std::make_unique<HLC>(
@@ -134,6 +135,10 @@ public:
             "/brains2/acceleration",
             10,
             std::bind(&ControlNode::accel_cb, this, std::placeholders::_1));
+        this->fsm_sub = this->create_subscription<FSM>(
+            "/brains2/fsm",
+            10,
+            std::bind(&ControlNode::fsm_cb, this, std::placeholders::_1));
 
         // Initialize messages
         this->create_viz_msg();
@@ -165,16 +170,13 @@ private:
     // Velocity
     Subscription<Velocity>::SharedPtr vel_sub;
     Velocity::ConstSharedPtr vel_msg;
-
     void vel_cb(const Velocity::ConstSharedPtr vel_msg) {
         this->vel_msg = vel_msg;
     }
 
     // Acceleration
     Subscription<Acceleration>::SharedPtr accel_sub;
-
     Acceleration::ConstSharedPtr accel_msg;
-
     void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
         this->accel_msg = accel_msg;
     }
@@ -182,7 +184,6 @@ private:
     // Track Estimate
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
     unique_ptr<Track> track;
-
     void track_estimate_cb(const TrackEstimate::ConstSharedPtr msg) {
         const auto track_expected = Track::from_values(msg->s_cen,
                                                        msg->x_cen,
@@ -204,7 +205,7 @@ private:
     Subscription<FSM>::SharedPtr fsm_sub;
     FSM::ConstSharedPtr fsm_msg;
     void fsm_cb(const FSM::ConstSharedPtr &msg) {
-        fsm_msg = msg;
+        this->fsm_msg = msg;
     }
 
     /******************************************************************************
@@ -225,7 +226,7 @@ private:
     unique_ptr<HLC> hlc;
     unique_ptr<LLC> llc;
 
-    double car_width;
+    double car_width, torque_max;
     uint8_t hlc_error_counter = 0;
     enum class ControlStatus {
         NOMINAL,
@@ -246,7 +247,8 @@ private:
                    this->fsm_msg->state == FSM::NOMINAL_STOPPING) {
             // publish 0 control
             // TODO: call another HLC in NOMINAL_STOPPING state, and send diagnostics
-            this->update_controls_msg({0.0, 0.0, 0.0, 0.0, 0.0});
+            this->update_controls_msg(
+                {0.0, -torque_max / 2, -torque_max / 2, -torque_max / 2, -torque_max / 2});
             this->target_controls_pub->publish(this->controls_msg);
         } else if (this->fsm_msg->state == FSM::RACING) {
             if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
