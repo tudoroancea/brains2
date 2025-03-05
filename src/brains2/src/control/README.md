@@ -47,8 +47,8 @@ Concretely, our formulation:
 - only follow the center line with a certain target velocity.
 - choses evenly spaced points on the center line as state reference.
 - includes hard constraints on the velocity, lateral deviation and controls.
-- doesn't include any control rate constraints or penalties because the .
-- 
+- doesn't include any control rate constraints or penalties (yet, see 
+  comments in https://github.com/tudoroancea/brains2/pull/96)
 
 This already constitutes a working first implementation that lets us test the
 other modules.
@@ -60,12 +60,15 @@ include the following improvements:
 - control rate constraints and penalties
 - local racing line optimization by choosing a state reference slightly out of
   reach.
-- **global race line optimization**
-  After the 1st exploration lap, we use the past trajectory as a raceline and change the costs for the exploitation phase. We can re-estimate it lap after lap, but
-  we keep track of the lateral deviation $n$ and the heading deviation $\psi$ during the exploration phase, and then we recompute the actual taken poses based on the adjusted center line (after loop closure)
+- **global race line optimization**:
 
-  > [!WARNING]
-  > during the first lap the first and last points will not be the same !!!!!
+  After the 1st exploration lap, we use the past trajectory as a raceline and
+  change the costs for the exploitation phase. We can re-estimate it lap after
+  lap, but we keep track of the lateral deviation $n$ and the heading deviation
+  $\psi$ during the exploration phase, and then we recompute the actual taken
+  poses based on the adjusted center line (after loop closure)
+
+  A potential problem is that during the first lap the first and last points will not be the same !!!!!
 
   ⇒ we stitch the last prediction with the beginning of the lap
 
@@ -80,24 +83,26 @@ include the following improvements:
 The state and control variables are:
 ```math
 \begin{aligned}
-x &= (\Delta s, n, \psi, v)^T, \\
-u &= (\delta, \tau)^T,
+x &= (\Delta s, n, \psi, v, \delta)^T, \\
+u &= (u_\delta, \tau)^T,
 \end{aligned}
 ```
 
-where $\Delta s = s - s_0$ is the track progress since the first OCP stage
-(i.e. the current state), $n$ is the lateral deviation from the center line,
-$\psi$ is the heading deviation from the center line, and
-$v = \sqrt{v_x^2+v_y^2}$ is the absolute velocity.
+where $\Delta s = s - s_0$ is the track progress since the first OCP stage (i.e.
+the current state), $n$ is the lateral deviation from the center line, $\psi$ is
+the heading deviation from the center line, $v = \sqrt{v_x^2+v_y^2}$ is the
+absolute velocity, and $\delta$ is the steering angle.
 
 ### Dynamics
 
+The continuous model dynamics read:
 ```math
 \begin{aligned}
-\Delta \dot{s} &= \dot{s} = \frac{v \cos(\psi + beta)}{1 + n \kappa^\mathrm{cen}(s)}, \\
+\Delta \dot{s} &= \dot{s} = \frac{v \cos(\psi + \beta)}{1 + n \kappa^\mathrm{cen}(s)}, \\
 \dot{n} &= v \sin(\psi + \beta), \\
 \dot{\psi} &= \frac{v \sin(\beta)}{l_R} + \kappa^\mathrm{cen}(s) \dot{s}, \\
 \dot{v} &= \frac{1}{m}(C_\mathrm{m0}\tau - (C_\mathrm{r0} + C_\mathrm{r1} v + C_\mathrm{r2} v^2)), \\
+\dot{\delta} &= \frac{1}{t_\delta} (u_\delta - \delta), \\
 \end{aligned}
 ```
 
@@ -116,7 +121,7 @@ where the reference states and controls are chosen as follows:
 - The reference states $x^\mathrm{ref}_k$ are chosen as
 
   ```math
-  x^\mathrm{ref}_k = (k \Delta t v^\mathrm{ref}, 0, 0, v^\mathrm{ref})^T
+  x^\mathrm{ref}_k = (k \Delta t v^\mathrm{ref}, 0, 0, v^\mathrm{ref}, 0)^T
   ```
 
   where $v^\mathrm{ref}$ is the reference velocity and $\Delta t$ is the sampling
@@ -159,7 +164,7 @@ controller and there should not be erros that can be propagated from one call
 to the next.
 
 To simplify the optimization problem and the runtime, we evaluate all the
-variables depending on $s$ (like the curavture $kappa^\mathrm{cen}(s)$
+variables depending on $s$ (like the curavture $\kappa^\mathrm{cen}(s)$
 and the track width $w^\mathrm{cen}(s)$) outside of the OCP, and fix the
 values at each stage throughout the optimization.
 The values of $s$ are chosen based on the initial guess.
