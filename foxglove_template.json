@@ -250,13 +250,13 @@
     "3D!2u59b2d": {
       "cameraState": {
         "perspective": true,
-        "distance": 10.8072017532524,
-        "phi": 56.04793647469345,
-        "thetaOffset": 87.23607659729649,
+        "distance": 7.547072050704995,
+        "phi": 56.047936474693586,
+        "thetaOffset": 87.23607659729748,
         "targetOffset": [
-          0,
-          0,
-          0
+          -0.06103569712816658,
+          -0.05198458951549887,
+          5.849515594445797e-18
         ],
         "target": [
           0,
@@ -674,46 +674,6 @@
       "followingViewWidth": 10,
       "foxglovePanelTitle": "closed-loop steering (rad)"
     },
-    "Plot!3lwo8o7": {
-      "paths": [
-        {
-          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"high_level_controller\"}.values[:]{key==\"runtime (ms)\"}.value",
-          "enabled": true,
-          "timestampMethod": "headerStamp",
-          "label": "runtime"
-        }
-      ],
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showLegend": true,
-      "legendDisplay": "none",
-      "showPlotValuesInLegend": false,
-      "isSynced": true,
-      "xAxisVal": "timestamp",
-      "sidebarDimension": 240,
-      "foxglovePanelTitle": "runtime (ms)",
-      "followingViewWidth": 10
-    },
-    "Plot!21y01bi": {
-      "paths": [
-        {
-          "timestampMethod": "headerStamp",
-          "value": "/brains2/velocity.v_x",
-          "enabled": true,
-          "color": "#4e98e2"
-        }
-      ],
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showLegend": true,
-      "legendDisplay": "none",
-      "showPlotValuesInLegend": false,
-      "isSynced": true,
-      "xAxisVal": "timestamp",
-      "sidebarDimension": 240,
-      "followingViewWidth": 10,
-      "foxglovePanelTitle": "closed-loop velocity (m/s)"
-    },
     "Plot!1zeuiyp": {
       "paths": [
         {
@@ -756,14 +716,71 @@
       "followingViewWidth": 10,
       "foxglovePanelTitle": "closed-loop torque per wheel (Nm)"
     },
+    "Plot!21y01bi": {
+      "paths": [
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/velocity.v_x",
+          "enabled": true,
+          "color": "#4e98e2"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "followingViewWidth": 10,
+      "foxglovePanelTitle": "closed-loop velocity (m/s)"
+    },
+    "StateTransitions!u5aaml": {
+      "paths": [
+        {
+          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"high_level_controller\"}.message",
+          "timestampMethod": "headerStamp",
+          "label": "control status"
+        },
+        {
+          "value": "/brains2/fsm.state",
+          "timestampMethod": "headerStamp",
+          "label": "fsm"
+        }
+      ],
+      "isSynced": true,
+      "xAxisRange": 10,
+      "showPoints": true
+    },
+    "Plot!3lwo8o7": {
+      "paths": [
+        {
+          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"high_level_controller\"}.values[:]{key==\"runtime (ms)\"}.value",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "label": "runtime"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "runtime (ms)",
+      "followingViewWidth": 10
+    },
     "DiagnosticStatusPanel!6s2wmp": {
       "topicToRender": "/brains2/diagnostics"
     },
-    "Brains2 Extensions.Call Service Button!2wnmi6j": {
-      "service": "/brains2/reset",
-      "buttonLabel": "reset",
-      "buttonColor": "#ff0087",
-      "foxglovePanelTitle": "Reset simulation"
+    "Brains2 Extensions.Call Service Button!1iqqegp": {
+      "service": "/brains2/start",
+      "buttonLabel": "start",
+      "buttonColor": "#08ca35",
+      "foxglovePanelTitle": "start"
     },
     "Brains2 Extensions.Call Service Button!3tt1tjl": {
       "service": "/brains2/publish_cones_markers",
@@ -835,29 +852,35 @@
               "first": {
                 "first": {
                   "first": "Plot!3ra6qj8",
-                  "second": "Plot!3lwo8o7",
+                  "second": "Plot!1zeuiyp",
                   "direction": "column"
                 },
                 "second": {
                   "first": "Plot!21y01bi",
-                  "second": "Plot!1zeuiyp",
-                  "direction": "column"
+                  "second": {
+                    "first": "StateTransitions!u5aaml",
+                    "second": "Plot!3lwo8o7",
+                    "direction": "column",
+                    "splitPercentage": 60.89743589743589
+                  },
+                  "direction": "column",
+                  "splitPercentage": 34.84390486851125
                 },
                 "direction": "row"
               },
               "second": {
                 "first": {
                   "first": "DiagnosticStatusPanel!6s2wmp",
-                  "second": "Brains2 Extensions.Call Service Button!2wnmi6j",
+                  "second": "Brains2 Extensions.Call Service Button!1iqqegp",
                   "direction": "column",
-                  "splitPercentage": 76.91321465827639
+                  "splitPercentage": 80.24259388850014
                 },
                 "second": "Brains2 Extensions.Call Service Button!3tt1tjl",
                 "direction": "column",
-                "splitPercentage": 83.50214257888584
+                "splitPercentage": 84.20466123280693
               },
               "direction": "row",
-              "splitPercentage": 80.73322932917316
+              "splitPercentage": 80.26796589524969
             },
             "direction": "column",
             "splitPercentage": 64.34474616292798
