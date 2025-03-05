@@ -52,6 +52,8 @@ public:
         YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
         this->car_width = car_constants["geometry"]["car_width"].as<double>();
         this->torque_max = car_constants["actuators"]["torque_max"].as<double>();
+        this->steering_time_constant =
+            car_constants["actuators"]["steering_time_constant"].as<double>();
 
         // Create high level controller (HLC)
         this->hlc = std::make_unique<HLC>(
@@ -72,9 +74,6 @@ public:
                 this->declare_parameter("v_x_max", 10.0),
                 car_constants["actuators"]["steering_max"].as<double>(),
                 car_constants["actuators"]["steering_rate_max"].as<double>(),
-                // clip(this->declare_parameter("tau_max", 100.0),
-                //      0.0,
-                //      car_constants["actuators"]["torque_max"].as<double>()),
                 car_constants["actuators"]["torque_max"].as<double>(),
                 car_constants["geometry"]["car_width"].as<double>() +
                     this->declare_parameter("car_width_inflation", 0.0),
@@ -244,7 +243,7 @@ private:
     unique_ptr<HLC> hlc;
     unique_ptr<LLC> llc;
 
-    double car_width, torque_max;
+    double car_width, torque_max, steering_time_constant;
     uint8_t hlc_error_counter = 0;
     enum class ControlStatus {
         NOMINAL,
@@ -444,7 +443,7 @@ private:
     void create_diag_msg() {
         this->diag_msg.status.resize(2);
         this->diag_msg.status[0].name = "high_level_controller";
-        this->diag_msg.status[0].values.resize(1);
+        this->diag_msg.status[0].values.resize(2);
         this->diag_msg.status[0].values[0].key = "runtime (ms)";
         this->diag_msg.status[1].name = "low_level_controller";
         this->diag_msg.status[1].values.resize(3);
@@ -501,8 +500,10 @@ private:
         this->debug_info_msg.n_pred.resize(Nf + 1);
         this->debug_info_msg.psi_pred.resize(Nf + 1);
         this->debug_info_msg.v_pred.resize(Nf + 1);
-        this->debug_info_msg.delta_pred.resize(Nf);
+        this->debug_info_msg.delta_pred.resize(Nf + 1);
+        this->debug_info_msg.u_delta_pred.resize(Nf);
         this->debug_info_msg.tau_pred.resize(Nf);
+        this->debug_info_msg.delta_dot_pred.resize(Nf);
     }
 
     void update_debug_info_msg(const HLC::StateHorizonMatrix &x_ref,
@@ -520,11 +521,14 @@ private:
             this->debug_info_msg.n_pred[i] = x_pred(1, i);
             this->debug_info_msg.psi_pred[i] = x_pred(2, i);
             this->debug_info_msg.v_pred[i] = x_pred(3, i);
+            this->debug_info_msg.delta_pred[i] = x_pred(4, i);
             if (i < Nf) {
                 this->debug_info_msg.delta_ref[i] = u_ref(0, i);
                 this->debug_info_msg.tau_ref[i] = u_ref(1, i);
-                this->debug_info_msg.delta_pred[i] = u_pred(0, i);
+                this->debug_info_msg.u_delta_pred[i] = u_pred(0, i);
                 this->debug_info_msg.tau_pred[i] = u_pred(1, i);
+                this->debug_info_msg.delta_dot_pred[i] =
+                    (u_pred(0, i) - x_pred(4, i)) / steering_time_constant;
             }
         }
     }

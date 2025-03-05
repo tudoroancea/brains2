@@ -11,4 +11,6 @@ float64[] n_pred
 float64[] psi_pred
 float64[] v_pred
 float64[] delta_pred
+float64[] u_delta_pred
 float64[] tau_pred
+float64[] delta_dot_pred

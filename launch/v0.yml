@@ -27,14 +27,14 @@ launch:
       name: "r_delta"
       default: "2.0"
   - arg:
-      name: "r_delta_dot"
-      default: "1.0"
-  - arg:
       name: "r_tau"
       default: "0.001"
   - arg:
       name: "final_mul"
       default: "1000.0"
+  - arg:
+      name: "K_tv"
+      default: "300.0"
   - arg:
       name: "bag_file"
       default: ""
@@ -78,8 +78,6 @@ launch:
                 value: $(var Nf)
               - name: "v_ref"
                 value: $(var v_ref)
-              - name: "tau_max"
-                value: 200.0
               - name: "q_s"
                 value: $(var q_s)
               - name: "q_n"
@@ -100,3 +98,5 @@ launch:
                 value: $(eval "$(var final_mul) * $(var q_psi)")
               - name: "q_v_f"
                 value: $(eval "$(var final_mul) * $(var q_v)")
+              - name: "K_tv"
+                value: $(var K_tv)

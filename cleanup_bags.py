@@ -17,7 +17,7 @@ dirs_to_clean = list(
 )
 print(
     f"Found {len(dirs_to_clean)} directories to clean:",
-    "".join(list("\n\t - " + x[0] for x in dirs_to_clean)),
+    "".join(list("\n  - " + x[0] for x in dirs_to_clean)),
 )
 
 # for each, move the mcap file in the parent directory, removes the _0 from the name, and removes the directory

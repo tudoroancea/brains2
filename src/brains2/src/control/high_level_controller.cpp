@@ -154,9 +154,11 @@ HighLevelController::HighLevelController(
                 opti.bounded(-constraints_params.delta_max, u[i](0), constraints_params.delta_max));
             opti.subject_to(
                 opti.bounded(-constraints_params.tau_max, u[i](1), constraints_params.tau_max));
-            opti.subject_to(opti.bounded(-constraints_params.delta_dot_max * model_params.t_delta,
-                                         u[i](0) - x[i](4),
-                                         constraints_params.delta_dot_max * model_params.t_delta));
+            // opti.subject_to(opti.bounded(-constraints_params.delta_dot_max *
+            // model_params.t_delta,
+            //                              u[i](0) - x[i](4),
+            //                              constraints_params.delta_dot_max *
+            //                              model_params.t_delta));
         }
         // State constraints
         if (i > 0) {
