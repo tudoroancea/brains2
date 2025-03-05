@@ -3,6 +3,7 @@
 #include <memory>
 #include <rclcpp/logging.hpp>
 #include <tuple>
+#include <vector>
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
@@ -14,6 +15,7 @@
 #include "brains2/msg/acceleration.hpp"
 #include "brains2/msg/controller_debug_info.hpp"
 #include "brains2/msg/controls.hpp"
+#include "brains2/msg/fsm.hpp"
 #include "brains2/msg/pose.hpp"
 #include "brains2/msg/track_estimate.hpp"
 #include "brains2/msg/velocity.hpp"
@@ -49,6 +51,7 @@ public:
         // load yaml file with car constants
         YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
         this->car_width = car_constants["geometry"]["car_width"].as<double>();
+        this->torque_max = car_constants["actuators"]["torque_max"].as<double>();
 
         // Create high level controller (HLC)
         this->hlc = std::make_unique<HLC>(
@@ -132,6 +135,10 @@ public:
             "/brains2/acceleration",
             10,
             std::bind(&ControlNode::accel_cb, this, std::placeholders::_1));
+        this->fsm_sub = this->create_subscription<FSM>(
+            "/brains2/fsm",
+            10,
+            std::bind(&ControlNode::fsm_cb, this, std::placeholders::_1));
 
         // Initialize messages
         this->create_viz_msg();
@@ -163,16 +170,13 @@ private:
     // Velocity
     Subscription<Velocity>::SharedPtr vel_sub;
     Velocity::ConstSharedPtr vel_msg;
-
     void vel_cb(const Velocity::ConstSharedPtr vel_msg) {
         this->vel_msg = vel_msg;
     }
 
     // Acceleration
     Subscription<Acceleration>::SharedPtr accel_sub;
-
     Acceleration::ConstSharedPtr accel_msg;
-
     void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
         this->accel_msg = accel_msg;
     }
@@ -180,7 +184,6 @@ private:
     // Track Estimate
     Subscription<TrackEstimate>::SharedPtr track_estimate_sub;
     unique_ptr<Track> track;
-
     void track_estimate_cb(const TrackEstimate::ConstSharedPtr msg) {
         const auto track_expected = Track::from_values(msg->s_cen,
                                                        msg->x_cen,
@@ -198,89 +201,141 @@ private:
         }
     }
 
+    // FSM
+    Subscription<FSM>::SharedPtr fsm_sub;
+    FSM::ConstSharedPtr fsm_msg;
+    void fsm_cb(const FSM::ConstSharedPtr &msg) {
+        this->fsm_msg = msg;
+    }
+
     /******************************************************************************
      * Output data
      ******************************************************************************/
     Publisher<Controls>::SharedPtr target_controls_pub;
     Controls controls_msg;
+    void update_controls_msg(const LLC::Control &control) {
+        this->controls_msg.header.stamp = this->now();
+        this->controls_msg.tau_fl = control.u_tau_FL;
+        this->controls_msg.tau_fr = control.u_tau_FR;
+        this->controls_msg.tau_rl = control.u_tau_RL;
+        this->controls_msg.tau_rr = control.u_tau_RR;
+        this->controls_msg.delta = control.u_delta;
+    }
     rclcpp::TimerBase::SharedPtr control_timer;
+    std::vector<HLC::Control> controls_prediction;
     unique_ptr<HLC> hlc;
     unique_ptr<LLC> llc;
-    double car_width;
-    // Counter to throw an error after 5 consecutive errors
-    uint8_t error_counter = 0;
-    static constexpr uint8_t MAX_ERROR_COUNT = 5;
+
+    double car_width, torque_max;
+    uint8_t hlc_error_counter = 0;
+    enum class ControlStatus {
+        NOMINAL,
+        SENDING_LAST_PREDICTION,
+        NO_MORE_PREDICTIONS,
+    } control_status = ControlStatus::NOMINAL;
 
     void control_cb() {
-        if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
-            RCLCPP_INFO(this->get_logger(),
-                        "Pose, velocity or acceleration message not received; skipping control "
-                        "computation");
+        if (!this->fsm_msg) {
+            RCLCPP_DEBUG(this->get_logger(),
+                         "No received FSM state receieved yet; skipping control computation");
             return;
         }
-        if (!this->track) {
-            RCLCPP_INFO(this->get_logger(), "Track not initialized; skipping control computation");
-            return;
-        }
-        // Convert CartesianPose to FrenetPose
-        const auto frenet_pose =
-            track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi})
-                .first;
 
-        // Compute high level control
-        auto start = this->now();
-        const auto hlc_control =
-            this->hlc->compute_control(HLC::State{frenet_pose.s,
-                                                  frenet_pose.n,
-                                                  frenet_pose.psi,
-                                                  std::hypot(vel_msg->v_x, vel_msg->v_y)},
-                                       *(this->track));
-        if (hlc_control) {
-            error_counter = 0;
-        } else {
-            // TODO: add different behaviors based on error mode (nominal, using last prediction,
-            // etc.)
-            RCLCPP_ERROR(this->get_logger(),
-                         "Error in MPC solver: %s",
-                         to_string(hlc_control.error()).c_str());
-            ++error_counter;
-            if (error_counter >= MAX_ERROR_COUNT) {
-                throw std::runtime_error("Failed to compute control " + to_string(MAX_ERROR_COUNT) +
-                                         " times in a row. Aborting.");
+        if (this->fsm_msg->state == FSM::IDLE || this->fsm_msg->state == FSM::STOPPED) {
+            return;
+        } else if (this->fsm_msg->state == FSM::EMERGENCY_STOPPING ||
+                   this->fsm_msg->state == FSM::NOMINAL_STOPPING) {
+            // publish 0 control
+            // TODO: call another HLC in NOMINAL_STOPPING state, and send diagnostics
+            this->update_controls_msg(
+                {0.0, -torque_max / 2, -torque_max / 2, -torque_max / 2, -torque_max / 2});
+            this->target_controls_pub->publish(this->controls_msg);
+        } else if (this->fsm_msg->state == FSM::RACING) {
+            if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
+                RCLCPP_DEBUG(
+                    this->get_logger(),
+                    "Pose, velocity or acceleration message not received; skipping control "
+                    "computation");
+                return;
+            }
+            if (!this->track) {
+                RCLCPP_DEBUG(this->get_logger(),
+                             "Track not initialized; skipping control computation");
+                return;
+            }
+
+            // Convert CartesianPose to FrenetPose
+            const auto frenet_pose =
+                track->cartesian_to_frenet(CartesianPose{pose_msg->x, pose_msg->y, pose_msg->phi})
+                    .first;
+
+            // Call HLC to compute control trajectory
+            double hlc_runtime = 0.0;
+            if (control_status != ControlStatus::NO_MORE_PREDICTIONS) {
+                // Compute high level control
+                const auto start = this->now();
+                const auto hlc_controls =
+                    this->hlc->compute_control(HLC::State{frenet_pose.s,
+                                                          frenet_pose.n,
+                                                          frenet_pose.psi,
+                                                          std::hypot(vel_msg->v_x, vel_msg->v_y)},
+                                               *(this->track));
+                hlc_runtime = 1000 * (this->now() - start).seconds();
+
+                // Check for errors
+                if (hlc_controls) {
+                    hlc_error_counter = 0;
+                    this->controls_prediction = std::move(*hlc_controls);
+                    control_status = ControlStatus::NOMINAL;
+                } else {
+                    RCLCPP_ERROR(this->get_logger(),
+                                 "Error in MPC solver: %s",
+                                 to_string(hlc_controls.error()).c_str());
+                    ++hlc_error_counter;
+                    if (hlc_error_counter < this->controls_prediction.size()) {
+                        control_status = ControlStatus::SENDING_LAST_PREDICTION;
+                    } else {
+                        control_status = ControlStatus::NO_MORE_PREDICTIONS;
+                    }
+                }
+            }
+
+            // extract control to be applied now
+            const auto hlc_control = control_status == ControlStatus::NO_MORE_PREDICTIONS
+                                         ? HLC::Control{0.0, 0.0}
+                                         : this->controls_prediction[hlc_error_counter];
+
+            // transform to low level control
+            const auto start = this->now();
+            const auto [llc_control, llc_info] =
+                this->llc->compute_control(LLC::State{vel_msg->v_x,
+                                                      vel_msg->v_y,
+                                                      vel_msg->omega,
+                                                      accel_msg->a_x,
+                                                      accel_msg->a_y},
+                                           hlc_control);
+            const auto llc_runtime = 1000 * (this->now() - start).seconds();
+
+            // Publish controls
+            this->update_controls_msg(llc_control);
+            this->target_controls_pub->publish(this->controls_msg);
+
+            // Publish diagnostics
+            this->update_diag_msg(control_status, hlc_runtime, llc_runtime, llc_info);
+            this->diagnostics_pub->publish(this->diag_msg);
+
+            // Publish more debugging info from the HLC if we are in nominal status
+            if (control_status == ControlStatus::NOMINAL) {
+                this->update_viz_msg(frenet_pose.s, this->hlc->get_x_ref(), this->hlc->get_x_opt());
+                this->viz_pub->publish(this->viz_msg);
+
+                this->update_debug_info_msg(this->hlc->get_x_ref(),
+                                            this->hlc->get_u_ref(),
+                                            this->hlc->get_x_opt(),
+                                            this->hlc->get_u_opt());
+                this->debug_info_pub->publish(this->debug_info_msg);
             }
         }
-        const auto hlc_runtime = 1000 * (this->now() - start).seconds();
-
-        // transform to low level control
-        start = this->now();
-        const auto [llc_control, llc_info] = this->llc->compute_control(
-            LLC::State{vel_msg->v_x, vel_msg->v_y, vel_msg->omega, accel_msg->a_x, accel_msg->a_y},
-            *hlc_control);
-        const auto llc_runtime = 1000 * (this->now() - start).seconds();
-
-        // Publish controls
-        this->controls_msg.header.stamp = this->now();
-        this->controls_msg.tau_fl = llc_control.u_tau_FL;
-        this->controls_msg.tau_fr = llc_control.u_tau_FR;
-        this->controls_msg.tau_rl = llc_control.u_tau_RL;
-        this->controls_msg.tau_rr = llc_control.u_tau_RR;
-        this->controls_msg.delta = llc_control.u_delta;
-        this->target_controls_pub->publish(this->controls_msg);
-
-        // Publish diagnostics
-        this->update_diag_msg(hlc_runtime, llc_runtime, llc_info);
-        this->diagnostics_pub->publish(this->diag_msg);
-
-        // Publish visualization
-        this->update_viz_msg(frenet_pose.s, this->hlc->get_x_ref(), this->hlc->get_x_opt());
-        this->viz_pub->publish(this->viz_msg);
-
-        // Publish other debug information
-        this->update_debug_info_msg(this->hlc->get_x_ref(),
-                                    this->hlc->get_u_ref(),
-                                    this->hlc->get_x_opt(),
-                                    this->hlc->get_u_opt());
-        this->debug_info_pub->publish(this->debug_info_msg);
     }
 
     Publisher<MarkerArray>::SharedPtr viz_pub;
@@ -375,19 +430,37 @@ private:
         this->diag_msg.status[1].values[2].key = "delta_tau (Nm)";
     }
 
-    void update_diag_msg(const double hlc_runtime_ms,
+    void update_diag_msg(const ControlStatus control_status,
+                         const double hlc_runtime_ms,
                          const double llc_runtime_ms,
-                         const LLC::Info &llc_info) {
+                         const optional<LLC::Info> &llc_info) {
         this->diag_msg.header.stamp = this->now();
         // TODO: report internal status here (nominal, sending last prediction, crashed)
-        this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-        this->diag_msg.status[0].message = "nominal";
+        switch (control_status) {
+            case ControlStatus::NOMINAL:
+                this->diag_msg.status[0].message = "nominal";
+                this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+                break;
+            case ControlStatus::SENDING_LAST_PREDICTION:
+                this->diag_msg.status[0].message = "sending last prediction";
+                this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+                break;
+            case ControlStatus::NO_MORE_PREDICTIONS:
+                this->diag_msg.status[0].message = "no more predictions";
+                this->diag_msg.status[0].level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+                break;
+        }
         this->diag_msg.status[0].values[0].value = to_string(hlc_runtime_ms);
         this->diag_msg.status[1].level = diagnostic_msgs::msg::DiagnosticStatus::OK;
         this->diag_msg.status[1].message = "nominal";
         this->diag_msg.status[1].values[0].value = to_string(llc_runtime_ms);
-        this->diag_msg.status[1].values[1].value = to_string(llc_info.omega_err);
-        this->diag_msg.status[1].values[2].value = to_string(llc_info.delta_tau);
+        if (llc_info) {
+            this->diag_msg.status[1].values[1].value = to_string(llc_info->omega_err);
+            this->diag_msg.status[1].values[2].value = to_string(llc_info->delta_tau);
+        } else {
+            this->diag_msg.status[1].values[1].value = "N/A";
+            this->diag_msg.status[1].values[2].value = "N/A";
+        }
     }
 
     ControllerDebugInfo debug_info_msg;

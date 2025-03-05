@@ -59,6 +59,7 @@ set(msg_files
   "msg/Acceleration.msg"
   "msg/ControllerDebugInfo.msg"
   "msg/Controls.msg"
+  "msg/FSM.msg"
   "msg/Map.msg"
   "msg/Pose.msg"
   "msg/TrackEstimate.msg"
@@ -162,6 +163,15 @@ ament_auto_add_executable(fake_slam_node src/slam/fake_slam_node.cpp)
 target_link_libraries(fake_slam_node
   "${cpp_typesupport_target}" # for custom message and service types defined in this package
   yaml-cpp::yaml-cpp
+  brains2_common
+)
+
+####################################################################################################
+# coordination
+####################################################################################################
+ament_auto_add_executable(coordination_node src/coordination/coordination_node.cpp)
+target_link_libraries(coordination_node
+  "${cpp_typesupport_target}" # for custom message and service types defined in this package
   brains2_common
 )
 

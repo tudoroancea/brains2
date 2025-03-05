@@ -193,7 +193,7 @@ HighLevelController::HighLevelController(
                            casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)}));
 }
 
-tl::expected<HighLevelController::Control, HighLevelController::Error>
+tl::expected<std::vector<HighLevelController::Control>, HighLevelController::Error>
 HighLevelController::compute_control(const HighLevelController::State& state,
                                      const brains2::common::Track& track) {
     // Set current state
@@ -220,15 +220,18 @@ HighLevelController::compute_control(const HighLevelController::State& state,
 
         // Extract solution
         casadi::DM tpr;
+        std::vector<Control> controls(Nf);
         for (size_t i = 0; i < Nf; ++i) {
             tpr = sol.value(this->x[i]);
             std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + i * nx);
             tpr = sol.value(this->u[i]);
             std::copy(tpr->begin(), tpr->end(), this->u_opt.data() + i * nu);
+            controls[i] = Control{u_opt(0, i), u_opt(1, i)};
         }
         tpr = sol.value(this->x[Nf]);
         std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
-        return Control{u_opt(0, 0), u_opt(1, 0)};
+
+        return controls;
     } catch (const std::exception& e) {
         IC(e.what());
         // TODO: handle all types of return status

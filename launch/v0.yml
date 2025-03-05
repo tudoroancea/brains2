@@ -36,7 +36,7 @@ launch:
       name: "bag_file"
       default: ""
   - executable:
-      cmd: "ros2 bag record -s mcap -e '(brains2)|(tf)|(parameter_events)|(rosout)' -o $(var bag_file)"
+      cmd: "ros2 bag record --storage mcap --storage-config-file mcap_writer_options.yml --regex '(brains2)|(tf)|(parameter_events)|(rosout)' --output $(var bag_file)"
       if: $(eval "'$(var bag_file)' != ''")
   - timer:
       period: 1.0
@@ -47,6 +47,12 @@ launch:
             param:
               - name: "track_name"
                 value: $(var track_name)
+        - node:
+            pkg: "brains2"
+            exec: "coordination_node"
+            param:
+              - name: "laps"
+                value: 1
         - node:
             pkg: "brains2"
             exec: "fake_track_estimation_node"
