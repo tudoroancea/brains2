@@ -15,8 +15,10 @@ dirs_to_clean = list(
         os.walk(dir),
     )
 )
-print(f"Found {len(dirs_to_clean)} directories to clean:")
-print("\n\t - ".join(list(x[0] for x in dirs_to_clean)))
+print(
+    f"Found {len(dirs_to_clean)} directories to clean:",
+    "".join(list("\n\t - " + x[0] for x in dirs_to_clean)),
+)
 
 # for each, move the mcap file in the parent directory, removes the _0 from the name, and removes the directory
 for dirpath, _, filenames in dirs_to_clean:

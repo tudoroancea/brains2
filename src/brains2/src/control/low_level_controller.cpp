@@ -14,7 +14,7 @@ LowLevelController::compute_control(const State& state, const HLC::Control& cont
     const double wheelbase = l_F + l_R;
 
     // Compute reference torque difference between right and left wheels
-    const auto beta = l_R / wheelbase * control.delta;
+    const auto beta = l_R / wheelbase * state.delta;
     const auto v = std::hypot(state.v_x, state.v_y);
     const double omega_kin = v * sin(beta) / l_R;
     const double delta_tau = K_tv * (omega_kin - state.omega);
@@ -37,7 +37,7 @@ LowLevelController::compute_control(const State& state, const HLC::Control& cont
 
     // Adjust the torque of each wheel
     return std::make_pair(
-        Control{control.delta,
+        Control{control.u_delta,
                 clip((control.tau - delta_tau) * F_z_FL / (static_weight + F_downforce),
                      -torque_max,
                      torque_max),

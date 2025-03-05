@@ -66,24 +66,32 @@ public:
                 car_constants["drivetrain"]["C_r0"].as<double>(),
                 car_constants["drivetrain"]["C_r1"].as<double>(),
                 car_constants["drivetrain"]["C_r2"].as<double>(),
+                car_constants["actuators"]["steering_time_constant"].as<double>(),
             },
-            HLC::ConstraintsParams{this->declare_parameter("v_x_max", 10.0),
-                                   this->declare_parameter("delta_max", 0.5),
-                                   this->declare_parameter("tau_max", 100.0),
-                                   car_constants["geometry"]["car_width"].as<double>() +
-                                       this->declare_parameter("car_width_inflation", 0.0)},
+            HLC::ConstraintsParams{
+                this->declare_parameter("v_x_max", 10.0),
+                car_constants["actuators"]["steering_max"].as<double>(),
+                car_constants["actuators"]["steering_rate_max"].as<double>(),
+                // clip(this->declare_parameter("tau_max", 100.0),
+                //      0.0,
+                //      car_constants["actuators"]["torque_max"].as<double>()),
+                car_constants["actuators"]["torque_max"].as<double>(),
+                car_constants["geometry"]["car_width"].as<double>() +
+                    this->declare_parameter("car_width_inflation", 0.0),
+            },
             HLC::CostParams{
                 this->declare_parameter("v_ref", 5.0),
-                this->declare_parameter("q_s", 1.0),
-                this->declare_parameter("q_n", 1.0),
-                this->declare_parameter("q_psi", 1.0),
-                this->declare_parameter("q_v", 1.0),
-                this->declare_parameter("r_delta", 1.0),
-                this->declare_parameter("r_tau", 1.0),
-                this->declare_parameter("q_s_f", 1.0),
-                this->declare_parameter("q_n_f", 1.0),
-                this->declare_parameter("q_psi_f", 1.0),
-                this->declare_parameter("q_v_f", 1.0),
+                this->declare_parameter("q_s", 10.0),
+                this->declare_parameter("q_n", 20.0),
+                this->declare_parameter("q_psi", 50.0),
+                this->declare_parameter("q_v", 20.0),
+                this->declare_parameter("r_delta", 2.0),
+                this->declare_parameter("r_delta_dot", 1.0),
+                this->declare_parameter("r_tau", 0.001),
+                this->declare_parameter("q_s_f", 10000.0),
+                this->declare_parameter("q_n_f", 20000.0),
+                this->declare_parameter("q_psi_f", 50000.0),
+                this->declare_parameter("q_v_f", 20000.0),
             },
             HLC::SolverParams{
                 this->declare_parameter("jit", false),
@@ -135,6 +143,10 @@ public:
             "/brains2/acceleration",
             10,
             std::bind(&ControlNode::accel_cb, this, std::placeholders::_1));
+        this->current_controls_sub = this->create_subscription<Controls>(
+            "/brains2/current_controls",
+            10,
+            std::bind(&ControlNode::current_controls_cb, this, std::placeholders::_1));
         this->fsm_sub = this->create_subscription<FSM>(
             "/brains2/fsm",
             10,
@@ -154,7 +166,6 @@ private:
     // Pose
     Subscription<Pose>::SharedPtr pose_sub;
     Pose::ConstSharedPtr pose_msg;
-
     void pose_cb(const Pose::ConstSharedPtr pose_msg) {
         this->pose_msg = pose_msg;
         // We launch the control timer upon receiving the first pose message and not velocity
@@ -179,6 +190,13 @@ private:
     Acceleration::ConstSharedPtr accel_msg;
     void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
         this->accel_msg = accel_msg;
+    }
+
+    // Current control
+    Subscription<Controls>::SharedPtr current_controls_sub;
+    Controls::ConstSharedPtr current_controls_msg;
+    void current_controls_cb(const Controls::ConstSharedPtr control_msg) {
+        this->current_controls_msg = control_msg;
     }
 
     // Track Estimate
@@ -212,14 +230,14 @@ private:
      * Output data
      ******************************************************************************/
     Publisher<Controls>::SharedPtr target_controls_pub;
-    Controls controls_msg;
+    Controls target_controls_msg;
     void update_controls_msg(const LLC::Control &control) {
-        this->controls_msg.header.stamp = this->now();
-        this->controls_msg.tau_fl = control.u_tau_FL;
-        this->controls_msg.tau_fr = control.u_tau_FR;
-        this->controls_msg.tau_rl = control.u_tau_RL;
-        this->controls_msg.tau_rr = control.u_tau_RR;
-        this->controls_msg.delta = control.u_delta;
+        this->target_controls_msg.header.stamp = this->now();
+        this->target_controls_msg.tau_fl = control.u_tau_FL;
+        this->target_controls_msg.tau_fr = control.u_tau_FR;
+        this->target_controls_msg.tau_rl = control.u_tau_RL;
+        this->target_controls_msg.tau_rr = control.u_tau_RR;
+        this->target_controls_msg.delta = control.u_delta;
     }
     rclcpp::TimerBase::SharedPtr control_timer;
     std::vector<HLC::Control> controls_prediction;
@@ -249,9 +267,10 @@ private:
             // TODO: call another HLC in NOMINAL_STOPPING state, and send diagnostics
             this->update_controls_msg(
                 {0.0, -torque_max / 2, -torque_max / 2, -torque_max / 2, -torque_max / 2});
-            this->target_controls_pub->publish(this->controls_msg);
+            this->target_controls_pub->publish(this->target_controls_msg);
         } else if (this->fsm_msg->state == FSM::RACING) {
-            if (!this->pose_msg || !this->vel_msg || !this->accel_msg) {
+            if (!this->pose_msg || !this->vel_msg || !this->accel_msg ||
+                !this->current_controls_msg) {
                 RCLCPP_DEBUG(
                     this->get_logger(),
                     "Pose, velocity or acceleration message not received; skipping control "
@@ -270,17 +289,20 @@ private:
                     .first;
 
             // Call HLC to compute control trajectory
-            double hlc_runtime = 0.0;
+            double hlc_runtime_ms = 0.0;
             if (control_status != ControlStatus::NO_MORE_PREDICTIONS) {
                 // Compute high level control
                 const auto start = this->now();
-                const auto hlc_controls =
-                    this->hlc->compute_control(HLC::State{frenet_pose.s,
-                                                          frenet_pose.n,
-                                                          frenet_pose.psi,
-                                                          std::hypot(vel_msg->v_x, vel_msg->v_y)},
-                                               *(this->track));
-                hlc_runtime = 1000 * (this->now() - start).seconds();
+                const auto hlc_controls = this->hlc->compute_control(
+                    HLC::State{
+                        frenet_pose.s,
+                        frenet_pose.n,
+                        frenet_pose.psi,
+                        std::hypot(vel_msg->v_x, vel_msg->v_y),
+                        current_controls_msg->delta,
+                    },
+                    *(this->track));
+                hlc_runtime_ms = 1000 * (this->now() - start).seconds();
 
                 // Check for errors
                 if (hlc_controls) {
@@ -312,16 +334,17 @@ private:
                                                       vel_msg->v_y,
                                                       vel_msg->omega,
                                                       accel_msg->a_x,
-                                                      accel_msg->a_y},
+                                                      accel_msg->a_y,
+                                                      current_controls_msg->delta},
                                            hlc_control);
-            const auto llc_runtime = 1000 * (this->now() - start).seconds();
+            const auto llc_runtime_ms = 1000 * (this->now() - start).seconds();
 
             // Publish controls
             this->update_controls_msg(llc_control);
-            this->target_controls_pub->publish(this->controls_msg);
+            this->target_controls_pub->publish(this->target_controls_msg);
 
             // Publish diagnostics
-            this->update_diag_msg(control_status, hlc_runtime, llc_runtime, llc_info);
+            this->update_diag_msg(control_status, hlc_runtime_ms, llc_runtime_ms, llc_info);
             this->diagnostics_pub->publish(this->diag_msg);
 
             // Publish more debugging info from the HLC if we are in nominal status

@@ -19,18 +19,19 @@ static casadi::Function generate_model(const HighLevelController::ModelParams& p
     auto n = split[1];
     auto psi = split[2];
     auto v = split[3];
+    auto delta = split[4];
 
     // control variables
     auto u = casadi::MX::sym("u", HighLevelController::nu);
     split = vertsplit(u);
-    auto delta = split[0];
+    auto u_delta = split[0];
     auto tau = split[1];
 
     // parameters
     auto kappa_cen = casadi::MX::sym("kappa_cen");
 
     // assemble the continuous dynamics
-    auto beta = params.l_R / (params.l_F + params.l_R) * delta;
+    auto beta = params.l_R / (params.l_F + params.l_R) * u_delta;
     auto s_dot = v * cos(psi + beta) / (1 + n * kappa_cen);
     auto f_cont = casadi::Function(
         "f_cont",
@@ -40,6 +41,7 @@ static casadi::Function generate_model(const HighLevelController::ModelParams& p
             v * sin(psi + beta),
             v * sin(beta) / params.l_R + kappa_cen * s_dot,
             (params.C_m0 * tau - (params.C_r0 + params.C_r1 * v + params.C_r2 * v * v)) / params.m,
+            (u_delta - delta) / params.t_delta,
         })});
 
     // Discretize with RK4
@@ -50,7 +52,7 @@ static casadi::Function generate_model(const HighLevelController::ModelParams& p
         auto k2 = f_cont({xnext + scaled_dt / 2 * k1, u, kappa_cen})[0];
         auto k3 = f_cont({xnext + scaled_dt / 2 * k2, u, kappa_cen})[0];
         auto k4 = f_cont({xnext + scaled_dt * k3, u, kappa_cen})[0];
-        xnext = xnext + scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+        xnext += scaled_dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
     }
     auto f_disc = casadi::Function("f_disc", {x, u, kappa_cen}, {cse(xnext)});
     return f_disc;
@@ -105,24 +107,30 @@ HighLevelController::HighLevelController(
     x_ref.row(0) = Eigen::VectorXd::LinSpaced(Nf + 1, 0.0, Nf * dt * v_ref);
     x_ref.row(3).array() = v_ref;
     // Create cost weight matrices
-    const auto Q = casadi::MX::diag(casadi::MX::vertcat(
-                   {cost_params.q_s, cost_params.q_n, cost_params.q_psi, cost_params.q_v})),
+    const auto Q = casadi::MX::diag(casadi::MX::vertcat({cost_params.q_s,
+                                                         cost_params.q_n,
+                                                         cost_params.q_psi,
+                                                         cost_params.q_v,
+                                                         cost_params.r_delta})),
                R = casadi::MX::diag(casadi::MX::vertcat({cost_params.r_delta, cost_params.r_tau})),
-               Q_f = casadi::MX::diag(casadi::MX::vertcat(
-                   {cost_params.q_s_f, cost_params.q_n_f, cost_params.q_psi_f, cost_params.q_v_f}));
+               Q_f = casadi::MX::diag(casadi::MX::vertcat({cost_params.q_s_f,
+                                                           cost_params.q_n_f,
+                                                           cost_params.q_psi_f,
+                                                           cost_params.q_v_f,
+                                                           cost_params.r_delta}));
     cost_function = casadi::MX(0.0);
-    for (size_t i = 0; i < Nf; ++i) {
-        const auto u_diff = u[i] - casadi::DM({u_ref(0, i), u_ref(1, i)});
-        cost_function += mtimes(u_diff.T(), mtimes(R, u_diff));
+    for (size_t i = 0; i <= Nf; ++i) {
+        if (i < Nf) {
+            const auto u_diff = u[i] - casadi::DM({u_ref(0, i), u_ref(1, i)});
+            cost_function += mtimes(u_diff.T(), mtimes(R, u_diff));
+            // cost_function += cost_params.r_delta_dot * (u[i](0) - x[i](4)) * (u[i](0) - x[i](4));
+        }
         if (i > 0) {
             const auto x_diff =
-                x[i] - casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i)});
+                x[i] -
+                casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i), x_ref(4, i)});
             cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
         }
-    }
-    {
-        auto x_diff = x[Nf] - casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)});
-        cost_function += mtimes(x_diff.T(), mtimes(Q, x_diff));
     }
     opti.minimize(cse(cost_function));
 
@@ -131,26 +139,33 @@ HighLevelController::HighLevelController(
     ///////////////////////////////////////////////////////////////////
     // NOTE: the constraints have to be declared stage by stage for
     // fatrop to properly auto-detect the problem structure.
-    for (size_t i = 0; i < Nf; ++i) {
-        opti.subject_to(x[i + 1] == f_disc({x[i], u[i], kappa_cen(i)})[0]);
+    for (size_t i = 0; i <= Nf; ++i) {
+        // Dynamics
+        if (i < Nf) {
+            opti.subject_to(x[i + 1] == f_disc({x[i], u[i], kappa_cen(i)})[0]);
+        }
+        // Initial conditions
         if (i == 0) {
             opti.subject_to(x[0] == x0);
         }
-        opti.subject_to(
-            opti.bounded(-constraints_params.delta_max, u[i](0), constraints_params.delta_max));
-        opti.subject_to(
-            opti.bounded(-constraints_params.tau_max, u[i](1), constraints_params.tau_max));
+        // Control constraints
+        if (i < Nf) {
+            opti.subject_to(
+                opti.bounded(-constraints_params.delta_max, u[i](0), constraints_params.delta_max));
+            opti.subject_to(
+                opti.bounded(-constraints_params.tau_max, u[i](1), constraints_params.tau_max));
+            opti.subject_to(opti.bounded(-constraints_params.delta_dot_max * model_params.t_delta,
+                                         u[i](0) - x[i](4),
+                                         constraints_params.delta_dot_max * model_params.t_delta));
+        }
+        // State constraints
         if (i > 0) {
             opti.subject_to(opti.bounded(-w_cen(i) + constraints_params.car_width / 2,
                                          x[i](1),
                                          w_cen(i) - constraints_params.car_width / 2));
-            opti.subject_to(opti.bounded(0.0, x[i](3), constraints_params.v_x_max));
+            opti.subject_to(opti.bounded(0.0, x[i](3), constraints_params.v_max));
         }
     }
-    opti.subject_to(opti.bounded(-w_cen(Nf) - constraints_params.car_width / 2,
-                                 x[Nf](1),
-                                 w_cen(Nf) - constraints_params.car_width / 2));
-    opti.subject_to(opti.bounded(0.0, x[Nf](3), constraints_params.v_x_max));
 
     ///////////////////////////////////////////////////////////////////
     // Solver and options
@@ -184,20 +199,21 @@ HighLevelController::HighLevelController(
     ///////////////////////////////////////////////////////////////////
     // Set initial guess
     ///////////////////////////////////////////////////////////////////
-    for (size_t i = 0; i < Nf; ++i) {
-        this->opti.set_initial(this->x[i],
-                               casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i)}));
-        this->opti.set_initial(this->u[i], casadi::DM({u_ref(0, i), u_ref(1, i)}));
+    for (size_t i = 0; i <= Nf; ++i) {
+        if (i < Nf) {
+            this->opti.set_initial(this->u[i], casadi::DM({u_ref(0, i), u_ref(1, i)}));
+        }
+        this->opti.set_initial(
+            this->x[i],
+            casadi::DM({x_ref(0, i), x_ref(1, i), x_ref(2, i), x_ref(3, i), x_ref(4, i)}));
     }
-    this->opti.set_initial(this->x[Nf],
-                           casadi::DM({x_ref(0, Nf), x_ref(1, Nf), x_ref(2, Nf), x_ref(3, Nf)}));
 }
 
 tl::expected<std::vector<HighLevelController::Control>, HighLevelController::Error>
 HighLevelController::compute_control(const HighLevelController::State& state,
                                      const brains2::common::Track& track) {
     // Set current state
-    this->opti.set_value(this->x0, casadi::DM({0.0, state.n, state.psi, state.v}));
+    this->opti.set_value(this->x0, casadi::DM({0.0, state.n, state.psi, state.v, state.delta}));
 
     // Compute parameter values
     std::vector<double> kappa_cen_val(Nf + 1), w_cen_val(Nf + 1);
@@ -212,24 +228,18 @@ HighLevelController::compute_control(const HighLevelController::State& state,
         // Call solver
         auto sol = this->opti.solve();
 
-        // Check solver status
-        const auto stats = this->opti.stats();
-        if (!stats.at("success").as_bool()) {
-            throw std::runtime_error("Solver failed");
-        }
-
         // Extract solution
         casadi::DM tpr;
         std::vector<Control> controls(Nf);
-        for (size_t i = 0; i < Nf; ++i) {
+        for (size_t i = 0; i <= Nf; ++i) {
+            if (i < Nf) {
+                tpr = sol.value(this->u[i]);
+                std::copy(tpr->begin(), tpr->end(), this->u_opt.data() + i * nu);
+                controls[i] = Control{u_opt(0, i), u_opt(1, i)};
+            }
             tpr = sol.value(this->x[i]);
             std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + i * nx);
-            tpr = sol.value(this->u[i]);
-            std::copy(tpr->begin(), tpr->end(), this->u_opt.data() + i * nu);
-            controls[i] = Control{u_opt(0, i), u_opt(1, i)};
         }
-        tpr = sol.value(this->x[Nf]);
-        std::copy(tpr->begin(), tpr->end(), this->x_opt.data() + Nf * nx);
 
         return controls;
     } catch (const std::exception& e) {

@@ -61,6 +61,6 @@ wheels:
 actuators:
   torque_max: 276.75
   steering_max: 0.5
-  steering_rate_max: 1.0
+  steering_rate_max: 10.0
   motor_time_constant: 1e-3
   steering_time_constant: 0.02
