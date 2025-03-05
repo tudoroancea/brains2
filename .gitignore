@@ -12,3 +12,4 @@ __pycache__
 *.mtx
 *.casadi
 bags
+imgui.ini

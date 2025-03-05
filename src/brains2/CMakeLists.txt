@@ -44,6 +44,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
 find_package(casadi REQUIRED)
 find_package(fatrop REQUIRED)
+find_package(SDL2 REQUIRED)
 
 if (CMAKE_TESTING_ENABLED)
   enable_testing()
@@ -176,7 +177,27 @@ target_link_libraries(coordination_node
 )
 
 ####################################################################################################
-# create package
+# install ros2 package
 ####################################################################################################
 
 ament_auto_package(INSTALL_TO_SHARE)
+
+####################################################################################################
+# imgui/implot test
+####################################################################################################
+
+file(GLOB_RECURSE IMGUI_SRC imgui/*.cpp)
+add_library(imgui SHARED
+    ${IMGUI_SRC}
+    imgui/backends/imgui_impl_sdl2.cpp
+    imgui/backends/imgui_impl_sdlrenderer2.cpp
+)
+target_link_libraries(imgui SDL2)
+target_include_directories(imgui PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends>
+    ${SDL2_INCLUDE_DIRS}
+)
+
+add_executable(gui gui.cpp)
+target_link_libraries(gui PRIVATE imgui)
