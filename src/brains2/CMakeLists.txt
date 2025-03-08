@@ -179,12 +179,13 @@ target_link_libraries(coordination_node
 ####################################################################################################
 # NOTE: this must happen before the invocation of ament_package()
 if(BUILD_TESTING)
-  # NOTE: the actual command invocation done by ament will actually be performed via subprocess.Popen
+  # find all files to exclude from lint
+  # NOTE: all the command line invocations done by ament will actually be performed via subprocess.Popen
   # (see https://github.com/ament/ament_cmake/blob/1b66f6c25f7d6ed98b3aadafe57af0df6ce91573/ament_cmake_test/ament_cmake_test/__init__.py#L201)
   # which does not seem to support shell extensions such as globbing. We therefore have to manually
   # specify the files to exclude.
-  set(AMENT_LINT_AUTO_FILE_EXCLUDE "")
-  file(GLOB_RECURSE AMENT_LINT_AUTO_FILE_EXCLUDE CONFIGURE_DEPENDS
+  set(FILES_EXCLUDED_FROM_LINT "")
+  file(GLOB_RECURSE FILES_EXCLUDED_FROM_LINT CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/src/sim/generated/*
     ${CMAKE_SOURCE_DIR}/src/sim/generated/dyn6_model/*
     ${CMAKE_SOURCE_DIR}/src/sim/generated/kin6_model/*
@@ -192,31 +193,32 @@ if(BUILD_TESTING)
     ${CMAKE_SOURCE_DIR}/imgui/*
     ${CMAKE_SOURCE_DIR}/imgui/backends/*
   )
-  message(STATUS "AMENT_LINT_AUTO_FILE_EXCLUDE: ${AMENT_LINT_AUTO_FILE_EXCLUDE}")
+  message(STATUS "FILES_EXCLUDED_FROM_LINT: ${FILES_EXCLUDED_FROM_LINT}")
 
-  find_package(ament_cmake_copyright REQUIRED)
-  ament_copyright(EXCLUDE ${AMENT_LINT_AUTO_FILE_EXCLUDE})
-
-  # find files to format
-  set(FILES_TO_FORMAT "")
-  file(GLOB_RECURSE FILES_TO_FORMAT CONFIGURE_DEPENDS
+  # find files to lint
+  # same note as above
+  set(FILEST_TO_LINT "")
+  file(GLOB_RECURSE FILEST_TO_LINT CONFIGURE_DEPENDS
     *.cpp
     *.hpp
     *.c
     *.h
   )
-  list(FILTER FILES_TO_FORMAT EXCLUDE REGEX "src/sim/generated")
-  list(FILTER FILES_TO_FORMAT EXCLUDE REGEX "include/brains2/external")
-  message(STATUS "FILES_TO_FORMAT: ${FILES_TO_FORMAT}")
+  list(REMOVE_ITEM FILEST_TO_LINT ${FILES_EXCLUDED_FROM_LINT})
+  message(STATUS "FILEST_TO_LINT: ${FILEST_TO_LINT}")
+
+  # check copyright headers
+  find_package(ament_cmake_copyright REQUIRED)
+  ament_copyright(EXCLUDE ${FILES_EXCLUDED_FROM_LINT})
 
   # find clang-format config file (at the root of the workspace)
   set(CLANG_CONFIG_FILE "${CMAKE_SOURCE_DIR}/../../.clang-format")
   get_filename_component(CLANG_CONFIG_FILE "${CLANG_CONFIG_FILE}" ABSOLUTE)
   message(STATUS "CLANG_CONFIG_FILE: ${CLANG_CONFIG_FILE}")
 
-  # call ament_clang_format
+  # check formatting with clang-format
   find_package(ament_cmake_clang_format REQUIRED)
-  ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILES_TO_FORMAT}")
+  ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILEST_TO_LINT}")
 endif()
 
 
