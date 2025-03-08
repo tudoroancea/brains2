@@ -18,13 +18,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef CENTER_LINE_ESTIMATION_HPP
-#define CENTER_LINE_ESTIMATION_HPP
+#ifndef BRAINS2__ESTIMATION__CENTER_LINE_ESTIMATION_HPP_
+#define BRAINS2__ESTIMATION__CENTER_LINE_ESTIMATION_HPP_
 
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/SparseCore>
+#include <string>
+#include <utility>
 #include "brains2/external/expected.hpp"
+#include "Eigen/Dense"
+#include "Eigen/Sparse"
+#include "Eigen/SparseCore"
 
 typedef std::pair<Eigen::VectorXd, Eigen::VectorXd> VectorPair;
 
@@ -69,4 +71,4 @@ inline std::string to_string(CenterLineEstimationError error) {
 
 }  // namespace brains2::track_estimation
 
-#endif  // CENTER_LINE_ESTIMATION_HPP
+#endif  // BRAINS2__ESTIMATION__CENTER_LINE_ESTIMATION_HPP_

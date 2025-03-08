@@ -19,11 +19,11 @@
 // THE SOFTWARE.
 
 #include "brains2/common/spline_fitting.hpp"
-#include <osqp/osqp.h>
-#include <OsqpEigen/OsqpEigen.h>
 #include <cmath>
 #include <numeric>
 #include "brains2/external/icecream.hpp"
+#include "osqp/osqp.h"
+#include "OsqpEigen/OsqpEigen.h"
 
 namespace brains2::track_estimation {
 

@@ -18,9 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef MARKER_COLOR_HPP
-#define MARKER_COLOR_HPP
+#ifndef BRAINS2__COMMON__MARKER_COLOR_HPP_
+#define BRAINS2__COMMON__MARKER_COLOR_HPP_
 
+#include <string>
 #include "std_msgs/msg/color_rgba.hpp"
 
 namespace brains2 {
@@ -31,4 +32,4 @@ std_msgs::msg::ColorRGBA marker_colors(const std::string &color);
 }  // namespace common
 }  // namespace brains2
 
-#endif  // MARKER_COLOR_HPP
+#endif  // BRAINS2__COMMON__MARKER_COLOR_HPP_

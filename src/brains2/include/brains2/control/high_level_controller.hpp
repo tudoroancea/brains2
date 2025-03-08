@@ -18,15 +18,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef BRAINS2_CONTROL_CONTROLLER_HPP
-#define BRAINS2_CONTROL_CONTROLLER_HPP
+#ifndef BRAINS2__CONTROL__HIGH_LEVEL_CONTROLLER_HPP_
+#define BRAINS2__CONTROL__HIGH_LEVEL_CONTROLLER_HPP_
 
 #include <array>
 #include <cstdint>
-#include <Eigen/Dense>
+#include <string>
+#include <vector>
 #include "brains2/common/tracks.hpp"
 #include "brains2/external/expected.hpp"
 #include "casadi/casadi.hpp"
+#include "Eigen/Dense"
 
 namespace brains2 {
 namespace control {
@@ -150,4 +152,4 @@ std::string to_string(const HLC::Error& error);
 }  // namespace control
 }  // namespace brains2
 
-#endif
+#endif  // BRAINS2__CONTROL__HIGH_LEVEL_CONTROLLER_HPP_

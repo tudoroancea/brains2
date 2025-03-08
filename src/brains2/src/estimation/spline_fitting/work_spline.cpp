@@ -20,9 +20,6 @@
 
 #include <chrono>
 #include <cmath>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/SparseCore>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -30,8 +27,13 @@
 #include "brains2/estimation/center_line_estimation.hpp"
 #include "brains2/external/icecream.hpp"
 #include "brains2/external/rapidcsv.hpp"
+#include "Eigen/Dense"
+#include "Eigen/Sparse"
+#include "Eigen/SparseCore"
 
-using namespace brains2::track_estimation;
+using brains2::track_estimation::compute_center_line;
+using brains2::track_estimation::SplineFitter;
+using brains2::track_estimation::SplineParametrization;
 
 int main() {
     const std::string path_input = "src/brains2/src/estimation/alpha_cones.csv";

@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <Eigen/Dense>
 #include <memory>
 #include <numeric>
 #include <rclcpp/logging.hpp>
@@ -31,6 +30,7 @@
 #include "brains2/external/icecream.hpp"
 #include "brains2/msg/pose.hpp"
 #include "brains2/msg/track_estimate.hpp"
+#include "Eigen/Dense"
 #include "rclcpp/node.hpp"
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -38,11 +38,14 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 
-using namespace std;
-using namespace brains2::msg;
-using namespace brains2::common;
+using brains2::common::teds_projection;
+using brains2::common::Track;
+using brains2::msg::Pose;
+using brains2::msg::TrackEstimate;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
+using std::unique_ptr;
+using std::vector;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 
@@ -82,7 +85,7 @@ private:
     unique_ptr<Track> track;
     TrackEstimate track_estimate_msg;
     MarkerArray viz_msg;
-    shared_ptr<const Pose> last_pose;
+    Pose::ConstSharedPtr last_pose;
 
     void on_pose(Pose::ConstSharedPtr msg) {
         last_pose = msg;

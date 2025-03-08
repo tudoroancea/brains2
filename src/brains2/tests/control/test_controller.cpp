@@ -26,8 +26,8 @@
 #include "brains2/external/icecream.hpp"
 #include "gtest/gtest.h"
 
-using namespace brains2::common;
-using namespace brains2::control;
+using brains2::common::Track;
+using brains2::control::HighLevelController;
 
 static tl::expected<Track, Track::Error> generate_constant_curvature_track(const double curvature,
                                                                            const double s_max,

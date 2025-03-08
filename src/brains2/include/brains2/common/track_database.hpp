@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef TRACK_DATABASE_HPP
-#define TRACK_DATABASE_HPP
+#ifndef BRAINS2__COMMON__TRACK_DATABASE_HPP_
+#define BRAINS2__COMMON__TRACK_DATABASE_HPP_
 
 #include <filesystem>
 #include <string>
@@ -61,4 +61,4 @@ void save_cones(const std::filesystem::path &track_path,
 }  // namespace common
 }  // namespace brains2
 
-#endif  // TRACK_DATABASE_HPP
+#endif  // BRAINS2__COMMON__TRACK_DATABASE_HPP_

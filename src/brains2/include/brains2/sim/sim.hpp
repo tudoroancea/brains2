@@ -18,11 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef BRAINS2_SIM_SIM_HPP
-#define BRAINS2_SIM_SIM_HPP
+#ifndef BRAINS2__SIM__SIM_HPP_
+#define BRAINS2__SIM__SIM_HPP_
 
 #include <array>
 #include <string>
+#include <utility>
 #include "acados/sim/sim_common.h"
 #include "brains2/external/expected.hpp"
 #include "casadi/mem.h"
@@ -143,4 +144,4 @@ private:
 }  // namespace sim
 }  // namespace brains2
 
-#endif
+#endif  // BRAINS2__SIM__SIM_HPP_

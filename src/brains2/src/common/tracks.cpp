@@ -19,7 +19,6 @@
 // THE SOFTWARE.
 
 #include "brains2/common/tracks.hpp"
-#include <Eigen/src/Core/Matrix.h>
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
@@ -28,6 +27,7 @@
 #include "brains2/external/icecream.hpp"
 #include "brains2/external/optional.hpp"
 #include "brains2/external/rapidcsv.hpp"
+#include "Eigen/src/Core/Matrix.h"
 
 namespace brains2::common {
 
@@ -92,7 +92,7 @@ tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
     track.coeffs_phi.resize(size - 1, 2);
     track.coeffs_kappa.resize(size - 1, 2);
     track.coeffs_width.resize(size - 1, 2);
-    for (long i = 0; i < size - 1; ++i) {
+    for (Eigen::Index i = 0; i < size - 1; ++i) {
         track.coeffs_X(i, 0) = track.vals_X(i);
         track.coeffs_X(i, 1) = (track.vals_X(i + 1) - track.vals_X(i)) / delta_s(i);
 
@@ -166,11 +166,11 @@ std::tuple<double, Eigen::Vector2d> Track::project(double X,
     // within s_guess +- s_tol
     double s_low = std::max(s_guess - s_tol, vals_s(0)),
            s_up = std::min(s_guess + s_tol, vals_s(vals_s.size() - 1));
-    long long id_low = find_interval(s_low), id_up = find_interval(s_up);
+    int64_t id_low = find_interval(s_low), id_up = find_interval(s_up);
     if (id_low > 0) {
         --id_low;
     }
-    if (id_up < static_cast<long long>(vals_s.size()) - 1) {
+    if (id_up < static_cast<int64_t>(vals_s.size()) - 1) {
         ++id_up;
     }
     Eigen::ArrayX2d local_traj =
@@ -181,14 +181,14 @@ std::tuple<double, Eigen::Vector2d> Track::project(double X,
 
     // find the closest point to car_pos to find one segment extremity
     Eigen::VectorXd sqdist = (local_traj.col(0) - X).square() + (local_traj.col(1) - Y).square();
-    long long id_min, id_prev, id_next;
+    int64_t id_min, id_prev, id_next;
     sqdist.minCoeff(&id_min);
     id_prev = id_min - 1;
     if (id_min == 0) {
         id_prev = local_traj.rows() - 1;
     }
     id_next = id_min + 1;
-    if (id_min == static_cast<long long>(local_traj.rows()) - 1) {
+    if (id_min == static_cast<int64_t>(local_traj.rows()) - 1) {
         id_next = 0;
     }
     // TODO: what happens if id_min == 0 or id_min == local_traj.rows() - 1 ?

@@ -24,8 +24,7 @@
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 
-using namespace std;
-using namespace brains2::msg;
+using brains2::msg::Map;
 using rclcpp::Publisher;
 
 class FakeSLAMNode : public rclcpp::Node {

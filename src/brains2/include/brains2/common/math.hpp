@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef MATH_HPP
-#define MATH_HPP
+#ifndef BRAINS2__COMMON__MATH_HPP_
+#define BRAINS2__COMMON__MATH_HPP_
 
 #include "eigen3/Eigen/Dense"
 #include "geometry_msgs/msg/quaternion.hpp"
@@ -43,4 +43,4 @@ geometry_msgs::msg::Quaternion rpy_to_quaternion_msg(double roll, double pitch, 
 }  // namespace common
 }  // namespace brains2
 
-#endif  // MATH_HPP
+#endif  // BRAINS2__COMMON__MATH_HPP_

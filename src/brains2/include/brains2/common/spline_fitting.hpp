@@ -18,14 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef SPLINE_FITTING_HPP
-#define SPLINE_FITTING_HPP
+#ifndef BRAINS2__COMMON__SPLINE_FITTING_HPP_
+#define BRAINS2__COMMON__SPLINE_FITTING_HPP_
 
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/SparseCore>
-#include <unsupported/Eigen/KroneckerProduct>
+#include <string>
+#include <utility>
 #include "brains2/external/expected.hpp"
+#include "Eigen/Dense"
+#include "Eigen/Sparse"
+#include "Eigen/SparseCore"
+#include "unsupported/Eigen/KroneckerProduct"
 
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;
 typedef std::pair<Eigen::VectorXd, Eigen::VectorXd> VectorPair;
@@ -144,9 +146,11 @@ private:
     MatrixPair spline_coefficients;
     Eigen::VectorXd delta_s;
 
-    SplineFitter(const Eigen::MatrixXd& path, double curv_weight = 1.0, bool verbose = false);
+    explicit SplineFitter(const Eigen::MatrixXd& path,
+                          double curv_weight = 1.0,
+                          bool verbose = false);
 };
 
 }  // namespace brains2::track_estimation
 
-#endif  // SPLINE_FITTING_HPP
+#endif  // BRAINS2__COMMON__SPLINE_FITTING_HPP_

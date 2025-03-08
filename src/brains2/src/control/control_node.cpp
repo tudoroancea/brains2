@@ -20,7 +20,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <rclcpp/logging.hpp>
 #include <tuple>
 #include <vector>
 #include "brains2/common/cone_color.hpp"
@@ -31,6 +30,7 @@
 #include "brains2/control/low_level_controller.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
+#include "brains2/external/optional.hpp"
 #include "brains2/msg/acceleration.hpp"
 #include "brains2/msg/controller_debug_info.hpp"
 #include "brains2/msg/controls.hpp"
@@ -41,22 +41,32 @@
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "Eigen/Dense"
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "rclcpp/node.hpp"
-#include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp/subscription.hpp"
 #include "rmw/qos_profiles.h"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
 
-using namespace std;
-using namespace brains2::msg;
-using namespace brains2::common;
-using namespace brains2::control;
+using brains2::common::CartesianPose;
+using brains2::common::FrenetPose;
+using brains2::common::marker_colors;
+using brains2::common::Track;
+using brains2::control::HLC;
+using brains2::control::LLC;
+using brains2::control::to_string;
+using brains2::msg::Acceleration;
+using brains2::msg::ControllerDebugInfo;
+using brains2::msg::Controls;
+using brains2::msg::FSM;
+using brains2::msg::Pose;
+using brains2::msg::TrackEstimate;
+using brains2::msg::Velocity;
 using diagnostic_msgs::msg::DiagnosticArray;
+using rclcpp::Node;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
+using std::to_string;
+using std::unique_ptr;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 
@@ -428,7 +438,7 @@ private:
         if (!track) {
             return;
         }
-        for (long i = 0; i < this->hlc->horizon_size() + 1; ++i) {
+        for (int32_t i = 0; i < this->hlc->horizon_size() + 1; ++i) {
             // reference trajectory
             const auto s_ref = s + x_ref(0, i), X_ref = track->eval_X(s_ref),
                        Y_ref = track->eval_Y(s_ref);
@@ -474,7 +484,7 @@ private:
     void update_diag_msg(const ControlStatus control_status,
                          const double hlc_runtime_ms,
                          const double llc_runtime_ms,
-                         const optional<LLC::Info> &llc_info) {
+                         const tl::optional<LLC::Info> &llc_info) {
         this->diag_msg.header.stamp = this->now();
         // TODO: report internal status here (nominal, sending last prediction, crashed)
         switch (control_status) {

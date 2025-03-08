@@ -24,7 +24,9 @@
 #include "brains2/common/spline_fitting.hpp"
 #include "brains2/external/icecream.hpp"
 
-using namespace brains2::track_estimation;
+using brains2::track_estimation::SplineFitter;
+using brains2::track_estimation::SplineFittingError;
+using brains2::track_estimation::SplineParametrization;
 
 TEST(SplineFitterTest, EmptyPath) {
     Eigen::MatrixXd empty_path;

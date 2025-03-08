@@ -18,15 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <osqp/osqp.h>
-#include <OsqpEigen/OsqpEigen.h>
 #include <algorithm>  // for std::upper_bound
 #include <cassert>
 #include <chrono>
 #include <cmath>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/SparseCore>
 #include <fstream>
 #include <iostream>
 #include <numeric>  // for std::partial_sum
@@ -34,11 +29,16 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
-#include <unsupported/Eigen/KroneckerProduct>
 #include <vector>
 #include "brains2/common/cone_color.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/rapidcsv.hpp"
+#include "Eigen/Dense"
+#include "Eigen/Sparse"
+#include "Eigen/SparseCore"
+#include "osqp/osqp.h"
+#include "OsqpEigen/OsqpEigen.h"
+#include "unsupported/Eigen/KroneckerProduct"
 
 // Define a pair of matrices to hold the result
 typedef std::pair<Eigen::MatrixXd, Eigen::MatrixXd> MatrixPair;

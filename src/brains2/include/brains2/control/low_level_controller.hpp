@@ -18,10 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef BRAINS2_CONTROL_LOW_LEVEL_CONTROLLER_HPP
-#define BRAINS2_CONTROL_LOW_LEVEL_CONTROLLER_HPP
+#ifndef BRAINS2__CONTROL__LOW_LEVEL_CONTROLLER_HPP_
+#define BRAINS2__CONTROL__LOW_LEVEL_CONTROLLER_HPP_
 
 #include <tuple>
+#include <utility>
 #include "brains2/control/high_level_controller.hpp"
 #include "brains2/sim/sim.hpp"
 
@@ -55,4 +56,4 @@ typedef LowLevelController LLC;
 }  // namespace control
 }  // namespace brains2
 
-#endif
+#endif  // BRAINS2__CONTROL__LOW_LEVEL_CONTROLLER_HPP_

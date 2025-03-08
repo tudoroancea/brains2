@@ -18,11 +18,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef TRACKS_HPP
-#define TRACKS_HPP
+#ifndef BRAINS2__COMMON__TRACKS_HPP_
+#define BRAINS2__COMMON__TRACKS_HPP_
 
 #include <filesystem>
+#include <string>
 #include <tuple>
+#include <utility>
+#include <vector>
 #include "brains2/external/expected.hpp"
 #include "brains2/external/optional.hpp"
 #include "Eigen/Dense"
@@ -207,4 +210,4 @@ std::string to_string(const Track::Error &error);
 }  // namespace common
 }  // namespace brains2
 
-#endif  // TRACKS_HPP
+#endif  // BRAINS2__COMMON__TRACKS_HPP_

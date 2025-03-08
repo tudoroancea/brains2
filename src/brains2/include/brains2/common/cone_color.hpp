@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef CONE_COLOR_HPP
-#define CONE_COLOR_HPP
+#ifndef BRAINS2__COMMON__CONE_COLOR_HPP_
+#define BRAINS2__COMMON__CONE_COLOR_HPP_
 #include <string>
 
 namespace brains2 {
@@ -37,4 +37,5 @@ std::string cone_color_to_string(const ConeColor &c);
 
 }  // namespace common
 }  // namespace brains2
-#endif  // CONE_COLOR_HPP
+
+#endif  // BRAINS2__COMMON__CONE_COLOR_HPP_

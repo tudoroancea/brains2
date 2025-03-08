@@ -43,8 +43,10 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
 
-using namespace std;
-using namespace brains2::msg;
+using brains2::msg::Acceleration;
+using brains2::msg::Controls;
+using brains2::msg::Pose;
+using brains2::msg::Velocity;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
 
@@ -156,7 +158,7 @@ private:
             intersect(this->start_line_pos_1, this->start_line_pos_2, this->last_position, pos)) {
             if (this->last_lap_time_stamp.nanoseconds() > 0) {
                 double lap_time((end - this->last_lap_time_stamp).seconds());
-                if (this->best_lap_time == 0.0 or lap_time < this->best_lap_time) {
+                if (this->best_lap_time == 0.0 || lap_time < this->best_lap_time) {
                     this->best_lap_time = lap_time;
                 }
                 this->last_lap_time = lap_time;

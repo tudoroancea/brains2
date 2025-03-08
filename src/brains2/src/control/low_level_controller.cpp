@@ -21,8 +21,8 @@
 #include "brains2/control/low_level_controller.hpp"
 #include "brains2/common/math.hpp"
 
-using namespace brains2::control;
-using namespace brains2::common;
+using brains2::common::clip;
+using brains2::control::LowLevelController;
 
 LowLevelController::LowLevelController(const double K_tv, const ModelParams& model_params)
     : K_tv(K_tv), model_params(model_params) {
