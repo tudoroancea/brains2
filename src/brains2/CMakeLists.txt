@@ -219,6 +219,12 @@ if(BUILD_TESTING)
   # check formatting with clang-format
   find_package(ament_cmake_clang_format REQUIRED)
   ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILEST_TO_LINT}")
+
+  # lint with cpplint
+  # NOTE: we use a custom implementation of ament_cmake_cpplint that supports
+  # providing several patterns/files in EXCLUDE
+  include(cmake/ament_cpplint.cmake)
+  ament_cpplint(EXCLUDE "${FILES_EXCLUDED_FROM_LINT}" FILTERS "-readability/todo")
 endif()
 
 
