@@ -192,15 +192,15 @@ if(BUILD_TESTING)
 
   # find files to lint
   # same note as above
-  set(FILEST_TO_LINT "")
-  file(GLOB_RECURSE FILEST_TO_LINT CONFIGURE_DEPENDS
+  set(FILES_TO_LINT "")
+  file(GLOB_RECURSE FILES_TO_LINT CONFIGURE_DEPENDS
     *.cpp
     *.hpp
     *.c
     *.h
   )
-  list(REMOVE_ITEM FILEST_TO_LINT ${FILES_EXCLUDED_FROM_LINT})
-  message(STATUS "FILEST_TO_LINT: ${FILEST_TO_LINT}")
+  list(REMOVE_ITEM FILES_TO_LINT ${FILES_EXCLUDED_FROM_LINT})
+  message(STATUS "FILES_TO_LINT: ${FILES_TO_LINT}")
 
   # check copyright headers
   find_package(ament_cmake_copyright REQUIRED)
@@ -213,7 +213,7 @@ if(BUILD_TESTING)
 
   # check formatting with clang-format
   find_package(ament_cmake_clang_format REQUIRED)
-  ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILEST_TO_LINT}")
+  ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILES_TO_LINT}")
 
   # lint with cpplint
   # NOTE: we use a custom implementation of ament_cmake_cpplint that supports

@@ -47,14 +47,11 @@ jobs:
 
       - name: Build workspace
         run: |
-          pwd
-          echo $GITHUB_WORKSPACE
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
 
       - name: Zip build output
-        run: |
-          zip -r output-${{ matrix.os }}.zip build install log
+        run: zip -r output-${{ matrix.os }}.zip build install log
 
       - name: Upload build output as artifact
         uses: actions/upload-artifact@v4
@@ -92,10 +89,7 @@ jobs:
           name: output-ubuntu-latest
 
       - name: Unzip build output
-        run: |
-          pwd
-          echo $GITHUB_WORKSPACE
-          unzip output-ubuntu-latest.zip
+        run: unzip output-ubuntu-latest.zip
 
       - name: Run lint and formatting checks
         run: |
