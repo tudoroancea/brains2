@@ -90,10 +90,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: output-ubuntu-latest
-          path: output-ubuntu-latest.zip
 
       - name: Unzip build output
-        run: unzip output-ubuntu-latest.zip
+        run: |
+          pwd
+          echo $GITHUB_WORKSPACE
+          unzip output-ubuntu-latest.zip
 
       - name: Run lint and formatting checks
         run: |
