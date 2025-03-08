@@ -22,7 +22,7 @@ add_compile_options(--system-header-prefix=brains2/external/)
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
 add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 
-set(CMAKE_TESTING_ENABLED ON)
+set(BUILD_TESTING ON)
 
 ####################################################################################################
 # dependencies
@@ -45,7 +45,7 @@ find_package(acados REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../acados/cmake)
 find_package(casadi REQUIRED)
 find_package(fatrop REQUIRED)
 
-if (CMAKE_TESTING_ENABLED)
+if (BUILD_TESTING)
   enable_testing()
   find_package(GTest REQUIRED)
   include(GoogleTest)
@@ -174,6 +174,19 @@ target_link_libraries(coordination_node
   "${cpp_typesupport_target}" # for custom message and service types defined in this package
   brains2_common
 )
+
+
+####################################################################################################
+# linting
+####################################################################################################
+# this must happen before the invocation of ament_package()
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # set AMENT_LINT_AUTO_FILE_EXCLUDE to all the files in imgui, in include/brains2/external, and every dir named generated
+  set(AMENT_LINT_AUTO_FILE_EXCLUDE imgui include/brains2/external generated)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
 
 ####################################################################################################
 # create package
