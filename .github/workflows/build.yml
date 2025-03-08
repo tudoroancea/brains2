@@ -47,6 +47,8 @@ jobs:
 
       - name: Build workspace
         run: |
+          pwd
+          echo $GITHUB_WORKSPACE
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
 
@@ -61,14 +63,10 @@ jobs:
           path: output-${{ matrix.os }}.zip
 
   lint:
-    name: Lint (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Lint
+    runs-on: "ubuntu-latest"
     if: github.event.label.name == 'ci:run_build'
     needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest", "self-hosted"]
     defaults:
       run:
         shell: bash -leo pipefail {0}
@@ -91,11 +89,11 @@ jobs:
       - name: Download build output
         uses: actions/download-artifact@v4
         with:
-          name: output-${{ matrix.os }}
-          path: output-${{ matrix.os }}.zip
+          name: output-ubuntu-latest
+          path: output-ubuntu-latest.zip
 
       - name: Unzip build output
-        run: unzip output-${{ matrix.os }}.zip
+        run: unzip output-ubuntu-latest.zip
 
       - name: Run lint and formatting checks
         run: |
