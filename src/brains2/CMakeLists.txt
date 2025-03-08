@@ -85,13 +85,13 @@ file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
 ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
 target_link_libraries(brains2_common Eigen3::Eigen OsqpEigen::OsqpEigen osqp::osqp)
 
-if (CMAKE_TESTING_ENABLED)
-  # ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
-  # target_link_libraries(test_track_database brains2_common)
-  # ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
-  # target_link_libraries(test_tracks brains2_common)
-  # ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
-  # target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
+if(BUILD_TESTING)
+  ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
+  target_link_libraries(test_track_database brains2_common)
+  ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
+  target_link_libraries(test_tracks brains2_common)
+  ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
+  target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
 endif()
 
 ####################################################################################################
@@ -111,11 +111,6 @@ target_link_libraries(sim_node
   brains2_sim
 )
 
-# if (CMAKE_TESTING_ENABLED)
-#   ament_add_gtest(test_sim tests/common/test_sim.cpp)
-#   target_link_libraries(test_sim brains2_common brains2_sim)
-# endif()
-
 ####################################################################################################
 # control
 ####################################################################################################
@@ -132,9 +127,9 @@ target_link_libraries(control_node
   brains2_sim
 )
 
-if (CMAKE_TESTING_ENABLED)
-  # ament_add_gtest(test_controller tests/control/test_controller.cpp)
-  # target_link_libraries(test_controller brains2_common brains2_control)
+if(BUILD_TESTING)
+  ament_add_gtest(test_controller tests/control/test_controller.cpp)
+  target_link_libraries(test_controller brains2_common brains2_control)
 endif()
 
 ####################################################################################################
