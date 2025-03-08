@@ -55,10 +55,10 @@ enum class SplineFittingError {
 };
 
 tl::expected<MatrixPair, SplineFittingError> fit_open_spline(const Eigen::MatrixXd& path,
-                                                  double curv_weight = 1.0,
-                                                  double initial_heading = M_PI / 2,
-                                                  double final_heading = M_PI / 2,
-                                                  bool verbose = false) {
+                                                             double curv_weight = 1.0,
+                                                             double initial_heading = M_PI / 2,
+                                                             double final_heading = M_PI / 2,
+                                                             bool verbose = false) {
     // Ensure the path has shape (N+1, 2)
     if (path.cols() != 2) {
         return tl::make_unexpected(SplineFittingError::PathShape);
@@ -76,7 +76,7 @@ tl::expected<MatrixPair, SplineFittingError> fit_open_spline(const Eigen::Matrix
 
     // Build A
     std::vector<Eigen::Triplet<double>> tripletListA;
-    tripletListA.reserve(9*(N-1) + 3*(N-1) + 4);
+    tripletListA.reserve(9 * (N - 1) + 3 * (N - 1) + 4);
 
     // First part of A: spkron(speye(N - 1), array)
     for (int i = 0; i < N - 1; ++i) {
@@ -94,7 +94,7 @@ tl::expected<MatrixPair, SplineFittingError> fit_open_spline(const Eigen::Matrix
         tripletListA.emplace_back(row_offset + 1, col_offset + 2, 2.0);
         tripletListA.emplace_back(row_offset + 1, col_offset + 3, 3.0);
 
-        // Third row : continuity of second derivative 
+        // Third row : continuity of second derivative
         tripletListA.emplace_back(row_offset + 2, col_offset + 2, 2.0);
         tripletListA.emplace_back(row_offset + 2, col_offset + 3, 6.0);
     }
@@ -250,7 +250,7 @@ tl::expected<Eigen::VectorXd, SplineFittingError> compute_spline_interval_length
         return tl::make_unexpected(SplineFittingError::CoefficientsDimensions);
     }
 
-    int N = coeffs_X.rows(); // Number of spline segments
+    int N = coeffs_X.rows();  // Number of spline segments
 
     // Generate t_steps from 0.0 to 1.0 with no_interp_points points
     Eigen::VectorXd t_steps = Eigen::VectorXd::LinSpaced(no_interp_points, 0.0, 1.0);
@@ -272,19 +272,21 @@ tl::expected<Eigen::VectorXd, SplineFittingError> compute_spline_interval_length
         Eigen::VectorXd y = Eigen::VectorXd::Zero(no_interp_points);
 
         // Add contributions from each term
-        x.array() += coeff_X(0); // a0
-        x.array() += coeff_X(1) * t_steps.array(); // a1 * t
+        x.array() += coeff_X(0);                           // a0
+        x.array() += coeff_X(1) * t_steps.array();         // a1 * t
         x.array() += coeff_X(2) * t_steps_square.array();  // a2 * t^2
-        x.array() += coeff_X(3) * t_steps_cube.array();  // a3 * t^3
+        x.array() += coeff_X(3) * t_steps_cube.array();    // a3 * t^3
 
-        y.array() += coeff_Y(0); // b0
-        y.array() += coeff_Y(1) * t_steps.array(); // b1 * t
+        y.array() += coeff_Y(0);                           // b0
+        y.array() += coeff_Y(1) * t_steps.array();         // b1 * t
         y.array() += coeff_Y(2) * t_steps_square.array();  // b2 * t^2
-        y.array() += coeff_Y(3) * t_steps_cube.array();  // b3 * t^3
+        y.array() += coeff_Y(3) * t_steps_cube.array();    // b3 * t^3
 
         // Compute differences between consecutive points
-        Eigen::VectorXd dx = x.segment(1, no_interp_points - 1) - x.segment(0, no_interp_points - 1);
-        Eigen::VectorXd dy = y.segment(1, no_interp_points - 1) - y.segment(0, no_interp_points - 1);
+        Eigen::VectorXd dx =
+            x.segment(1, no_interp_points - 1) - x.segment(0, no_interp_points - 1);
+        Eigen::VectorXd dy =
+            y.segment(1, no_interp_points - 1) - y.segment(0, no_interp_points - 1);
 
         // Compute distances between consecutive points
         Eigen::VectorXd ds = (dx.array().square() + dy.array().square()).sqrt();
@@ -339,8 +341,7 @@ uniformly_sample_spline(const Eigen::MatrixXd& coeffs_X,
         int idx = idx_interp(i);
         if (idx > 0) {
             t_interp(i) = (s_interp(i) - s(idx - 1)) / delta_s(idx);
-        }
-        else {
+        } else {
             t_interp(i) = s_interp(i) / delta_s(0);
         }
     }
@@ -352,15 +353,18 @@ uniformly_sample_spline(const Eigen::MatrixXd& coeffs_X,
         int idx = idx_interp(i);
 
         // Ensure idx is within bounds
-        if (idx >= N)
+        if (idx >= N) {
             idx = N - 1;
+        }
 
         double t = t_interp(i);
         double t2 = t * t;
         double t3 = t2 * t;
 
-        X_interp(i) = coeffs_X(idx, 0) + coeffs_X(idx, 1) * t + coeffs_X(idx, 2) * t2 + coeffs_X(idx, 3) * t3;
-        Y_interp(i) = coeffs_Y(idx, 0) + coeffs_Y(idx, 1) * t + coeffs_Y(idx, 2) * t2 + coeffs_Y(idx, 3) * t3;
+        X_interp(i) =
+            coeffs_X(idx, 0) + coeffs_X(idx, 1) * t + coeffs_X(idx, 2) * t2 + coeffs_X(idx, 3) * t3;
+        Y_interp(i) =
+            coeffs_Y(idx, 0) + coeffs_Y(idx, 1) * t + coeffs_Y(idx, 2) * t2 + coeffs_Y(idx, 3) * t3;
     }
 
     return std::make_tuple(X_interp, Y_interp, idx_interp, t_interp, s_interp);
@@ -429,14 +433,16 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    double initial_heading_yellow = atan2(yellow_cones(1, 1) - yellow_cones(0, 1),
-                                          yellow_cones(1, 0) - yellow_cones(0, 0));
-    double initial_heading_blue = atan2(blue_cones(1 , 1) - blue_cones(0, 1),
-                                        blue_cones(1, 0) - blue_cones(0, 0));
-    double final_heading_yellow = atan2(yellow_cones(yellow_cones.rows() - 1, 1) - yellow_cones(yellow_cones.rows() - 2, 1),
-                                        yellow_cones(yellow_cones.rows() - 1, 0) - yellow_cones(yellow_cones.rows() - 2, 0));
-    double final_heading_blue = atan2(blue_cones(blue_cones.rows() - 1, 1) - blue_cones(blue_cones.rows() - 2, 1),
-                                      blue_cones(blue_cones.rows() - 1, 0) - blue_cones(blue_cones.rows() - 2, 0));
+    double initial_heading_yellow =
+        atan2(yellow_cones(1, 1) - yellow_cones(0, 1), yellow_cones(1, 0) - yellow_cones(0, 0));
+    double initial_heading_blue =
+        atan2(blue_cones(1, 1) - blue_cones(0, 1), blue_cones(1, 0) - blue_cones(0, 0));
+    double final_heading_yellow =
+        atan2(yellow_cones(yellow_cones.rows() - 1, 1) - yellow_cones(yellow_cones.rows() - 2, 1),
+              yellow_cones(yellow_cones.rows() - 1, 0) - yellow_cones(yellow_cones.rows() - 2, 0));
+    double final_heading_blue =
+        atan2(blue_cones(blue_cones.rows() - 1, 1) - blue_cones(blue_cones.rows() - 2, 1),
+              blue_cones(blue_cones.rows() - 1, 0) - blue_cones(blue_cones.rows() - 2, 0));
 
     MatrixPair splines_blue =
         fit_open_spline(blue_cones, curv_weight, initial_heading_blue, final_heading_blue).value();

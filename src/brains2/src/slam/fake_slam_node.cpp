@@ -45,19 +45,18 @@ public:
         // create map message
         map_msg.header.frame_id = "world";
         map_msg.header.stamp = this->now();
-        for (const auto& [color, cones] : cones_map.value()) {
+        for (const auto &[color, cones] : cones_map.value()) {
             for (int i = 0; i < cones.rows(); ++i) {
-                map_msg.x.push_back(cones(i,0));
-                map_msg.y.push_back(cones(i,1));
+                map_msg.x.push_back(cones(i, 0));
+                map_msg.y.push_back(cones(i, 1));
                 map_msg.color.push_back(static_cast<uint8_t>(color));
             }
         }
         // create publisher
         this->map_pub = this->create_publisher<Map>("/brains2/map", 10);
         const auto timer_period = 1 / this->declare_parameter<double>("freq", 10.0);
-        this->timer = this->create_wall_timer(std::chrono::duration<double>(timer_period), [this]() {
-            this->map_pub->publish(this->map_msg);
-        });
+        this->timer = this->create_wall_timer(std::chrono::duration<double>(timer_period),
+                                              [this]() { this->map_pub->publish(this->map_msg); });
     }
 };
 

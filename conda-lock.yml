@@ -13,9 +13,9 @@
 version: 1
 metadata:
   content_hash:
-    osx-arm64: 77f931492d5d20a0783541c939f46eb1ef29d57d589fa11f2c7f14331c6cdaf3
-    linux-aarch64: 90a67a97da7316c21e26c7833c332af40687ec970311bfc58fb4d58146c3faac
-    linux-64: 6bc889a637392bf6cb56b1ee96b5564f219610984dfd3ae511e0285857aefa64
+    osx-arm64: 9318b95417582a1e8add8b40427edc4a71a8cd9627515487a1779ed9c86b5938
+    linux-aarch64: c0602429347305a2b69bc663c9568f236aff5dbaa8dcdf322f04bd6daed8de04
+    linux-64: 3cf2a8399e726c95886884afbc2a66545d223a1a4da695e8142b12d1a2e7201b
   channels:
   - url: conda-forge
     used_env_vars: []
@@ -18521,6 +18521,67 @@ package:
   hash:
     md5: d0e4016a06d0cac763536f2307c00455
     sha256: 3edd06554557606123a0f3fcb2b7b3f32a1e66557c461205613bf251ce7c32bb
+  category: main
+  optional: false
+- name: ros-humble-ament-cmake-clang-format
+  version: 0.12.11
+  manager: conda
+  platform: linux-64
+  dependencies:
+    python: ''
+    ros-humble-ament-clang-format: ''
+    ros-humble-ament-cmake-test: ''
+    ros-humble-ros-workspace: ''
+    ros2-distro-mutex: '>=0.6.0,<0.7.0a0'
+    libgcc: '>=14'
+    __glibc: '>=2.17,<3.0.a0'
+    libstdcxx: '>=14'
+    python_abi: 3.11.*
+    numpy: '>=1.26.4,<2.0a0'
+  url: https://conda.anaconda.org/robostack-staging/linux-64/ros-humble-ament-cmake-clang-format-0.12.11-np126py311h2c3b307_7.conda
+  hash:
+    md5: cb7fdc535448c773ebc20f7de8261a34
+    sha256: 8a7bcf46172d89ca104fa01485591e724158a2591d070cdc926d23e8902fe0ea
+  category: main
+  optional: false
+- name: ros-humble-ament-cmake-clang-format
+  version: 0.12.11
+  manager: conda
+  platform: linux-aarch64
+  dependencies:
+    python: ''
+    ros-humble-ament-clang-format: ''
+    ros-humble-ament-cmake-test: ''
+    ros-humble-ros-workspace: ''
+    ros2-distro-mutex: '>=0.6.0,<0.7.0a0'
+    libstdcxx: '>=14'
+    libgcc: '>=14'
+    numpy: '>=1.26.4,<2.0a0'
+    python_abi: 3.11.*
+  url: https://conda.anaconda.org/robostack-staging/linux-aarch64/ros-humble-ament-cmake-clang-format-0.12.11-np126py311h65a17ee_5.conda
+  hash:
+    md5: 106372283a7c2eb6b03ccd90f954451d
+    sha256: e06f82b217ac1070aba331b67decb2627e67ea5f4c5aa471c301d8c58b387674
+  category: main
+  optional: false
+- name: ros-humble-ament-cmake-clang-format
+  version: 0.12.11
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    python: ''
+    ros-humble-ament-clang-format: ''
+    ros-humble-ament-cmake-test: ''
+    ros-humble-ros-workspace: ''
+    ros2-distro-mutex: '>=0.6.0,<0.7.0a0'
+    __osx: '>=11.0'
+    libcxx: '>=19'
+    python_abi: 3.11.*
+    numpy: '>=1.26.4,<2.0a0'
+  url: https://conda.anaconda.org/robostack-staging/osx-arm64/ros-humble-ament-cmake-clang-format-0.12.11-np126py311h38cf310_6.conda
+  hash:
+    md5: bfa00a566525d213291bce57fc6200d8
+    sha256: 4ba26ccc20c15f972223837ea5714fb939ffd1a3de66a175876f13cce239b2dc
   category: main
   optional: false
 - name: ros-humble-ament-cmake-copyright

@@ -18,7 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-
 #include "brains2/estimation/center_line_estimation.hpp"
 #include <set>
 #include "brains2/common/spline_fitting.hpp"
@@ -115,8 +114,8 @@ tl::expected<VectorPair, CenterLineEstimationError> compute_center_line(
 
     // Sort center points based on the computed parameter
     std::sort(center_points_with_param.begin(),
-                center_points_with_param.end(),
-                [](const auto& a, const auto& b) { return a.second < b.second; });
+              center_points_with_param.end(),
+              [](const auto& a, const auto& b) { return a.second < b.second; });
 
     // Extract X_center and Y_center
 

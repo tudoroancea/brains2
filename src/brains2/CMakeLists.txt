@@ -177,30 +177,46 @@ target_link_libraries(coordination_node
 ####################################################################################################
 # linting
 ####################################################################################################
-# this must happen before the invocation of ament_package()
+# NOTE: this must happen before the invocation of ament_package()
 if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # add all the files in the following dirs to AMENT_LINT_AUTO_FILE_EXCLUDE:
-  #  src/brains2/src/sim/generated
-  #  src/brains2/src/sim/generated/dyn6_model
-  #  src/brains2/src/sim/generated/kin6_model
-  #  src/brains2/include/brains2/external
-  #  src/brains2/imgui
-  #  src/brains2/imgui/backends
+  # NOTE: the actual command invocation done by ament will actually be performed via subprocess.Popen
+  # (see https://github.com/ament/ament_cmake/blob/1b66f6c25f7d6ed98b3aadafe57af0df6ce91573/ament_cmake_test/ament_cmake_test/__init__.py#L201)
+  # which does not seem to support shell extensions such as globbing. We therefore have to manually
+  # specify the files to exclude.
+  set(AMENT_LINT_AUTO_FILE_EXCLUDE "")
+  file(GLOB_RECURSE AMENT_LINT_AUTO_FILE_EXCLUDE CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/src/sim/generated/*
+    ${CMAKE_SOURCE_DIR}/src/sim/generated/dyn6_model/*
+    ${CMAKE_SOURCE_DIR}/src/sim/generated/kin6_model/*
+    ${CMAKE_SOURCE_DIR}/include/brains2/external/*
+    ${CMAKE_SOURCE_DIR}/imgui/*
+    ${CMAKE_SOURCE_DIR}/imgui/backends/*
+  )
+  message(STATUS "AMENT_LINT_AUTO_FILE_EXCLUDE: ${AMENT_LINT_AUTO_FILE_EXCLUDE}")
 
+  find_package(ament_cmake_copyright REQUIRED)
+  ament_copyright(EXCLUDE ${AMENT_LINT_AUTO_FILE_EXCLUDE})
 
-  set(AMENT_LINT_AUTO_FILE_EXCLUDE "src/brains2/src/sim/generated/* src/brains2/src/sim/generated/dyn6_model/* src/brains2/src/sim/generated/kin6_model/* src/brains2/include/brains2/external/* src/brains2/imgui/* src/brains2/imgui/backends/*")
-  # set(AMENT_LINT_AUTO_FILE_EXCLUDE "")
-  # file(GLOB_RECURSE AMENT_LINT_AUTO_FILE_EXCLUDE CONFIGURE_DEPENDS
-    #     src/brains2/src/sim/generated/*.cpp
-    #     src/brains2/src/sim/generated/dyn6_model/*.cpp
-    #     src/brains2/src/sim/generated/kin6_model/*.cpp
-    #     src/brains2/include/brains2/external/*.hpp
-    #     src/brains2/imgui/*.cpp
-    #     src/brains2/imgui/backends/*.cpp
-  # )
+  # find files to format
+  set(FILES_TO_FORMAT "")
+  file(GLOB_RECURSE FILES_TO_FORMAT CONFIGURE_DEPENDS
+    *.cpp
+    *.hpp
+    *.c
+    *.h
+  )
+  list(FILTER FILES_TO_FORMAT EXCLUDE REGEX "src/sim/generated")
+  list(FILTER FILES_TO_FORMAT EXCLUDE REGEX "include/brains2/external")
+  message(STATUS "FILES_TO_FORMAT: ${FILES_TO_FORMAT}")
 
-  ament_lint_auto_find_test_dependencies()
+  # find clang-format config file (at the root of the workspace)
+  set(CLANG_CONFIG_FILE "${CMAKE_SOURCE_DIR}/../../.clang-format")
+  get_filename_component(CLANG_CONFIG_FILE "${CLANG_CONFIG_FILE}" ABSOLUTE)
+  message(STATUS "CLANG_CONFIG_FILE: ${CLANG_CONFIG_FILE}")
+
+  # call ament_clang_format
+  find_package(ament_cmake_clang_format REQUIRED)
+  ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILES_TO_FORMAT}")
 endif()
 
 
