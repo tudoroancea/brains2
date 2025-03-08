@@ -21,7 +21,6 @@
 #include "brains2/common/track_database.hpp"
 #include <filesystem>
 #include <vector>
-#include "brains2/common/track_database.hpp"
 #include "brains2/external/rapidcsv.hpp"
 
 namespace brains2::common {
