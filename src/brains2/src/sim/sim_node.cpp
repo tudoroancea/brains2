@@ -1,4 +1,23 @@
-// Copyright (c) 2024. Tudor Oancea, Matteo Berthet
+// Copyright 2025 Tudor Oancea, Mateo Berthet
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 #include <tuple>
 #include "ament_index_cpp/get_package_share_directory.hpp"
 #include "brains2/common/cone_color.hpp"
@@ -24,8 +43,10 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
 
-using namespace std;
-using namespace brains2::msg;
+using brains2::msg::Acceleration;
+using brains2::msg::Controls;
+using brains2::msg::Pose;
+using brains2::msg::Velocity;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
 
@@ -137,7 +158,7 @@ private:
             intersect(this->start_line_pos_1, this->start_line_pos_2, this->last_position, pos)) {
             if (this->last_lap_time_stamp.nanoseconds() > 0) {
                 double lap_time((end - this->last_lap_time_stamp).seconds());
-                if (this->best_lap_time == 0.0 or lap_time < this->best_lap_time) {
+                if (this->best_lap_time == 0.0 || lap_time < this->best_lap_time) {
                     this->best_lap_time = lap_time;
                 }
                 this->last_lap_time = lap_time;

@@ -50,12 +50,48 @@ jobs:
           chmod +x ./scripts/build.sh
           ./scripts/build.sh
 
-      - name: Zip log folder
-        run: |
-          zip -r logs-${{ matrix.os }}.zip log/
+      - name: Zip build output
+        run: zip -r output-${{ matrix.os }}.zip build install log
 
-      - name: Upload zipped log folder as artifact
+      - name: Upload build output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: logs-${{ matrix.os }}
-          path: logs-${{ matrix.os }}.zip
+          name: output-${{ matrix.os }}
+          path: output-${{ matrix.os }}.zip
+
+  lint:
+    name: Lint
+    runs-on: "ubuntu-latest"
+    if: github.event.label.name == 'ci:run_build'
+    needs: build
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Cleanup residual micromamba-installation
+        run: rm -rf ~/micromamba-bin
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: 1.5.12-0
+          environment-name: brains2
+          environment-file: conda-lock.yml
+          init-shell: bash
+          cache-environment: true
+
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: output-ubuntu-latest
+
+      - name: Unzip build output
+        run: unzip output-ubuntu-latest.zip
+
+      - name: Run lint and formatting checks
+        run: |
+          colcon test --ctest-args -E test
+          colcon test-result --all --verbose
