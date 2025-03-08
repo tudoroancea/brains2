@@ -180,8 +180,26 @@ target_link_libraries(coordination_node
 # this must happen before the invocation of ament_package()
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # set AMENT_LINT_AUTO_FILE_EXCLUDE to all the files in imgui, in include/brains2/external, and every dir named generated
-  set(AMENT_LINT_AUTO_FILE_EXCLUDE imgui include/brains2/external generated)
+  # add all the files in the following dirs to AMENT_LINT_AUTO_FILE_EXCLUDE:
+  #  src/brains2/src/sim/generated
+  #  src/brains2/src/sim/generated/dyn6_model
+  #  src/brains2/src/sim/generated/kin6_model
+  #  src/brains2/include/brains2/external
+  #  src/brains2/imgui
+  #  src/brains2/imgui/backends
+
+
+  set(AMENT_LINT_AUTO_FILE_EXCLUDE "src/brains2/src/sim/generated/* src/brains2/src/sim/generated/dyn6_model/* src/brains2/src/sim/generated/kin6_model/* src/brains2/include/brains2/external/* src/brains2/imgui/* src/brains2/imgui/backends/*")
+  # set(AMENT_LINT_AUTO_FILE_EXCLUDE "")
+  # file(GLOB_RECURSE AMENT_LINT_AUTO_FILE_EXCLUDE CONFIGURE_DEPENDS
+    #     src/brains2/src/sim/generated/*.cpp
+    #     src/brains2/src/sim/generated/dyn6_model/*.cpp
+    #     src/brains2/src/sim/generated/kin6_model/*.cpp
+    #     src/brains2/include/brains2/external/*.hpp
+    #     src/brains2/imgui/*.cpp
+    #     src/brains2/imgui/backends/*.cpp
+  # )
+
   ament_lint_auto_find_test_dependencies()
 endif()
 
