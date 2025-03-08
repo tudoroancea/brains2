@@ -22,7 +22,7 @@ add_compile_options(--system-header-prefix=brains2/external/)
 add_compile_definitions(TRACK_DATABASE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../track_database")
 add_compile_definitions(CAR_CONSTANTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../car_constants.yaml")
 
-set(CMAKE_TESTING_ENABLED ON)
+set(BUILD_TESTING ON)
 
 ####################################################################################################
 # dependencies
@@ -46,7 +46,7 @@ find_package(casadi REQUIRED)
 find_package(fatrop REQUIRED)
 find_package(SDL2 REQUIRED)
 
-if (CMAKE_TESTING_ENABLED)
+if (BUILD_TESTING)
   enable_testing()
   find_package(GTest REQUIRED)
   include(GoogleTest)
@@ -86,13 +86,11 @@ file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
 ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
 target_link_libraries(brains2_common Eigen3::Eigen OsqpEigen::OsqpEigen osqp::osqp)
 
-if (CMAKE_TESTING_ENABLED)
+if(BUILD_TESTING)
   ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
   target_link_libraries(test_track_database brains2_common)
-
   ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
   target_link_libraries(test_tracks brains2_common)
-
   ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
   target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
 endif()
@@ -114,11 +112,6 @@ target_link_libraries(sim_node
   brains2_sim
 )
 
-# if (CMAKE_TESTING_ENABLED)
-#   ament_add_gtest(test_sim tests/common/test_sim.cpp)
-#   target_link_libraries(test_sim brains2_common brains2_sim)
-# endif()
-
 ####################################################################################################
 # control
 ####################################################################################################
@@ -135,7 +128,7 @@ target_link_libraries(control_node
   brains2_sim
 )
 
-if (CMAKE_TESTING_ENABLED)
+if(BUILD_TESTING)
   ament_add_gtest(test_controller tests/control/test_controller.cpp)
   target_link_libraries(test_controller brains2_common brains2_control)
 endif()
@@ -175,6 +168,61 @@ target_link_libraries(coordination_node
   "${cpp_typesupport_target}" # for custom message and service types defined in this package
   brains2_common
 )
+
+
+####################################################################################################
+# linting
+####################################################################################################
+# NOTE: this must happen before the invocation of ament_package()
+if(BUILD_TESTING)
+  # find all files to exclude from lint
+  # NOTE: all the command line invocations done by ament will actually be performed via subprocess.Popen
+  # (see https://github.com/ament/ament_cmake/blob/1b66f6c25f7d6ed98b3aadafe57af0df6ce91573/ament_cmake_test/ament_cmake_test/__init__.py#L201)
+  # which does not seem to support shell extensions such as globbing. We therefore have to manually
+  # specify the files to exclude.
+  set(FILES_EXCLUDED_FROM_LINT "")
+  file(GLOB_RECURSE FILES_EXCLUDED_FROM_LINT CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/src/sim/generated/*
+    ${CMAKE_SOURCE_DIR}/src/sim/generated/dyn6_model/*
+    ${CMAKE_SOURCE_DIR}/src/sim/generated/kin6_model/*
+    ${CMAKE_SOURCE_DIR}/include/brains2/external/*
+    ${CMAKE_SOURCE_DIR}/imgui/*
+    ${CMAKE_SOURCE_DIR}/imgui/backends/*
+  )
+  message(STATUS "FILES_EXCLUDED_FROM_LINT: ${FILES_EXCLUDED_FROM_LINT}")
+
+  # find files to lint
+  # same note as above
+  set(FILES_TO_LINT "")
+  file(GLOB_RECURSE FILES_TO_LINT CONFIGURE_DEPENDS
+    *.cpp
+    *.hpp
+    *.c
+    *.h
+  )
+  list(REMOVE_ITEM FILES_TO_LINT ${FILES_EXCLUDED_FROM_LINT})
+  message(STATUS "FILES_TO_LINT: ${FILES_TO_LINT}")
+
+  # check copyright headers
+  find_package(ament_cmake_copyright REQUIRED)
+  ament_copyright(EXCLUDE ${FILES_EXCLUDED_FROM_LINT})
+
+  # find clang-format config file (at the root of the workspace)
+  set(CLANG_CONFIG_FILE "${CMAKE_SOURCE_DIR}/../../.clang-format")
+  get_filename_component(CLANG_CONFIG_FILE "${CLANG_CONFIG_FILE}" ABSOLUTE)
+  message(STATUS "CLANG_CONFIG_FILE: ${CLANG_CONFIG_FILE}")
+
+  # check formatting with clang-format
+  find_package(ament_cmake_clang_format REQUIRED)
+  ament_clang_format(CONFIG_FILE "${CLANG_CONFIG_FILE}" "${FILES_TO_LINT}")
+
+  # lint with cpplint
+  # NOTE: we use a custom implementation of ament_cmake_cpplint that supports
+  # providing several patterns/files in EXCLUDE
+  include(cmake/ament_cpplint.cmake)
+  ament_cpplint(EXCLUDE "${FILES_EXCLUDED_FROM_LINT}" FILTERS "-readability/todo")
+endif()
+
 
 ####################################################################################################
 # install ros2 package
