@@ -24,7 +24,7 @@ if [ $(basename "$PWD") != "brains2" ]; then
     exit 1
 fi
 # check that we use the brains2 conda environment (check CONDA_PREFIX ends with /brains2)
-if [ $(basename "$CONDA_PREFIX") != "brains2" ] && [ $(basename "$CONDA_PREFIX") != "brains2-jazzy" ]; then
+if [ "$(basename "$CONDA_PREFIX")" != "brains2" ]; then
     echo "Please activate the brains2 conda environment"
     exit 1
 fi
