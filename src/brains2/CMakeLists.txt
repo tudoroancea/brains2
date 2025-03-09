@@ -100,7 +100,7 @@ endif()
 ####################################################################################################
 # sim
 ####################################################################################################
-file(GLOB_RECURSE brains2_generated_sources src/sim/generated/*.c)
+file(GLOB_RECURSE brains2_sim_generated_sources src/sim/generated/*.c)
 message(STATUS "Generated sim sources: ${brains2_sim_generated_sources}")
 ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp ${brains2_sim_generated_sources})
 target_link_libraries(brains2_sim Eigen3::Eigen acados)
