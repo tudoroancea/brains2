@@ -28,7 +28,8 @@
 #include "generated/kin6_accels.h"
 
 using brains2::common::clip;
-using brains2::sim::Sim;
+
+namespace brains2::sim {
 
 Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     : limits(limits),
@@ -101,7 +102,7 @@ Sim::~Sim() {
     dyn6_acados_sim_solver_free_capsule(dyn6_capsule);
 }
 
-tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
+tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::Error> Sim::simulate(
     const Sim::State &state, const Sim::Control &control, double dt) {
     // Set current state
     x[0] = state.X;
@@ -158,14 +159,14 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
                                    "T",
                                    &dt);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::SAMPLING_TIME_UPDATE_ERROR);
+            return tl::make_unexpected(Error::SAMPLING_TIME_UPDATE_ERROR);
         }
 
         // Call simulation solver
         exit_code = dyn6_acados_sim_solve(
             reinterpret_cast<dyn6_sim_solver_capsule *>(dyn6_workspace._sim_capsule));
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACADOS_SOLVER_ERROR);
+            return tl::make_unexpected(Error::ACADOS_SOLVER_ERROR);
         }
 
         // Get next state
@@ -177,7 +178,7 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
 
         exit_code = casadi_eval(dyn6_workspace.accel_fun_mem);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACCELS_FUNCTION_ERROR);
+            return tl::make_unexpected(Error::ACCELS_FUNCTION_ERROR);
         }
     } else {
         // We use the kinematic model
@@ -199,14 +200,14 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
                                    "T",
                                    &dt);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::SAMPLING_TIME_UPDATE_ERROR);
+            return tl::make_unexpected(Error::SAMPLING_TIME_UPDATE_ERROR);
         }
 
         // Call simulation solver
         exit_code = kin6_acados_sim_solve(
             reinterpret_cast<kin6_sim_solver_capsule *>(kin6_workspace._sim_capsule));
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACADOS_SOLVER_ERROR);
+            return tl::make_unexpected(Error::ACADOS_SOLVER_ERROR);
         }
 
         // Get next state
@@ -218,7 +219,7 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
 
         exit_code = casadi_eval(kin6_workspace.accel_fun_mem);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACCELS_FUNCTION_ERROR);
+            return tl::make_unexpected(Error::ACCELS_FUNCTION_ERROR);
         }
     }
 
@@ -238,8 +239,25 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
     // Check for NaNs
     if (std::any_of(x_next.begin(), x_next.end(), [](double value) { return std::isnan(value); }) ||
         std::any_of(a.begin(), a.end(), [](double value) { return std::isnan(value); })) {
-        return tl::make_unexpected(SimError::NANS_IN_RESULT);
+        return tl::make_unexpected(Error::NANS_IN_RESULT);
     }
 
     return std::make_pair(next_state, next_accels);
 }
+
+std::string to_string(Sim::Error error) {
+    switch (error) {
+        case Sim::Error::SAMPLING_TIME_UPDATE_ERROR:
+            return "SAMPLING_TIME_UPDATE_ERROR";
+        case Sim::Error::ACADOS_SOLVER_ERROR:
+            return "ACADOS_SOLVER_ERROR";
+        case Sim::Error::ACCELS_FUNCTION_ERROR:
+            return "ACCELS_FUNCTION_ERROR";
+        case Sim::Error::NANS_IN_RESULT:
+            return "NANS_IN_RESULT";
+        default:
+            return "UNKNOWN_ERROR";
+    }
+}
+
+}  // namespace brains2::sim

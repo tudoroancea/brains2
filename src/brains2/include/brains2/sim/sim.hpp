@@ -57,26 +57,12 @@ public:
     /*
      * @brief Possible errors that can occur during a simulation step.
      */
-    enum class SimError {
+    enum class Error {
         SAMPLING_TIME_UPDATE_ERROR = 0,
         ACADOS_SOLVER_ERROR = 1,
         ACCELS_FUNCTION_ERROR = 2,
         NANS_IN_RESULT = 3,
     };
-    static inline std::string to_string(SimError error) {
-        switch (error) {
-            case SimError::SAMPLING_TIME_UPDATE_ERROR:
-                return "SAMPLING_TIME_UPDATE_ERROR";
-            case SimError::ACADOS_SOLVER_ERROR:
-                return "ACADOS_SOLVER_ERROR";
-            case SimError::ACCELS_FUNCTION_ERROR:
-                return "ACCELS_FUNCTION_ERROR";
-            case SimError::NANS_IN_RESULT:
-                return "NANS_IN_RESULT";
-            default:
-                return "UNKNOWN_ERROR";
-        }
-    }
 
     // We remove the default constructor, copy constructor and assignment operator because this
     // class has to allocate data on the heap (for the acados simulation solver and the casadi
@@ -104,9 +90,9 @@ public:
      * @return The next state of the car and the accelerations of the car if no erros occur,
      * otherwise a SimError.
      */
-    tl::expected<std::pair<State, Accels>, SimError> simulate(const State &state,
-                                                              const Control &control,
-                                                              double dt);
+    tl::expected<std::pair<State, Accels>, Error> simulate(const State &state,
+                                                           const Control &control,
+                                                           double dt);
 
 private:
     // Control limits used for the simulation
@@ -140,6 +126,8 @@ private:
         // int
     } kin6_workspace, dyn6_workspace;
 };
+
+std::string to_string(Sim::Error error);
 
 }  // namespace sim
 }  // namespace brains2
