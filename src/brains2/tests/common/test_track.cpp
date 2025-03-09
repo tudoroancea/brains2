@@ -22,7 +22,7 @@
 #include "brains2/common/tracks.hpp"
 #include "gtest/gtest.h"
 
-TEST(TracksTest, Constructor) {
+TEST(TrackTest, Constructor) {
     // Test constructor with valid input
     std::vector<double> s = {0.0, 1.0, 2.0};
     std::vector<double> X = {0.0, 1.0, 2.0};

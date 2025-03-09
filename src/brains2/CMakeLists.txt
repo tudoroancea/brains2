@@ -6,10 +6,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -pthread")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -DDEBUG -Wall -Wextra -Wpedantic")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -DDEBUG -Wall -Wextra -Wpedantic")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -Os -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_DEBUG} -O2")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
@@ -82,7 +82,7 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
+file(GLOB_RECURSE brains2_common_source_files CONFIGURE_DEPENDS src/common/*.cpp)
 ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
 target_link_libraries(brains2_common Eigen3::Eigen OsqpEigen::OsqpEigen osqp::osqp)
 
@@ -90,8 +90,8 @@ if(BUILD_TESTING)
   ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
   target_link_libraries(test_track_database brains2_common)
 
-  ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
-  target_link_libraries(test_tracks brains2_common)
+  ament_add_gtest(test_track tests/common/test_track.cpp)
+  target_link_libraries(test_track brains2_common)
 
   ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
   target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
@@ -100,7 +100,7 @@ endif()
 ####################################################################################################
 # sim
 ####################################################################################################
-file(GLOB_RECURSE brains2_sim_generated_sources src/sim/generated/*.c)
+file(GLOB_RECURSE brains2_sim_generated_sources CONFIGURE_DEPENDS src/sim/generated/*.c)
 message(STATUS "Generated sim sources: ${brains2_sim_generated_sources}")
 ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp ${brains2_sim_generated_sources})
 target_link_libraries(brains2_sim Eigen3::Eigen acados)
