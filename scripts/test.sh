@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-colcon test
-echo ""
-colcon test-result --all --verbose
+# colcon test --ctest-args -R test
+# echo ""
+# colcon test-result --all --verbose
+ctest --test-dir build/brains2 -R test

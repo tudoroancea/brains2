@@ -438,7 +438,7 @@ private:
         if (!track) {
             return;
         }
-        for (int32_t i = 0; i < this->hlc->horizon_size() + 1; ++i) {
+        for (size_t i = 0; i < this->hlc->horizon_size() + 1; ++i) {
             // reference trajectory
             const auto s_ref = s + x_ref(0, i), X_ref = track->eval_X(s_ref),
                        Y_ref = track->eval_Y(s_ref);

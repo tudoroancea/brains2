@@ -81,8 +81,10 @@ public:
             [this](const Pose::ConstSharedPtr msg) { this->pose_cb(msg); });
         this->start_srv = this->create_service<std_srvs::srv::Empty>(
             "/brains2/start",
-            [this](const std_srvs::srv::Empty::Request::SharedPtr req,
-                   const std_srvs::srv::Empty::Response::SharedPtr res) { this->start_cb(); });
+            [this]([[maybe_unused]] const std_srvs::srv::Empty::Request::SharedPtr req,
+                   [[maybe_unused]] const std_srvs::srv::Empty::Response::SharedPtr res) {
+                this->start_cb();
+            });
         this->timer = this->create_wall_timer(std::chrono::milliseconds(10),
                                               [this]() { this->periodic_fsm_state_publish(); });
     }
