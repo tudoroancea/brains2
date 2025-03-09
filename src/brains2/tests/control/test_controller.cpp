@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest-param-test.h>
 #include <memory>
 #include <numeric>
 #include "brains2/common/tracks.hpp"
 #include "brains2/control/high_level_controller.hpp"
 #include "brains2/external/icecream.hpp"
+#include "Eigen/Dense"
 #include "gtest/gtest.h"
 
 using brains2::common::Track;
@@ -66,15 +66,18 @@ protected:
                                                                350.0,
                                                                20.0,
                                                                3.0,
+                                                               0.02,
                                                            },
                                                            HighLevelController::ConstraintsParams{
                                                                10.0,
                                                                0.5,
+                                                               1.0,
                                                                100.0,
                                                                1.55,
                                                            },
                                                            HighLevelController::CostParams{
                                                                3.0,
+                                                               1.0,
                                                                1.0,
                                                                1.0,
                                                                1.0,
@@ -96,7 +99,8 @@ protected:
 };
 
 TEST_P(ControllerConstantCurvatureTest, bruh) {
-    auto res = controller->compute_control(HighLevelController::State{0.0, 0.0, 0.0, 0.0}, *track);
+    auto res =
+        controller->compute_control(HighLevelController::State{0.0, 0.0, 0.0, 0.0, 0.0}, *track);
     ASSERT_TRUE(res.has_value());
     // IC(*res, controller->get_x_opt(), controller->get_u_opt());
 }
