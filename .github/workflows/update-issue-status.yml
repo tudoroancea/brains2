@@ -1,0 +1,148 @@
+name: Update Issue Status in Project
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+jobs:
+  update-project-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update issue status when PR is linked
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Get the PR description and title
+            const prNumber = context.payload.pull_request.number;
+            const prBody = context.payload.pull_request.body || '';
+            const prTitle = context.payload.pull_request.title || '';
+
+            // Look for issue references in the PR body or title
+            // This regex matches patterns like "fixes #123", "closes #123", "resolves #123", etc.
+            const issueRefs = [];
+            const bodyMatches = [...prBody.matchAll(/(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi)];
+            const titleMatches = [...prTitle.matchAll(/(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi)];
+
+            // Also look for direct GitHub linking syntax
+            const directLinkMatches = [...prBody.matchAll(/(?:tudoroancea\/brains2)?#(\d+)/g)];
+
+            // Collect all issue numbers
+            bodyMatches.forEach(match => issueRefs.push(match[2]));
+            titleMatches.forEach(match => issueRefs.push(match[2]));
+            directLinkMatches.forEach(match => issueRefs.push(match[1]));
+
+            if (issueRefs.length === 0) {
+              console.log('No linked issues found in PR');
+              return;
+            }
+
+            console.log(`Found linked issues: ${issueRefs.join(', ')}`);
+
+            // For each linked issue, update its status in the project
+            for (const issueNumber of issueRefs) {
+              try {
+                // First, we need to get the node ID of the issue
+                const { data: issue } = await github.rest.issues.get({
+                  owner: 'tudoroancea',
+                  repo: 'brains2',
+                  issue_number: parseInt(issueNumber)
+                });
+
+                const issueNodeId = issue.node_id;
+
+                // Now we need to use GraphQL to:
+                // 1. Find the project item for this issue
+                // 2. Update its status field
+
+                // Get the project data
+                const projectQuery = `
+                  query {
+                    user(login: "tudoroancea") {
+                      projectV2(number: 5) {
+                        id
+                        fields(first: 20) {
+                          nodes {
+                            ... on ProjectV2SingleSelectField {
+                              id
+                              name
+                              options {
+                                id
+                                name
+                              }
+                            }
+                          }
+                        }
+                        items(first: 100) {
+                          nodes {
+                            id
+                            content {
+                              ... on Issue {
+                                id
+                                number
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `;
+
+                const projectData = await github.graphql(projectQuery);
+                const project = projectData.user.projectV2;
+
+                // Find the status field
+                const statusField = project.fields.nodes.find(field =>
+                  field.name.toLowerCase() === 'status');
+
+                if (!statusField) {
+                  console.log('Status field not found in project');
+                  continue;
+                }
+
+                // Find the "In Progress" option
+                const inProgressOption = statusField.options.find(option =>
+                  option.name.toLowerCase() === 'in progress');
+
+                if (!inProgressOption) {
+                  console.log('In Progress status option not found');
+                  continue;
+                }
+
+                // Find the project item for this issue
+                const projectItem = project.items.nodes.find(item =>
+                  item.content && item.content.number === parseInt(issueNumber));
+
+                if (!projectItem) {
+                  console.log(`Issue #${issueNumber} not found in project`);
+                  continue;
+                }
+
+                // Update the status to "In Progress"
+                const updateMutation = `
+                  mutation {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: "${project.id}"
+                        itemId: "${projectItem.id}"
+                        fieldId: "${statusField.id}"
+                        value: {
+                          singleSelectOptionId: "${inProgressOption.id}"
+                        }
+                      }
+                    ) {
+                      projectV2Item {
+                        id
+                      }
+                    }
+                  }
+                `;
+
+                await github.graphql(updateMutation);
+                console.log(`Updated issue #${issueNumber} status to In Progress`);
+
+              } catch (error) {
+                console.error(`Error updating issue #${issueNumber}:`, error);
+              }
+            }
