@@ -18,4 +18,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-ctest --test-dir build/brains2 -E test "$@"
+ctest --test-dir build/brains2 --output-on-failure -E test "$@"
