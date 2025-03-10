@@ -18,7 +18,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# colcon test --ctest-args -E test
-# echo ""
-# colcon test-result --all --verbose
-ctest --test-dir build/brains2 -E test
+ctest --test-dir build/brains2 -E test "$@"

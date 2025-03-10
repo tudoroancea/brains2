@@ -20,7 +20,7 @@
 
 #include <memory>
 #include <numeric>
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track.hpp"
 #include "brains2/control/high_level_controller.hpp"
 #include "brains2/external/icecream.hpp"
 #include "Eigen/Dense"
