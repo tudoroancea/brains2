@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef BRAINS2__COMMON__TRACKS_HPP_
-#define BRAINS2__COMMON__TRACKS_HPP_
+#ifndef BRAINS2__COMMON__TRACK_HPP_
+#define BRAINS2__COMMON__TRACK_HPP_
 
 #include <filesystem>
 #include <string>
@@ -64,7 +64,7 @@ public:
     enum class Error {
         DIFFERENT_SIZES,        // Provided arrays of values have different sizes
         NONMONOTONIC_PROGRESS,  // Provided progress values are not strictly increasing
-        NEGATIVE_WIDTH,         // Provided width values are sometimes negative
+        NONPOSITIVE_WIDTH,      // Provided width values are sometimes negative
         DISCONTINUOUS_HEADING,  // Provided heading values are not continuous
         FILE_NOT_FOUND,         // CSV file not found
     };
@@ -210,4 +210,4 @@ std::string to_string(const Track::Error &error);
 }  // namespace common
 }  // namespace brains2
 
-#endif  // BRAINS2__COMMON__TRACKS_HPP_
+#endif  // BRAINS2__COMMON__TRACK_HPP_

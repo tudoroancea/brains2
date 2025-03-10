@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track.hpp"
 #include "brains2/external/expected.hpp"
 #include "casadi/casadi.hpp"
 #include "Eigen/Dense"

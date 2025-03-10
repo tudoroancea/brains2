@@ -21,7 +21,7 @@
 #include "brains2/control/high_level_controller.hpp"
 #include <cmath>
 #include <iterator>
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track.hpp"
 #include "brains2/external/expected.hpp"
 #include "brains2/external/icecream.hpp"
 #include "casadi/casadi.hpp"
