@@ -199,7 +199,7 @@ HighLevelController::HighLevelController(
                 {"expand", true},
                 {"debug", false},
                 {"structure_detection", "auto"},
-                {"fatrop", casadi::Dict({{"print_level", 1}})},
+                {"fatrop", casadi::Dict({{"print_level", 0}})},
                 {"jit", solver_params.jit},
                 {"jit_options", casadi::Dict({{"flags", "-O2 -march=native"}, {"verbose", false}})},
             });
