@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.15)
 project(brains2)
 
 
@@ -6,10 +6,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -pthread")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -DDEBUG -Wall -Wextra -Wpedantic -Wno-deprecated-declarations")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -DDEBUG -Wall -Wextra -Wpedantic -Wno-deprecated-declarations")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -Os -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_DEBUG} -O2")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
@@ -30,11 +30,10 @@ set(BUILD_TESTING ON)
 
 # find ROS 2 dependencies
 find_package(ament_cmake_auto REQUIRED)
-find_package(ament_cmake_gtest REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 ament_auto_find_build_dependencies()
 
-# find other libraries: eigen3, nlohmann json
+# find other libraries
 find_package(Eigen3 REQUIRED)
 find_package(osqp REQUIRED)
 find_package(OsqpEigen REQUIRED)
@@ -48,6 +47,7 @@ find_package(SDL2 REQUIRED)
 
 if (BUILD_TESTING)
   enable_testing()
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(GTest REQUIRED)
   include(GoogleTest)
 endif()
@@ -71,7 +71,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   ${srv_files}
   DEPENDENCIES std_msgs
 )
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
+rosidl_get_typesupport_target(brains2_msg ${PROJECT_NAME} rosidl_typesupport_cpp)
+message(STATUS "brains2_msg: ${brains2_msg}")
 
 ####################################################################################################
 # common
@@ -82,15 +83,17 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-file(GLOB_RECURSE brains2_common_source_files src/common/*.cpp)
+file(GLOB_RECURSE brains2_common_source_files CONFIGURE_DEPENDS src/common/*.cpp)
 ament_auto_add_library(brains2_common SHARED ${brains2_common_source_files})
 target_link_libraries(brains2_common Eigen3::Eigen OsqpEigen::OsqpEigen osqp::osqp)
 
 if(BUILD_TESTING)
   ament_add_gtest(test_track_database tests/common/test_track_database.cpp)
   target_link_libraries(test_track_database brains2_common)
-  ament_add_gtest(test_tracks tests/common/test_tracks.cpp)
-  target_link_libraries(test_tracks brains2_common)
+
+  ament_add_gtest(test_track tests/common/test_track.cpp)
+  target_link_libraries(test_track brains2_common)
+
   ament_add_gtest(test_spline_fittings tests/estimation/spline_fitting/test_spline_fitting.cpp)
   target_link_libraries(test_spline_fittings brains2_common brains2_estimation)
 endif()
@@ -98,18 +101,18 @@ endif()
 ####################################################################################################
 # sim
 ####################################################################################################
-file(GLOB_RECURSE generated_sources src/sim/generated/*.c)
-message(STATUS "Generated sources: ${generated_sources}")
-ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp ${generated_sources})
+file(GLOB_RECURSE brains2_sim_generated_sources CONFIGURE_DEPENDS src/sim/generated/*.c)
+message(STATUS "Generated sim sources: ${brains2_sim_generated_sources}")
+ament_auto_add_library(brains2_sim SHARED src/sim/sim.cpp ${brains2_sim_generated_sources})
 target_link_libraries(brains2_sim Eigen3::Eigen acados)
 target_include_directories(brains2_sim PUBLIC src/sim)
 
 ament_auto_add_executable(sim_node src/sim/sim_node.cpp)
 target_link_libraries(sim_node
-  "${cpp_typesupport_target}" # for custom message and service types defined in this package
-  yaml-cpp::yaml-cpp
+  ${brains2_msg}
   brains2_common
   brains2_sim
+  yaml-cpp::yaml-cpp
 )
 
 ####################################################################################################
@@ -117,20 +120,25 @@ target_link_libraries(sim_node
 ####################################################################################################
 
 ament_auto_add_library(brains2_control SHARED src/control/high_level_controller.cpp src/control/low_level_controller.cpp)
-target_link_libraries(brains2_control m casadi fatrop)
+target_link_libraries(brains2_control
+  brains2_common
+  brains2_sim
+  m
+  casadi
+  fatrop
+)
 
 ament_auto_add_executable(control_node src/control/control_node.cpp)
 target_link_libraries(control_node
-  "${cpp_typesupport_target}" # for custom message and service types defined in this package
-  yaml-cpp::yaml-cpp
+  ${brains2_msg}
   brains2_common
   brains2_control
-  brains2_sim
+  yaml-cpp::yaml-cpp
 )
 
 if(BUILD_TESTING)
-  ament_add_gtest(test_controller tests/control/test_controller.cpp)
-  target_link_libraries(test_controller brains2_common brains2_control)
+  ament_add_gtest(test_high_level_controller tests/control/test_high_level_controller.cpp)
+  target_link_libraries(test_high_level_controller brains2_common brains2_control)
 endif()
 
 ####################################################################################################
@@ -146,7 +154,7 @@ target_link_libraries(brains2_be_spline_test brains2_common brains2_estimation)
 
 ament_auto_add_executable(fake_track_estimation_node src/estimation/fake_track_estimation_node.cpp)
 target_link_libraries(fake_track_estimation_node
-  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  ${brains2_msg}
   brains2_common
 )
 
@@ -155,7 +163,7 @@ target_link_libraries(fake_track_estimation_node
 ####################################################################################################
 ament_auto_add_executable(fake_slam_node src/slam/fake_slam_node.cpp)
 target_link_libraries(fake_slam_node
-  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  ${brains2_msg}
   yaml-cpp::yaml-cpp
   brains2_common
 )
@@ -165,7 +173,7 @@ target_link_libraries(fake_slam_node
 ####################################################################################################
 ament_auto_add_executable(coordination_node src/coordination/coordination_node.cpp)
 target_link_libraries(coordination_node
-  "${cpp_typesupport_target}" # for custom message and service types defined in this package
+  ${brains2_msg}
   brains2_common
 )
 
@@ -180,7 +188,6 @@ if(BUILD_TESTING)
   # (see https://github.com/ament/ament_cmake/blob/1b66f6c25f7d6ed98b3aadafe57af0df6ce91573/ament_cmake_test/ament_cmake_test/__init__.py#L201)
   # which does not seem to support shell extensions such as globbing. We therefore have to manually
   # specify the files to exclude.
-  set(FILES_EXCLUDED_FROM_LINT "")
   file(GLOB_RECURSE FILES_EXCLUDED_FROM_LINT CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/src/sim/generated/*
     ${CMAKE_SOURCE_DIR}/src/sim/generated/dyn6_model/*
@@ -193,7 +200,6 @@ if(BUILD_TESTING)
 
   # find files to lint
   # same note as above
-  set(FILES_TO_LINT "")
   file(GLOB_RECURSE FILES_TO_LINT CONFIGURE_DEPENDS
     *.cpp
     *.hpp

@@ -17,48 +17,5 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-name: brains2
-channels:
-  - conda-forge
-  - robostack-staging
-  - robostack-jazzy
-dependencies:
-  # dependency management
-  - conda-lock
-  # python dependencies
-  - python
-  # misc tools for debugging, linting, etc.
-  - icecream
-  - ruff
-  - gtest
-  - ros-jazzy-ament-cmake-clang-format
-  # general scientifc computing
-  - numpy
-  - matplotlib
-  - scipy
-  - casadi>=3.6.7
-  - eigen
-  - osqp-eigen
-  - qpsolvers
-  # needed for linux-64
-  - libblasfeo>=0.1.4.1
-  # c++ dependencies
-  - compilers
-  - clang
-  - clangxx
-  - ninja
-  - cmake
-  - nlohmann_json
-  - yaml-cpp
-  # track generation dependencies
-  - shapely
-  # ros2 dependencies
-  - ros-jazzy-desktop
-  - pkg-config
-  - colcon-common-extensions
-  - ros-jazzy-rosbag2-storage-mcap
-  - ros-jazzy-foxglove-bridge
-platforms:
-  - osx-arm64
-  - linux-aarch64
-  - linux-64
+
+ctest --test-dir build/brains2 --output-on-failure -E test "$@"

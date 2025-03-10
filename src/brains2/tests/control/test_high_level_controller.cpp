@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest-param-test.h>
 #include <memory>
 #include <numeric>
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track.hpp"
 #include "brains2/control/high_level_controller.hpp"
 #include "brains2/external/icecream.hpp"
+#include "Eigen/Dense"
 #include "gtest/gtest.h"
 
 using brains2::common::Track;
@@ -51,42 +51,47 @@ static tl::expected<Track, Track::Error> generate_constant_curvature_track(const
     return Track::from_values(s, X, Y, phi, kappa, width);
 }
 
-class ControllerConstantCurvatureTest : public ::testing::TestWithParam<double> {
+class HighLevelControllerTestSuite : public ::testing::TestWithParam<double> {
 protected:
+    double curvature;
     std::unique_ptr<HighLevelController> controller;
     std::unique_ptr<Track> track;
     void SetUp() override {
-        controller = std::make_unique<HighLevelController>(10,
-                                                           HighLevelController::ModelParams{
-                                                               0.05,
-                                                               230.0,
-                                                               0.7853,
-                                                               0.7853,
-                                                               4.950,
-                                                               350.0,
-                                                               20.0,
-                                                               3.0,
-                                                           },
-                                                           HighLevelController::ConstraintsParams{
-                                                               10.0,
-                                                               0.5,
-                                                               100.0,
-                                                               1.55,
-                                                           },
-                                                           HighLevelController::CostParams{
-                                                               3.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                               1.0,
-                                                           });
-        auto curvature = GetParam();
+        this->controller =
+            std::make_unique<HighLevelController>(20,
+                                                  HighLevelController::ModelParams{
+                                                      0.05,
+                                                      230.0,
+                                                      0.7853,
+                                                      0.7853,
+                                                      4.950,
+                                                      350.0,
+                                                      20.0,
+                                                      3.0,
+                                                      0.02,
+                                                  },
+                                                  HighLevelController::ConstraintsParams{
+                                                      10.0,
+                                                      0.5,
+                                                      1.0,
+                                                      200.0,
+                                                      1.55,
+                                                  },
+                                                  HighLevelController::CostParams{
+                                                      3.0,
+                                                      10.0,
+                                                      20.0,
+                                                      50.0,
+                                                      20.0,
+                                                      2.0,
+                                                      1.0,
+                                                      0.0001,
+                                                      10000.0,
+                                                      20000.0,
+                                                      50000.0,
+                                                      20000.0,
+                                                  });
+        curvature = GetParam();
         const auto track_expected = generate_constant_curvature_track(curvature, 4.0, 5);
         if (!track_expected) {
             FAIL() << "Track generation failed";
@@ -95,13 +100,14 @@ protected:
     }
 };
 
-TEST_P(ControllerConstantCurvatureTest, bruh) {
-    auto res = controller->compute_control(HighLevelController::State{0.0, 0.0, 0.0, 0.0}, *track);
+TEST_P(HighLevelControllerTestSuite, constant_curvature) {
+    auto res =
+        controller->compute_control(HighLevelController::State{0.0, 0.0, 0.0, 0.0, 0.0}, *track);
     ASSERT_TRUE(res.has_value());
-    // IC(*res, controller->get_x_opt(), controller->get_u_opt());
+    IC(curvature, controller->get_x_opt(), controller->get_u_opt());
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    values,
-    ControllerConstantCurvatureTest,
+    ,
+    HighLevelControllerTestSuite,
     testing::Values(-1 / 6.0, -1 / 8.0, -1 / 10.0, 0.0, 1 / 10.0, 1 / 8.0, 1 / 6.0));

@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "self-hosted"]
+        os: ["ubuntu-24.04", "ubuntu-24.04-arm", "macos-15", "self-hosted"]
     defaults:
       run:
         shell: bash -leo pipefail {0}
@@ -61,7 +61,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: "ubuntu-latest"
+    runs-on: "ubuntu-24.04"
     if: github.event.label.name == 'ci:run_build'
     needs: build
     defaults:
@@ -86,12 +86,51 @@ jobs:
       - name: Download build output
         uses: actions/download-artifact@v4
         with:
-          name: output-ubuntu-latest
+          name: output-ubuntu-24.04
 
       - name: Unzip build output
-        run: unzip output-ubuntu-latest.zip
+        run: unzip output-ubuntu-24.04.zip
 
       - name: Run lint and formatting checks
         run: |
-          colcon test --ctest-args -E test
-          colcon test-result --all --verbose
+          ./scripts/lint.sh
+
+  unit_test:
+    name: Unit test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: github.event.label.name == 'ci:run_build'
+    needs: build
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-24.04", "ubuntu-24.04-arm", "macos-15", "self-hosted"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Cleanup residual micromamba-installation
+        run: rm -rf ~/micromamba-bin
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: 1.5.12-0
+          environment-name: brains2
+          environment-file: conda-lock.yml
+          init-shell: bash
+          cache-environment: true
+
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: output-${{ matrix.os }}
+
+      - name: Unzip build output
+        run: unzip output-${{ matrix.os }}.zip
+
+      - name: Run unit tests
+        run: |
+          ./scripts/test.sh

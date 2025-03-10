@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include "brains2/common/tracks.hpp"
+#include "brains2/common/track.hpp"
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
@@ -63,7 +63,7 @@ tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
     }
     // Check that the width is positive
     if ((width.array() <= 0).any()) {
-        return tl::unexpected(Track::Error::NEGATIVE_WIDTH);
+        return tl::unexpected(Track::Error::NONPOSITIVE_WIDTH);
     }
     // Check that the heading is continuous
     std::vector<double> diffs(size);
@@ -301,8 +301,8 @@ std::string to_string(const Track::Error& error) {
             return "Different sizes";
         case Track::Error::NONMONOTONIC_PROGRESS:
             return "Nonmonotonic track progress";
-        case Track::Error::NEGATIVE_WIDTH:
-            return "Negative track width";
+        case Track::Error::NONPOSITIVE_WIDTH:
+            return "Nonpositive track width";
         case Track::Error::DISCONTINUOUS_HEADING:
             return "Discontinuous heading";
         case Track::Error::FILE_NOT_FOUND:

@@ -143,9 +143,10 @@ private:
         // call sim solver
         brains2::sim::Sim::State new_state{};
         auto expected_sim_result = sim->simulate(state, control, dt);
+        // TODO: publish diagnostics instead?
         if (!expected_sim_result) {
             throw std::runtime_error("Simulation error: " +
-                                     brains2::sim::Sim::to_string(expected_sim_result.error()));
+                                     brains2::sim::to_string(expected_sim_result.error()));
         }
         std::tie(new_state, accels) = expected_sim_result.value();
         state = new_state;

@@ -18,6 +18,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-colcon test
-echo ""
-colcon test-result --all --verbose
+ctest --test-dir build/brains2 --output-on-failure -R test "$@"
