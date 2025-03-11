@@ -1,0 +1,52 @@
+<launch>
+  <arg name="track_name" default="alpha" />
+  <arg name="Nf" default="20" />
+  <arg name="freq" default="20" />
+  <arg name="v_ref" default="6.5" />
+  <arg name="q_s" default="10.0" />
+  <arg name="q_n" default="20.0" />
+  <arg name="q_psi" default="50.0" />
+  <arg name="q_v" default="20.0" />
+  <arg name="r_delta" default="2.0" />
+  <arg name="r_tau" default="0.001" />
+  <arg name="final_mul" default="1000.0" />
+  <arg name="K_tv" default="300.0" />
+  <arg name="bag_file" default="" />
+  <executable
+    cmd="ros2 bag record --storage mcap --storage-config-file mcap_writer_options.yml --regex '(brains2)|(tf)|(parameter_events)|(rosout)' --output $(var bag_file)"
+    if="$(eval '\'$(var bag_file)\' != \'\'')"
+  />
+  <timer period="1.0">
+    <node pkg="brains2" exec="sim_node">
+      <param name="track_name" value="$(var track_name)" />
+    </node>
+    <node pkg="brains2" exec="coordination_node">
+      <param name="laps" value="1" />
+    </node>
+    <node pkg="brains2" exec="fake_track_estimation_node">
+      <param name="track_name" value="$(var track_name)" />
+      <param
+        name="dist_front"
+        value="$(eval '1.5 * $(var Nf) * $(var v_ref) / $(var freq)')"
+      />
+      <param name="dist_back" value="2.0" />
+    </node>
+    <node pkg="brains2" exec="control_node">
+      <param name="solver" value="fatrop" />
+      <param name="Nf" value="$(var Nf)" />
+      <param name="v_ref" value="$(var v_ref)" />
+      <param name="q_s" value="$(var q_s)" />
+      <param name="q_n" value="$(var q_n)" />
+      <param name="q_psi" value="$(var q_psi)" />
+      <param name="q_v" value="$(var q_v)" />
+      <param name="r_delta" value="$(var r_delta)" />
+      <param name="r_tau" value="$(var r_tau)" />
+      <param name="final_mul" value="$(var final_mul)" />
+      <param name="K_tv" value="$(var K_tv)" />
+      <param name="q_s_f" value="$(eval '$(var final_mul) * $(var q_s)')" />
+      <param name="q_n_f" value="$(eval '$(var final_mul) * $(var q_n)')" />
+      <param name="q_psi_f" value="$(eval '$(var final_mul) * $(var q_psi)')" />
+      <param name="q_v_f" value="$(eval '$(var final_mul) * $(var q_v)')" />
+    </node>
+  </timer>
+</launch>

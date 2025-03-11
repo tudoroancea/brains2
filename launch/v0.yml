@@ -72,8 +72,6 @@ launch:
             param:
               - name: "solver"
                 value: "fatrop"
-              - name: "jit"
-                value: false
               - name: "Nf"
                 value: $(var Nf)
               - name: "v_ref"
