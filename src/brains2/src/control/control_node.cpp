@@ -62,7 +62,6 @@ using brains2::msg::Pose;
 using brains2::msg::TrackEstimate;
 using brains2::msg::Velocity;
 using diagnostic_msgs::msg::DiagnosticArray;
-using rclcpp::Node;
 using rclcpp::Publisher;
 using rclcpp::Subscription;
 using std::to_string;
@@ -194,8 +193,8 @@ private:
     // Pose
     Subscription<Pose>::SharedPtr pose_sub;
     Pose::ConstSharedPtr pose_msg;
-    void pose_cb(const Pose::ConstSharedPtr pose_msg) {
-        this->pose_msg = pose_msg;
+    void pose_cb(const Pose::ConstSharedPtr msg) {
+        this->pose_msg = msg;
         // We launch the control timer upon receiving the first pose message and not velocity
         // message because eventually (when we will have SLAM), the pose messages will likely be the
         // ones that will be "late".
@@ -209,22 +208,22 @@ private:
     // Velocity
     Subscription<Velocity>::SharedPtr vel_sub;
     Velocity::ConstSharedPtr vel_msg;
-    void vel_cb(const Velocity::ConstSharedPtr vel_msg) {
-        this->vel_msg = vel_msg;
+    void vel_cb(const Velocity::ConstSharedPtr msg) {
+        this->vel_msg = msg;
     }
 
     // Acceleration
     Subscription<Acceleration>::SharedPtr accel_sub;
     Acceleration::ConstSharedPtr accel_msg;
-    void accel_cb(const Acceleration::ConstSharedPtr accel_msg) {
-        this->accel_msg = accel_msg;
+    void accel_cb(const Acceleration::ConstSharedPtr msg) {
+        this->accel_msg = msg;
     }
 
     // Current control
     Subscription<Controls>::SharedPtr current_controls_sub;
     Controls::ConstSharedPtr current_controls_msg;
-    void current_controls_cb(const Controls::ConstSharedPtr control_msg) {
-        this->current_controls_msg = control_msg;
+    void current_controls_cb(const Controls::ConstSharedPtr msg) {
+        this->current_controls_msg = msg;
     }
 
     // Track Estimate
@@ -272,13 +271,16 @@ private:
     unique_ptr<HLC> hlc;
     unique_ptr<LLC> llc;
 
-    double car_width, torque_max, steering_time_constant;
+    double car_width;
+    double torque_max;
+    double steering_time_constant;
     uint8_t hlc_error_counter = 0;
     enum class ControlStatus {
         NOMINAL,
         SENDING_LAST_PREDICTION,
         NO_MORE_PREDICTIONS,
-    } control_status = ControlStatus::NOMINAL;
+    };
+    ControlStatus control_status = ControlStatus::NOMINAL;
 
     void control_cb() {
         if (!this->fsm_msg) {
@@ -321,7 +323,7 @@ private:
             if (control_status != ControlStatus::NO_MORE_PREDICTIONS) {
                 // Compute high level control
                 const auto start = this->now();
-                const auto hlc_controls = this->hlc->compute_control(
+                auto hlc_controls = this->hlc->compute_control(
                     HLC::State{
                         frenet_pose.s,
                         frenet_pose.n,
@@ -440,8 +442,9 @@ private:
         }
         for (size_t i = 0; i < this->hlc->horizon_size() + 1; ++i) {
             // reference trajectory
-            const auto s_ref = s + x_ref(0, i), X_ref = track->eval_X(s_ref),
-                       Y_ref = track->eval_Y(s_ref);
+            const auto s_ref = s + x_ref(0, i);
+            const auto X_ref = track->eval_X(s_ref);
+            const auto Y_ref = track->eval_Y(s_ref);
             viz_msg.markers[1].points[i].x = X_ref;
             viz_msg.markers[1].points[i].y = Y_ref;
             viz_msg.markers[1].points[i].z = 0.05;
