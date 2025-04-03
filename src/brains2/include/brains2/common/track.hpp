@@ -30,8 +30,7 @@
 #include "brains2/external/optional.hpp"
 #include "Eigen/Dense"
 
-namespace brains2 {
-namespace common {
+namespace brains2::common {
 
 struct CartesianPose {
     double X, Y, phi;
@@ -207,7 +206,6 @@ public:
 
 std::string to_string(const Track::Error &error);
 
-}  // namespace common
-}  // namespace brains2
+}  // namespace brains2::common
 
 #endif  // BRAINS2__COMMON__TRACK_HPP_

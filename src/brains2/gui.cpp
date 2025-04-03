@@ -1,26 +1,85 @@
-// Dear ImGui: standalone example application for SDL2 + SDL_Renderer
-// (SDL is a cross-platform general purpose library for handling windows, inputs,
-// OpenGL/Vulkan/Metal graphics context creation, etc.)
+// Copyright 2025 Tudor Oancea, Mateo Berthet
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
+#include <cmath>
+#include <cstdio>
+#include <memory>
+#include "brains2/common/track.hpp"
+#include "brains2/control/high_level_controller.hpp"
+#include "brains2/control/low_level_controller.hpp"
+#include "brains2/external/expected.hpp"
+#include "brains2/sim/sim.hpp"
+#include "imgui/backends/imgui_impl_sdl2.h"
+#include "imgui/backends/imgui_impl_sdlrenderer2.h"
+#include "imgui/imgui.h"
+#include "imgui/implot.h"
+#include "SDL.h"
+#include "yaml-cpp/yaml.h"
 
-// Important to understand: SDL_Renderer is an _optional_ component of SDL2.
-// For a multi-platform app consider using e.g. SDL+DirectX on Windows and SDL+OpenGL on Linux/OSX.
-
-#include <SDL.h>
-#include <stdio.h>
-#include "imgui.h"
-#include "imgui_impl_sdl2.h"
-#include "imgui_impl_sdlrenderer2.h"
-#include "implot.h"
+namespace ImGui {
+bool SliderDouble(const char* label,
+                  double* v,
+                  double v_min,
+                  double v_max,
+                  const char* format = "%.3f",
+                  ImGuiSliderFlags flags = 0) {
+    return SliderScalar(label, ImGuiDataType_Double, v, &v_min, &v_max, format, flags);
+}
+}  // namespace ImGui
 
 #if !SDL_VERSION_ATLEAST(2, 0, 17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
 #endif
+
+#ifndef CAR_CONSTANTS_PATH
+#error CAR_CONSTANTS_PATH is not defined
+#endif
+
+using brains2::common::Track;
+using brains2::control::HLC;
+using brains2::control::LLC;
+using brains2::sim::Sim;
+
+static tl::expected<Track, Track::Error> generate_constant_curvature_track(
+    const double curvature = 0.0,
+    const double s_max = 7.0,
+    const double width = 1.5,
+    const size_t N = 20) {
+    Eigen::VectorXd s = Eigen::VectorXd::LinSpaced(N, 0.0, s_max);
+    Eigen::VectorXd kappa = curvature * Eigen::VectorXd::Ones(N);
+    Eigen::VectorXd w = width * Eigen::VectorXd::Ones(N);
+    if (std::fabs(curvature) < 1e-6) {
+        return Track::from_values(s,
+                                  s,
+                                  Eigen::VectorXd::Zero(N),
+                                  Eigen::VectorXd::Zero(N),
+                                  kappa,
+                                  w);
+    }
+    const auto R = 1 / std::abs(curvature);
+    const Eigen::VectorXd angles = (s / R).array() - M_PI_2;
+    const Eigen::VectorXd X = R * angles.array().cos();
+    const Eigen::VectorXd Y = (R * angles.array().sin() + R) * (curvature > 0.0 ? 1.0 : -1.0);
+    const Eigen::VectorXd phi = (angles.array() + M_PI_2) * (curvature > 0.0 ? 1.0 : -1.0);
+    return Track::from_values(s, X, Y, phi, kappa, w);
+}
 
 // Main code
 int main(int, char**) {
@@ -54,9 +113,6 @@ int main(int, char**) {
         SDL_Log("Error creating SDL_Renderer!");
         return -1;
     }
-    // SDL_RendererInfo info;
-    // SDL_GetRendererInfo(renderer, &info);
-    // SDL_Log("Current SDL_Renderer: %s", info.name);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -65,7 +121,6 @@ int main(int, char**) {
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -88,20 +143,84 @@ int main(int, char**) {
     // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher
     // quality font rendering.
     // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to
-    // write a double backslash \\ !
-    // io.Fonts->AddFontDefault();
-    // io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-    // io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    // io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    // io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    // ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f,
-    // nullptr, io.Fonts->GetGlyphRangesJapanese()); IM_ASSERT(font != nullptr);
+    io.Fonts->AddFontDefault();
 
-    // Our state
+    // load yaml file with car constants
+    YAML::Node car_constants = YAML::LoadFile(CAR_CONSTANTS_PATH);
+
+    Sim sim(Sim::Parameters{car_constants["inertia"]["mass"].as<double>(),
+                            car_constants["inertia"]["yaw_inertia"].as<double>(),
+                            car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+                            car_constants["geometry"]["wheelbase"].as<double>() -
+                                car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+                            car_constants["drivetrain"]["C_m0"].as<double>(),
+                            car_constants["drivetrain"]["C_r0"].as<double>(),
+                            car_constants["drivetrain"]["C_r1"].as<double>(),
+                            car_constants["drivetrain"]["C_r2"].as<double>(),
+                            car_constants["actuators"]["motor_time_constant"].as<double>(),
+                            car_constants["actuators"]["steering_time_constant"].as<double>(),
+                            car_constants["geometry"]["cog_height"].as<double>(),
+                            car_constants["geometry"]["axle_track"].as<double>(),
+                            car_constants["aero"]["C_downforce"].as<double>(),
+                            car_constants["pacejka"]["constant"]["Ba"].as<double>(),
+                            car_constants["pacejka"]["constant"]["Ca"].as<double>(),
+                            car_constants["pacejka"]["constant"]["Da"].as<double>(),
+                            car_constants["pacejka"]["constant"]["Ea"].as<double>()},
+            Sim::Limits{car_constants["actuators"]["torque_max"].as<double>(),
+                        car_constants["actuators"]["steering_max"].as<double>(),
+                        car_constants["actuators"]["steering_rate_max"].as<double>()});
+
+    static double K_tv = 300.0;
+    const LLC::ModelParams llc_model_params{
+        car_constants["inertia"]["mass"].as<double>(),
+        car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+        car_constants["geometry"]["wheelbase"].as<double>() -
+            car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+        car_constants["geometry"]["axle_track"].as<double>(),
+        car_constants["geometry"]["cog_height"].as<double>(),
+        car_constants["aero"]["C_downforce"].as<double>(),
+        car_constants["actuators"]["torque_max"].as<double>(),
+    };
+
+    static size_t Nf = 20;
+    const HLC::ModelParams hlc_model_params{
+        1.0 / 20.0,
+        car_constants["inertia"]["mass"].as<double>(),
+        car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+        car_constants["geometry"]["wheelbase"].as<double>() -
+            car_constants["geometry"]["cog_to_rear_axle"].as<double>(),
+        car_constants["drivetrain"]["C_m0"].as<double>(),
+        car_constants["drivetrain"]["C_r0"].as<double>(),
+        car_constants["drivetrain"]["C_r1"].as<double>(),
+        car_constants["drivetrain"]["C_r2"].as<double>(),
+        car_constants["actuators"]["steering_time_constant"].as<double>(),
+    };
+    static HLC::ConstraintsParams constraints_params{
+        10.0,
+        car_constants["actuators"]["steering_max"].as<double>(),
+        car_constants["actuators"]["steering_rate_max"].as<double>(),
+        car_constants["actuators"]["torque_max"].as<double>(),
+        car_constants["geometry"]["car_width"].as<double>(),
+    };
+    static HLC::CostParams cost_params{
+        5.0,
+        10.0,
+        20.0,
+        50.0,
+        20.0,
+        2.0,
+        1.0,
+        0.001,
+        10000.0,
+        20000.0,
+        50000.0,
+        20000.0,
+    };
+    const HLC::SolverParams solver_params{false, "fatrop"};
+    Sim::State initial_state{};
+    static double curvature = 0.0;
+
     bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
     bool done = false;
@@ -142,66 +261,84 @@ int main(int, char**) {
             ImGui::ShowDemoWindow(&show_demo_window);
         }
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a
-        // named window.
+        // 2. config panel
         {
-            static float f = 0.0f;
-            static int counter = 0;
+            ImGui::SetNextWindowSize(ImVec2(400, 600), ImGuiCond_FirstUseEver);
+            ImGui::Begin("Config");
 
-            ImGui::Begin(
-                "Hello, world!");  // Create a window called "Hello, world!" and append into it.
+            ImGui::SeparatorText("Track");
+            ImGui::SliderDouble("curvature", &curvature, -1.0 / 6.0, 1.0 / 6.0);
 
-            ImGui::Text("This is some useful text.");  // Display some text (you can use a format
-                                                       // strings too)
-            ImGui::Checkbox("Demo Window",
-                            &show_demo_window);  // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
+            ImGui::SeparatorText("Initial state");
+            // TODO: adjust limits
+            ImGui::SliderDouble("Y", &initial_state.Y, -2.0, 2.0);
+            ImGui::SliderDouble("phi", &initial_state.phi, -2.0, 2.0);
+            ImGui::SliderDouble("v_x", &initial_state.v_x, -2.0, 2.0);
+            ImGui::SliderDouble("v_y", &initial_state.v_y, -2.0, 2.0);
+            ImGui::SliderDouble("omega", &initial_state.omega, -2.0, 2.0);
+            ImGui::SliderDouble("delta", &initial_state.delta, -2.0, 2.0);
+            ImGui::SliderDouble("tau_FL", &initial_state.tau_FL, -2.0, 2.0);
+            ImGui::SliderDouble("tau_FR", &initial_state.tau_FR, -2.0, 2.0);
+            ImGui::SliderDouble("tau_RL", &initial_state.tau_RL, -2.0, 2.0);
+            ImGui::SliderDouble("tau_RR", &initial_state.tau_RR, -2.0, 2.0);
 
-            ImGui::SliderFloat("float",
-                               &f,
-                               0.0f,
-                               1.0f);  // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color",
-                              (float*)&clear_color);  // Edit 3 floats representing a color
+            ImGui::SeparatorText("LLC params");
+            ImGui::InputDouble("K_tv", &K_tv, 10.0, 100.0);
 
-            if (ImGui::Button("Button")) {  // Buttons return true when clicked (most widgets return
-                                            // true when edited/activated)
-                counter++;
-            }
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
+            // ImGui::SeparatorText("HLC params");
+            // ImGui::InputScalar("Nf", ImGuiDataType_U32, &Nf);
+            // ImGui::InputDouble("v_max", &constraints_params.v_max, 1.0, 10.0);
+            // ImGui::InputDouble("v_ref", &cost_params.v_ref, 1.0, 10.0);
+            // ImGui::InputDouble("q_s", &cost_params.q_s, 1.0, 10.0);
+            // ImGui::InputDouble("q_n", &cost_params.q_n, 1.0, 10.0);
+            // ImGui::InputDouble("q_psi", &cost_params.q_psi, 1.0, 10.0);
+            // ImGui::InputDouble("q_v", &cost_params.q_v, 1.0, 10.0);
+            // ImGui::InputDouble("r_delta", &cost_params.r_delta, 1.0, 10.0);
+            // ImGui::InputDouble("r_delta_dot", &cost_params.r_delta_dot, 1.0, 10.0);
+            // ImGui::InputDouble("r_tau", &cost_params.r_tau, 1.0, 10.0);
+            // ImGui::InputDouble("q_s_f", &cost_params.q_s_f, 1.0, 10.0);
+            // ImGui::InputDouble("q_n_f", &cost_params.q_n_f, 1.0, 10.0);
+            // ImGui::InputDouble("q_psi_f", &cost_params.q_psi_f, 1.0, 10.0);
+            // ImGui::InputDouble("q_v_f", &cost_params.q_v_f, 1.0, 10.0);
 
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                        1000.0f / io.Framerate,
-                        io.Framerate);
             ImGui::End();
         }
 
-        // 3. Show another simple window.
-        if (show_another_window) {
-            ImGui::Begin(
-                "Another Window",
-                &show_another_window);  // Pass a pointer to our bool variable (the window will have
-                                        // a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me")) {
-                show_another_window = false;
-            }
-            ImGui::End();
-        }
+        // Update track
+        auto track = generate_constant_curvature_track(curvature);
 
-        // 4. show a window using implot
+        // update the LLC and HLC
+        LLC llc(K_tv, llc_model_params);
+        // HLC hlc(Nf, hlc_model_params, constraints_params, cost_params, solver_params);
+
+        // Compute the open-loop prediction of the HLC
+        // const auto controls =
+        //     hlc.compute_control(HLC::State{0.0,
+        //                                    initial_state.Y,
+        //                                    initial_state.phi,
+        //                                    std::hypot(initial_state.v_x, initial_state.v_y),
+        //                                    initial_state.delta},
+        //                         *track);
+        // if (!controls) { }
+
+        // Compute the closed-loop response
+        std::vector<double> X_ref(Nf), Y_ref(Nf), omega_ref(Nf);
+        std::vector<double> X_cl(Nf), Y_cl(Nf), omega_cl(Nf);
+        // omega_ref is constant (omega_kin)
+
+        // Sim::State state{current_state};
+
+        // 3. plot s, n, psi, v, delta, tau, tau_ij
         {
-            int bar_data[11] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-            float x_data[1000], y_data[1000];
-            for (int i = 0; i < 1000; i++) {
-                x_data[i] = i;
-                y_data[i] = sin(x_data[i] / 100.0f);
+            ImGui::Begin("Trajectory visualization");
+            if (ImPlot::BeginPlot("Trajectory")) {
+                ImPlot::PlotLine("traj", X_cl.data(), Y_cl.data(), X_cl.size());
+                ImPlot::EndPlot();
             }
-            ImGui::Begin("My Window");
-            if (ImPlot::BeginPlot("My Plot")) {
-                ImPlot::PlotBars("My Bar Plot", bar_data, 11);
-                ImPlot::PlotLine("My Line Plot", x_data, y_data, 1000);
+            if (ImPlot::BeginPlot("Angular Velocity")) {
+                ImPlot::PlotLine("Omega", omega_cl.data(), omega_cl.size());
+                // ImPlot::PlotLineG(const char *label_id, ImPlotGetter getter, void *data, int
+                // count)
                 ImPlot::EndPlot();
             }
             ImGui::End();
@@ -210,6 +347,7 @@ int main(int, char**) {
         // Rendering
         ImGui::Render();
         SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+        ImVec4 clear_color{0.45f, 0.55f, 0.60f, 1.00f};
         SDL_SetRenderDrawColor(renderer,
                                (Uint8)(clear_color.x * 255),
                                (Uint8)(clear_color.y * 255),

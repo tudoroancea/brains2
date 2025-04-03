@@ -45,6 +45,21 @@ find_package(casadi REQUIRED)
 find_package(fatrop REQUIRED)
 find_package(SDL2 REQUIRED)
 
+# create imgui library 
+file(GLOB_RECURSE IMGUI_SRC imgui/*.cpp)
+add_library(imgui SHARED
+    ${IMGUI_SRC}
+    imgui/backends/imgui_impl_sdl2.cpp
+    imgui/backends/imgui_impl_sdlrenderer2.cpp
+)
+target_link_libraries(imgui SDL2)
+target_include_directories(imgui PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends>
+    ${SDL2_INCLUDE_DIRS}
+)
+
+# testing dependencies
 if (BUILD_TESTING)
   enable_testing()
   find_package(ament_cmake_gtest REQUIRED)
@@ -237,21 +252,8 @@ endif()
 ament_auto_package(INSTALL_TO_SHARE)
 
 ####################################################################################################
-# imgui/implot test
+# gui
 ####################################################################################################
 
-file(GLOB_RECURSE IMGUI_SRC imgui/*.cpp)
-add_library(imgui SHARED
-    ${IMGUI_SRC}
-    imgui/backends/imgui_impl_sdl2.cpp
-    imgui/backends/imgui_impl_sdlrenderer2.cpp
-)
-target_link_libraries(imgui SDL2)
-target_include_directories(imgui PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends>
-    ${SDL2_INCLUDE_DIRS}
-)
-
 add_executable(gui gui.cpp)
-target_link_libraries(gui PRIVATE imgui)
+target_link_libraries(gui PRIVATE imgui brains2_common brains2_sim brains2_control yaml-cpp::yaml-cpp)
