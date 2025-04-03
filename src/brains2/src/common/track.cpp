@@ -1,6 +1,24 @@
-// Copyright (c) 2024. Tudor Oancea, Matteo Berthet
-#include "brains2/common/tracks.hpp"
-#include <Eigen/src/Core/Matrix.h>
+// Copyright 2025 Tudor Oancea, Mateo Berthet
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+#include "brains2/common/track.hpp"
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
@@ -9,6 +27,7 @@
 #include "brains2/external/icecream.hpp"
 #include "brains2/external/optional.hpp"
 #include "brains2/external/rapidcsv.hpp"
+#include "Eigen/src/Core/Matrix.h"
 
 namespace brains2::common {
 
@@ -44,7 +63,7 @@ tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
     }
     // Check that the width is positive
     if ((width.array() <= 0).any()) {
-        return tl::unexpected(Track::Error::NEGATIVE_WIDTH);
+        return tl::unexpected(Track::Error::NONPOSITIVE_WIDTH);
     }
     // Check that the heading is continuous
     std::vector<double> diffs(size);
@@ -73,7 +92,7 @@ tl::expected<Track, Track::Error> Track::from_values(const Eigen::VectorXd& s,
     track.coeffs_phi.resize(size - 1, 2);
     track.coeffs_kappa.resize(size - 1, 2);
     track.coeffs_width.resize(size - 1, 2);
-    for (long i = 0; i < size - 1; ++i) {
+    for (Eigen::Index i = 0; i < size - 1; ++i) {
         track.coeffs_X(i, 0) = track.vals_X(i);
         track.coeffs_X(i, 1) = (track.vals_X(i + 1) - track.vals_X(i)) / delta_s(i);
 
@@ -147,11 +166,11 @@ std::tuple<double, Eigen::Vector2d> Track::project(double X,
     // within s_guess +- s_tol
     double s_low = std::max(s_guess - s_tol, vals_s(0)),
            s_up = std::min(s_guess + s_tol, vals_s(vals_s.size() - 1));
-    long long id_low = find_interval(s_low), id_up = find_interval(s_up);
+    int64_t id_low = find_interval(s_low), id_up = find_interval(s_up);
     if (id_low > 0) {
         --id_low;
     }
-    if (id_up < static_cast<long long>(vals_s.size()) - 1) {
+    if (id_up < static_cast<int64_t>(vals_s.size()) - 1) {
         ++id_up;
     }
     Eigen::ArrayX2d local_traj =
@@ -162,14 +181,14 @@ std::tuple<double, Eigen::Vector2d> Track::project(double X,
 
     // find the closest point to car_pos to find one segment extremity
     Eigen::VectorXd sqdist = (local_traj.col(0) - X).square() + (local_traj.col(1) - Y).square();
-    long long id_min, id_prev, id_next;
+    int64_t id_min, id_prev, id_next;
     sqdist.minCoeff(&id_min);
     id_prev = id_min - 1;
     if (id_min == 0) {
         id_prev = local_traj.rows() - 1;
     }
     id_next = id_min + 1;
-    if (id_min == static_cast<long long>(local_traj.rows()) - 1) {
+    if (id_min == static_cast<int64_t>(local_traj.rows()) - 1) {
         id_next = 0;
     }
     // TODO: what happens if id_min == 0 or id_min == local_traj.rows() - 1 ?
@@ -282,8 +301,8 @@ std::string to_string(const Track::Error& error) {
             return "Different sizes";
         case Track::Error::NONMONOTONIC_PROGRESS:
             return "Nonmonotonic track progress";
-        case Track::Error::NEGATIVE_WIDTH:
-            return "Negative track width";
+        case Track::Error::NONPOSITIVE_WIDTH:
+            return "Nonpositive track width";
         case Track::Error::DISCONTINUOUS_HEADING:
             return "Discontinuous heading";
         case Track::Error::FILE_NOT_FOUND:

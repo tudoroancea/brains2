@@ -1,4 +1,23 @@
-// Copyright (c) 2024, Tudor Oancea, Matteo Berthet
+// Copyright 2025 Tudor Oancea, Mateo Berthet
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 #include "brains2/sim/sim.hpp"
 #include <cmath>
 #include "acados_c/sim_interface.h"
@@ -8,8 +27,9 @@
 #include "generated/dyn6_accels.h"
 #include "generated/kin6_accels.h"
 
-using namespace brains2::sim;
-using namespace brains2::common;
+using brains2::common::clip;
+
+namespace brains2::sim {
 
 Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
     : limits(limits),
@@ -36,20 +56,15 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
       a{0.0} {
     // Create the acados smulation solver
     kin6_workspace._sim_capsule = kin6_acados_sim_solver_create_capsule();
-    kin6_acados_sim_create((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
-    kin6_workspace._sim_config =
-        kin6_acados_get_sim_config((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
-    kin6_workspace._sim_in =
-        kin6_acados_get_sim_in((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
-    kin6_workspace._sim_out =
-        kin6_acados_get_sim_out((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
-    kin6_workspace._sim_dims =
-        kin6_acados_get_sim_dims((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
+    auto kin6_capsule = reinterpret_cast<kin6_sim_solver_capsule *>(kin6_workspace._sim_capsule);
+    kin6_acados_sim_create(kin6_capsule);
+    kin6_workspace._sim_config = kin6_acados_get_sim_config(kin6_capsule);
+    kin6_workspace._sim_in = kin6_acados_get_sim_in(kin6_capsule);
+    kin6_workspace._sim_out = kin6_acados_get_sim_out(kin6_capsule);
+    kin6_workspace._sim_dims = kin6_acados_get_sim_dims(kin6_capsule);
 
     // Update simulation/sampling time
-    kin6_acados_sim_update_params((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule,
-                                  p.data(),
-                                  Parameters::dim_kin6);
+    kin6_acados_sim_update_params(kin6_capsule, p.data(), Parameters::dim_kin6);
 
     // Allocate memory for the acceleration function
     kin6_workspace.accel_fun_mem = casadi_alloc(kin6_accels_functions());
@@ -60,20 +75,15 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
 
     // Create the acados smulation solver
     dyn6_workspace._sim_capsule = dyn6_acados_sim_solver_create_capsule();
-    dyn6_acados_sim_create((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
-    dyn6_workspace._sim_config =
-        dyn6_acados_get_sim_config((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
-    dyn6_workspace._sim_in =
-        dyn6_acados_get_sim_in((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
-    dyn6_workspace._sim_out =
-        dyn6_acados_get_sim_out((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
-    dyn6_workspace._sim_dims =
-        dyn6_acados_get_sim_dims((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
+    auto dyn6_capsule = reinterpret_cast<dyn6_sim_solver_capsule *>(dyn6_workspace._sim_capsule);
+    dyn6_acados_sim_create(dyn6_capsule);
+    dyn6_workspace._sim_config = dyn6_acados_get_sim_config(dyn6_capsule);
+    dyn6_workspace._sim_in = dyn6_acados_get_sim_in(dyn6_capsule);
+    dyn6_workspace._sim_out = dyn6_acados_get_sim_out(dyn6_capsule);
+    dyn6_workspace._sim_dims = dyn6_acados_get_sim_dims(dyn6_capsule);
 
     // Update model parameters
-    dyn6_acados_sim_update_params((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule,
-                                  p.data(),
-                                  Parameters::dim_dyn6);
+    dyn6_acados_sim_update_params(dyn6_capsule, p.data(), Parameters::dim_dyn6);
 
     // Allocate memory for the acceleration function
     dyn6_workspace.accel_fun_mem = casadi_alloc(dyn6_accels_functions());
@@ -84,14 +94,15 @@ Sim::Sim(const Sim::Parameters &params, const Sim::Limits &limits)
 }
 
 Sim::~Sim() {
-    // TODO: what happens if the free fails?
-    kin6_acados_sim_free((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
-    kin6_acados_sim_solver_free_capsule((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
-    dyn6_acados_sim_free((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
-    dyn6_acados_sim_solver_free_capsule((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
+    auto kin6_capsule = reinterpret_cast<kin6_sim_solver_capsule *>(kin6_workspace._sim_capsule);
+    kin6_acados_sim_free(kin6_capsule);
+    kin6_acados_sim_solver_free_capsule(kin6_capsule);
+    auto dyn6_capsule = reinterpret_cast<dyn6_sim_solver_capsule *>(dyn6_workspace._sim_capsule);
+    dyn6_acados_sim_free(dyn6_capsule);
+    dyn6_acados_sim_solver_free_capsule(dyn6_capsule);
 }
 
-tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
+tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::Error> Sim::simulate(
     const Sim::State &state, const Sim::Control &control, double dt) {
     // Set current state
     x[0] = state.X;
@@ -148,13 +159,14 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
                                    "T",
                                    &dt);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::SAMPLING_TIME_UPDATE_ERROR);
+            return tl::make_unexpected(Error::SAMPLING_TIME_UPDATE_ERROR);
         }
 
         // Call simulation solver
-        exit_code = dyn6_acados_sim_solve((dyn6_sim_solver_capsule *)dyn6_workspace._sim_capsule);
+        exit_code = dyn6_acados_sim_solve(
+            reinterpret_cast<dyn6_sim_solver_capsule *>(dyn6_workspace._sim_capsule));
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACADOS_SOLVER_ERROR);
+            return tl::make_unexpected(Error::ACADOS_SOLVER_ERROR);
         }
 
         // Get next state
@@ -166,7 +178,7 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
 
         exit_code = casadi_eval(dyn6_workspace.accel_fun_mem);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACCELS_FUNCTION_ERROR);
+            return tl::make_unexpected(Error::ACCELS_FUNCTION_ERROR);
         }
     } else {
         // We use the kinematic model
@@ -188,13 +200,14 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
                                    "T",
                                    &dt);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::SAMPLING_TIME_UPDATE_ERROR);
+            return tl::make_unexpected(Error::SAMPLING_TIME_UPDATE_ERROR);
         }
 
         // Call simulation solver
-        exit_code = kin6_acados_sim_solve((kin6_sim_solver_capsule *)kin6_workspace._sim_capsule);
+        exit_code = kin6_acados_sim_solve(
+            reinterpret_cast<kin6_sim_solver_capsule *>(kin6_workspace._sim_capsule));
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACADOS_SOLVER_ERROR);
+            return tl::make_unexpected(Error::ACADOS_SOLVER_ERROR);
         }
 
         // Get next state
@@ -206,7 +219,7 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
 
         exit_code = casadi_eval(kin6_workspace.accel_fun_mem);
         if (exit_code != 0) {
-            return tl::make_unexpected(SimError::ACCELS_FUNCTION_ERROR);
+            return tl::make_unexpected(Error::ACCELS_FUNCTION_ERROR);
         }
     }
 
@@ -226,8 +239,25 @@ tl::expected<std::pair<Sim::State, Sim::Accels>, Sim::SimError> Sim::simulate(
     // Check for NaNs
     if (std::any_of(x_next.begin(), x_next.end(), [](double value) { return std::isnan(value); }) ||
         std::any_of(a.begin(), a.end(), [](double value) { return std::isnan(value); })) {
-        return tl::make_unexpected(SimError::NANS_IN_RESULT);
+        return tl::make_unexpected(Error::NANS_IN_RESULT);
     }
 
     return std::make_pair(next_state, next_accels);
 }
+
+std::string to_string(Sim::Error error) {
+    switch (error) {
+        case Sim::Error::SAMPLING_TIME_UPDATE_ERROR:
+            return "SAMPLING_TIME_UPDATE_ERROR";
+        case Sim::Error::ACADOS_SOLVER_ERROR:
+            return "ACADOS_SOLVER_ERROR";
+        case Sim::Error::ACCELS_FUNCTION_ERROR:
+            return "ACCELS_FUNCTION_ERROR";
+        case Sim::Error::NANS_IN_RESULT:
+            return "NANS_IN_RESULT";
+        default:
+            return "UNKNOWN_ERROR";
+    }
+}
+
+}  // namespace brains2::sim

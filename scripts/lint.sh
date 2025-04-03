@@ -18,10 +18,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# check that the script is run from the root of the brains2 repository
-if [ $(basename "$PWD") != "brains2" ]; then
-    echo "Please run this script from the root of the brains2 repository"
-    exit 1
-fi
-# lock the environment
-conda-lock -f env.yml --mamba --virtual-package-spec virtual-packages.yml --lockfile conda-lock.yml
+ctest --test-dir build/brains2 --output-on-failure -E test "$@"

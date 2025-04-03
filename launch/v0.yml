@@ -10,7 +10,7 @@ launch:
       default: "20"
   - arg:
       name: "v_ref"
-      default: "6.0"
+      default: "6.5"
   - arg:
       name: "q_s"
       default: "10.0"
@@ -33,10 +33,13 @@ launch:
       name: "final_mul"
       default: "1000.0"
   - arg:
+      name: "K_tv"
+      default: "300.0"
+  - arg:
       name: "bag_file"
       default: ""
   - executable:
-      cmd: "ros2 bag record -s mcap -e '(brains2)|(tf)|(parameter_events)|(rosout)' -o $(var bag_file)"
+      cmd: "ros2 bag record --storage mcap --storage-config-file mcap_writer_options.yml --regex '(brains2)|(tf)|(parameter_events)|(rosout)' --output $(var bag_file)"
       if: $(eval "'$(var bag_file)' != ''")
   - timer:
       period: 1.0
@@ -47,6 +50,12 @@ launch:
             param:
               - name: "track_name"
                 value: $(var track_name)
+        - node:
+            pkg: "brains2"
+            exec: "coordination_node"
+            param:
+              - name: "laps"
+                value: 1
         - node:
             pkg: "brains2"
             exec: "fake_track_estimation_node"
@@ -69,8 +78,6 @@ launch:
                 value: $(var Nf)
               - name: "v_ref"
                 value: $(var v_ref)
-              - name: "tau_max"
-                value: 200.0
               - name: "q_s"
                 value: $(var q_s)
               - name: "q_n"
@@ -91,3 +98,5 @@ launch:
                 value: $(eval "$(var final_mul) * $(var q_psi)")
               - name: "q_v_f"
                 value: $(eval "$(var final_mul) * $(var q_v)")
+              - name: "K_tv"
+                value: $(var K_tv)

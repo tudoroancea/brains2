@@ -1,9 +1,31 @@
-// Copyright (c) 2024. Tudor Oancea, Matteo Berthet
-#ifndef TRACKS_HPP
-#define TRACKS_HPP
+// Copyright 2025 Tudor Oancea, Mateo Berthet
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+#ifndef BRAINS2__COMMON__TRACK_HPP_
+#define BRAINS2__COMMON__TRACK_HPP_
 
 #include <filesystem>
+#include <string>
 #include <tuple>
+#include <utility>
+#include <vector>
 #include "brains2/external/expected.hpp"
 #include "brains2/external/optional.hpp"
 #include "Eigen/Dense"
@@ -42,7 +64,7 @@ public:
     enum class Error {
         DIFFERENT_SIZES,        // Provided arrays of values have different sizes
         NONMONOTONIC_PROGRESS,  // Provided progress values are not strictly increasing
-        NEGATIVE_WIDTH,         // Provided width values are sometimes negative
+        NONPOSITIVE_WIDTH,      // Provided width values are sometimes negative
         DISCONTINUOUS_HEADING,  // Provided heading values are not continuous
         FILE_NOT_FOUND,         // CSV file not found
     };
@@ -188,4 +210,4 @@ std::string to_string(const Track::Error &error);
 }  // namespace common
 }  // namespace brains2
 
-#endif  // TRACKS_HPP
+#endif  // BRAINS2__COMMON__TRACK_HPP_

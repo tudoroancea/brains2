@@ -18,18 +18,42 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef BRAINS2__COMMON__MARKER_COLOR_HPP_
-#define BRAINS2__COMMON__MARKER_COLOR_HPP_
+#ifndef BRAINS2__CONTROL__LOW_LEVEL_CONTROLLER_HPP_
+#define BRAINS2__CONTROL__LOW_LEVEL_CONTROLLER_HPP_
 
-#include <string>
-#include "std_msgs/msg/color_rgba.hpp"
+#include <tuple>
+#include <utility>
+#include "brains2/control/high_level_controller.hpp"
+#include "brains2/sim/sim.hpp"
 
 namespace brains2 {
-namespace common {
+namespace control {
 
-std_msgs::msg::ColorRGBA marker_colors(const std::string &color);
+class LowLevelController {
+public:
+    struct State {
+        double v_x, v_y, omega, a_x, a_y, delta;
+    };
+    using Control = brains2::sim::Sim::Control;
+    struct ModelParams {
+        double m, l_R, l_F, axle_track, z_CG, C_downforce, torque_max;
+    };
+    struct Info {
+        double omega_err, delta_tau;
+    };
 
-}  // namespace common
+    LowLevelController() = delete;
+    LowLevelController(const double K_tv, const ModelParams& model_params);
+
+    std::pair<Control, Info> compute_control(const State& state, const HLC::Control& control);
+
+private:
+    double K_tv;
+    ModelParams model_params;
+};
+typedef LowLevelController LLC;
+
+}  // namespace control
 }  // namespace brains2
 
-#endif  // BRAINS2__COMMON__MARKER_COLOR_HPP_
+#endif  // BRAINS2__CONTROL__LOW_LEVEL_CONTROLLER_HPP_

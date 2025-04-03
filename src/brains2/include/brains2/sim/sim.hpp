@@ -1,9 +1,29 @@
-// Copyright (c) 2024, Tudor Oancea, Matteo Berthet
-#ifndef BRAINS2_SIM_SIM_HPP
-#define BRAINS2_SIM_SIM_HPP
+// Copyright 2025 Tudor Oancea, Mateo Berthet
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+#ifndef BRAINS2__SIM__SIM_HPP_
+#define BRAINS2__SIM__SIM_HPP_
 
 #include <array>
 #include <string>
+#include <utility>
 #include "acados/sim/sim_common.h"
 #include "brains2/external/expected.hpp"
 #include "casadi/mem.h"
@@ -37,26 +57,12 @@ public:
     /*
      * @brief Possible errors that can occur during a simulation step.
      */
-    enum class SimError {
+    enum class Error {
         SAMPLING_TIME_UPDATE_ERROR = 0,
         ACADOS_SOLVER_ERROR = 1,
         ACCELS_FUNCTION_ERROR = 2,
         NANS_IN_RESULT = 3,
     };
-    static inline std::string to_string(SimError error) {
-        switch (error) {
-            case SimError::SAMPLING_TIME_UPDATE_ERROR:
-                return "SAMPLING_TIME_UPDATE_ERROR";
-            case SimError::ACADOS_SOLVER_ERROR:
-                return "ACADOS_SOLVER_ERROR";
-            case SimError::ACCELS_FUNCTION_ERROR:
-                return "ACCELS_FUNCTION_ERROR";
-            case SimError::NANS_IN_RESULT:
-                return "NANS_IN_RESULT";
-            default:
-                return "UNKNOWN_ERROR";
-        }
-    }
 
     // We remove the default constructor, copy constructor and assignment operator because this
     // class has to allocate data on the heap (for the acados simulation solver and the casadi
@@ -84,9 +90,9 @@ public:
      * @return The next state of the car and the accelerations of the car if no erros occur,
      * otherwise a SimError.
      */
-    tl::expected<std::pair<State, Accels>, SimError> simulate(const State &state,
-                                                              const Control &control,
-                                                              double dt);
+    tl::expected<std::pair<State, Accels>, Error> simulate(const State &state,
+                                                           const Control &control,
+                                                           double dt);
 
 private:
     // Control limits used for the simulation
@@ -121,7 +127,9 @@ private:
     } kin6_workspace, dyn6_workspace;
 };
 
+std::string to_string(Sim::Error error);
+
 }  // namespace sim
 }  // namespace brains2
 
-#endif
+#endif  // BRAINS2__SIM__SIM_HPP_

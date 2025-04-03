@@ -3,7 +3,7 @@
     "3D!3mfo4f7": {
       "cameraState": {
         "perspective": true,
-        "distance": 0.6434451771224811,
+        "distance": 0.875326180751886,
         "phi": 85,
         "thetaOffset": 90,
         "targetOffset": [
@@ -250,13 +250,13 @@
     "3D!2u59b2d": {
       "cameraState": {
         "perspective": true,
-        "distance": 12.604988194492096,
-        "phi": 56.04793647469353,
-        "thetaOffset": 87.23607659729088,
+        "distance": 7.547072050704995,
+        "phi": 56.047936474693586,
+        "thetaOffset": 87.23607659729748,
         "targetOffset": [
-          0,
-          0,
-          0
+          -0.06103569712816658,
+          -0.05198458951549887,
+          5.849515594445797e-18
         ],
         "target": [
           0,
@@ -416,6 +416,9 @@
             },
             "": {
               "visible": false
+            },
+            "traj_ref": {
+              "visible": true
             }
           }
         },
@@ -466,6 +469,180 @@
       "imageMode": {},
       "followTf": "car"
     },
+    "Plot!1eym6x4": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.s_ref[:]",
+          "enabled": true,
+          "color": "#4e98e2",
+          "xValuePath": "",
+          "label": "s_ref"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.s_pred[:]",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "s_pred"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": false,
+      "xAxisVal": "index",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "track progress (m)",
+      "xAxisLabel": "stage"
+    },
+    "Plot!3tlbpqo": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.n_ref[:]",
+          "enabled": true,
+          "color": "#4e98e2",
+          "xValuePath": "",
+          "label": "n_ref"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.n_pred[:]",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "n_pred"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": false,
+      "xAxisVal": "index",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "lateral deviation (m)",
+      "xAxisLabel": "stage"
+    },
+    "Plot!1p2pcj1": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.v_ref[:]",
+          "enabled": true,
+          "color": "#4e98e2",
+          "xValuePath": "",
+          "label": "v_ref"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.v_pred[:]",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "v_pred"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": false,
+      "xAxisVal": "index",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "velocity (m/s)",
+      "xAxisLabel": "stage"
+    },
+    "Plot!42k3715": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.psi_ref[:]",
+          "enabled": true,
+          "color": "#4e98e2",
+          "xValuePath": "",
+          "label": "psi_ref"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.psi_pred[:]",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "psi_pred"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": false,
+      "xAxisVal": "index",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "angular deviation (rad)",
+      "xAxisLabel": "stage"
+    },
+    "Plot!4e116sl": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.tau_ref[:]",
+          "enabled": true,
+          "color": "#4e98e2",
+          "xValuePath": "",
+          "label": "tau_ref"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.tau_pred[:]",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "tau_pred"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": false,
+      "xAxisVal": "index",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "torque (Nm)",
+      "xAxisLabel": "stage"
+    },
+    "Plot!2njw5m3": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.delta_ref[:]",
+          "enabled": true,
+          "color": "#4e98e2",
+          "xValuePath": "",
+          "label": "delta_ref"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/brains2/control/debug_info.delta_pred[:]",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "delta_pred"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "none",
+      "showPlotValuesInLegend": false,
+      "isSynced": false,
+      "xAxisVal": "index",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "steering (rad)",
+      "xAxisLabel": "stage"
+    },
     "Plot!3ra6qj8": {
       "paths": [
         {
@@ -495,15 +672,37 @@
         "value": "/brains2/acceleration.a_y"
       },
       "followingViewWidth": 10,
-      "foxglovePanelTitle": "steering (rad)"
+      "foxglovePanelTitle": "closed-loop steering (rad)"
     },
-    "Plot!3lwo8o7": {
+    "Plot!1zeuiyp": {
       "paths": [
         {
-          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"control_node\"}.values[:]{key==\"runtime (ms)\"}.value",
-          "enabled": true,
           "timestampMethod": "headerStamp",
-          "label": "runtime"
+          "value": "/brains2/target_controls.tau_fl",
+          "enabled": true,
+          "color": "#4e98e2",
+          "label": "tau_fl"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.tau_fr",
+          "enabled": true,
+          "color": "#f5774d",
+          "label": "tau_fr"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.tau_rl",
+          "enabled": true,
+          "color": "#f7df71",
+          "label": "tau_rl"
+        },
+        {
+          "timestampMethod": "headerStamp",
+          "value": "/brains2/target_controls.tau_rr",
+          "enabled": true,
+          "color": "#5cd6a9",
+          "label": "tau_rr"
         }
       ],
       "showXAxisLabels": true,
@@ -514,8 +713,8 @@
       "isSynced": true,
       "xAxisVal": "timestamp",
       "sidebarDimension": 240,
-      "foxglovePanelTitle": "runtime (ms)",
-      "followingViewWidth": 10
+      "followingViewWidth": 10,
+      "foxglovePanelTitle": "closed-loop torque per wheel (Nm)"
     },
     "Plot!21y01bi": {
       "paths": [
@@ -535,23 +734,32 @@
       "xAxisVal": "timestamp",
       "sidebarDimension": 240,
       "followingViewWidth": 10,
-      "foxglovePanelTitle": "speed (m/s)"
+      "foxglovePanelTitle": "closed-loop velocity (m/s)"
     },
-    "Plot!1zeuiyp": {
+    "StateTransitions!u5aaml": {
       "paths": [
         {
+          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"high_level_controller\"}.message",
           "timestampMethod": "headerStamp",
-          "value": "/brains2/target_controls.tau_fl",
-          "enabled": true,
-          "color": "#4e98e2",
-          "label": "u_tau"
+          "label": "control status"
         },
         {
+          "value": "/brains2/fsm.state",
           "timestampMethod": "headerStamp",
-          "value": "/brains2/current_controls.tau_rl",
+          "label": "fsm"
+        }
+      ],
+      "isSynced": true,
+      "xAxisRange": 10,
+      "showPoints": true
+    },
+    "Plot!3lwo8o7": {
+      "paths": [
+        {
+          "value": "/brains2/diagnostics.status[:]{hardware_id==\"\"}{name==\"high_level_controller\"}.values[:]{key==\"runtime (ms)\"}.value",
           "enabled": true,
-          "color": "#f5774d",
-          "label": "tau"
+          "timestampMethod": "headerStamp",
+          "label": "runtime"
         }
       ],
       "showXAxisLabels": true,
@@ -562,14 +770,17 @@
       "isSynced": true,
       "xAxisVal": "timestamp",
       "sidebarDimension": 240,
-      "followingViewWidth": 10,
-      "foxglovePanelTitle": "torque per wheel (Nm)"
+      "foxglovePanelTitle": "runtime (ms)",
+      "followingViewWidth": 10
     },
-    "Brains2 Extensions.Call Service Button!2wnmi6j": {
-      "service": "/brains2/reset",
-      "buttonLabel": "reset",
-      "buttonColor": "#ff0087",
-      "foxglovePanelTitle": "Reset simulation"
+    "DiagnosticStatusPanel!6s2wmp": {
+      "topicToRender": "/brains2/diagnostics"
+    },
+    "Brains2 Extensions.Call Service Button!1iqqegp": {
+      "service": "/brains2/start",
+      "buttonLabel": "start",
+      "buttonColor": "#08ca35",
+      "foxglovePanelTitle": "start"
     },
     "Brains2 Extensions.Call Service Button!3tt1tjl": {
       "service": "/brains2/publish_cones_markers",
@@ -611,31 +822,68 @@
         {
           "title": "control",
           "layout": {
-            "first": "3D!2u59b2d",
+            "first": {
+              "first": "3D!2u59b2d",
+              "second": {
+                "first": {
+                  "first": {
+                    "first": "Plot!1eym6x4",
+                    "second": "Plot!3tlbpqo",
+                    "direction": "row"
+                  },
+                  "second": {
+                    "first": "Plot!1p2pcj1",
+                    "second": "Plot!42k3715",
+                    "direction": "row"
+                  },
+                  "direction": "column"
+                },
+                "second": {
+                  "first": "Plot!4e116sl",
+                  "second": "Plot!2njw5m3",
+                  "direction": "row"
+                },
+                "direction": "column",
+                "splitPercentage": 70.82104285216585
+              },
+              "direction": "row"
+            },
             "second": {
               "first": {
                 "first": {
                   "first": "Plot!3ra6qj8",
-                  "second": "Plot!3lwo8o7",
+                  "second": "Plot!1zeuiyp",
                   "direction": "column"
                 },
                 "second": {
                   "first": "Plot!21y01bi",
-                  "second": "Plot!1zeuiyp",
-                  "direction": "column"
+                  "second": {
+                    "first": "StateTransitions!u5aaml",
+                    "second": "Plot!3lwo8o7",
+                    "direction": "column",
+                    "splitPercentage": 60.89743589743589
+                  },
+                  "direction": "column",
+                  "splitPercentage": 34.84390486851125
                 },
                 "direction": "row"
               },
               "second": {
-                "first": "Brains2 Extensions.Call Service Button!2wnmi6j",
+                "first": {
+                  "first": "DiagnosticStatusPanel!6s2wmp",
+                  "second": "Brains2 Extensions.Call Service Button!1iqqegp",
+                  "direction": "column",
+                  "splitPercentage": 80.24259388850014
+                },
                 "second": "Brains2 Extensions.Call Service Button!3tt1tjl",
-                "direction": "column"
+                "direction": "column",
+                "splitPercentage": 84.20466123280693
               },
               "direction": "row",
-              "splitPercentage": 91.44021739130434
+              "splitPercentage": 80.26796589524969
             },
             "direction": "column",
-            "splitPercentage": 64.69893742621015
+            "splitPercentage": 64.34474616292798
           }
         },
         {
