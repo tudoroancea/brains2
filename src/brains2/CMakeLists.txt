@@ -287,7 +287,15 @@ target_include_directories(implot_lib PUBLIC ${implot_SOURCE_DIR})
 target_link_libraries(implot_lib PUBLIC imgui_lib)
 
 # Create the MPC tuning GUI executable
-add_executable(mpc_tuning_gui src/tools/mpc_tuning_gui.cpp)
+add_executable(mpc_tuning_gui 
+    src/tools/mpc_tuning_gui.cpp
+    src/tools/gui_state.cpp
+    src/tools/mpc_wrapper.cpp
+    src/tools/sim_wrapper.cpp
+)
+target_include_directories(mpc_tuning_gui PRIVATE
+    ${implot_SOURCE_DIR}
+)
 target_link_libraries(mpc_tuning_gui PRIVATE
     imgui_lib
     implot_lib
@@ -295,6 +303,12 @@ target_link_libraries(mpc_tuning_gui PRIVATE
     brains2_common
     brains2_control
     brains2_sim
+    casadi
+    fatrop
+)
+# Add include path for acados headers used by sim.hpp
+target_include_directories(mpc_tuning_gui PRIVATE
+    ${CMAKE_INSTALL_PREFIX}/../acados/include
 )
 
 

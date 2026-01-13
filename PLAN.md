@@ -32,51 +32,44 @@ A C++ GUI application using imgui_bundle to compare how MPC controller tuning in
 
 ---
 
-## Phase 2: Track Loading & Visualization
+## Phase 2: Track Loading & Visualization ✓ COMPLETE
 > Load tracks and display them in the GUI
 
-- [ ] **2.1** Add track loading functionality (alpha, beta, gamma from track_database)
-- [ ] **2.2** Create ImPlot subplot for track visualization (X-Y plot with centerline)
-- [ ] **2.3** Add track selection dropdown/combo box
-- [ ] **2.4** Add initial position slider (s coordinate along track)
-- [ ] **2.5** Display track bounds (width) on the track plot
+- [x] **2.1** Add track loading functionality (alpha, beta, gamma from track_database)
+- [x] **2.2** Create ImPlot subplot for track visualization (X-Y plot with centerline)
+- [x] **2.3** Add track selection dropdown/combo box
+- [x] **2.4** Add initial position slider (s coordinate along track)
+- [x] **2.5** Display track bounds (width) on the track plot
 
 ---
 
-## Phase 3: Open-Loop MPC Integration
+## Phase 3: Open-Loop MPC Integration ✓ COMPLETE
 > Implement single-shot MPC solve and trajectory display
 
-- [ ] **3.1** Create wrapper class for MPC with configurable parameters
-- [ ] **3.2** Implement open-loop solve function (single MPC call)
-- [ ] **3.3** Add timing measurement for MPC solve
-- [ ] **3.4** Convert Frenet trajectory (s, n, psi, v, delta) to Cartesian (X, Y, phi) for plotting
-- [ ] **3.5** Display open-loop trajectory on track plot
-- [ ] **3.6** Create state plots:
-  - s (progress) vs time
-  - n (lateral deviation) vs time
-  - psi (heading error) vs time
-  - v (velocity) vs time
-  - delta (steering angle) vs time
-- [ ] **3.7** Create control plots:
-  - u_delta (steering rate command) vs time
-  - tau (torque) vs time
-- [ ] **3.8** Display computation time in UI
+- [x] **3.1** Create wrapper class for MPC with configurable parameters
+- [x] **3.2** Implement open-loop solve function (single MPC call)
+- [x] **3.3** Add timing measurement for MPC solve
+- [x] **3.4** Convert Frenet trajectory (s, n, psi, v, delta) to Cartesian (X, Y, phi) for plotting
+- [x] **3.5** Display open-loop trajectory on track plot
+- [x] **3.6** Create state plots (s, n, psi, v, delta vs time)
+- [x] **3.7** Create control plots (u_delta, tau vs time)
+- [x] **3.8** Display computation time in UI
 
 ---
 
-## Phase 4: Closed-Loop Simulation Integration
+## Phase 4: Closed-Loop Simulation Integration ✓ COMPLETE
 > Implement MPC + Simulator loop
 
-- [ ] **4.1** Create wrapper for Sim class initialization
-- [ ] **4.2** Implement closed-loop simulation function:
+- [x] **4.1** Create wrapper for Sim class initialization
+- [x] **4.2** Implement closed-loop simulation function:
   - Initialize state
   - Loop: MPC solve → extract first control → Sim step → repeat
   - Store full trajectory
-- [ ] **4.3** Add simulation duration/steps control
-- [ ] **4.4** Add timing measurement for full closed-loop run
-- [ ] **4.5** Display closed-loop trajectory on track plot (different color)
-- [ ] **4.6** Add closed-loop state/control plots (overlay or separate from open-loop)
-- [ ] **4.7** Display closed-loop computation time in UI
+- [x] **4.3** Add simulation duration/steps control
+- [x] **4.4** Add timing measurement for full closed-loop run
+- [x] **4.5** Display closed-loop trajectory on track plot (different color)
+- [x] **4.6** Add closed-loop state/control plots (overlay with open-loop)
+- [x] **4.7** Display closed-loop computation time in UI
 
 ---
 
