@@ -39,7 +39,7 @@ jobs:
 
       - uses: mamba-org/setup-micromamba@v2
         with:
-          micromamba-version: 1.5.12-0
+          micromamba-version: 2.5.0
           environment-name: brains2
           environment-file: conda-lock.yml
           init-shell: bash
@@ -117,7 +117,7 @@ jobs:
 
       - uses: mamba-org/setup-micromamba@v2
         with:
-          micromamba-version: 1.5.12-0
+          micromamba-version: 2.5.0
           environment-name: brains2
           environment-file: conda-lock.yml
           init-shell: bash
