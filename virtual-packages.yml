@@ -2,7 +2,11 @@ subdirs:
   linux-64:
     packages:
       __glibc: "2.39"
-      __archspec: "1 x86_64_v3"
+      __linux: "5.15"
+  linux-aarch64:
+    packages:
+      __glibc: "2.39"
+      __linux: "5.15"
   osx-arm64:
     packages:
-      __osx:  "15.0"
+      __osx: "15.0"
