@@ -96,11 +96,17 @@ int main(int argc, char* argv[]) {
     double param_r_delta = 2.0;
     double param_r_delta_dot = 1.0;
     double param_r_tau = 0.0001;
-    
+    double param_q_s_f = 10000.0;
+    double param_q_n_f = 20000.0;
+    double param_q_psi_f = 50000.0;
+    double param_q_v_f = 20000.0;
+
     // Constraint parameter sliders
     double param_v_max = 10.0;
     double param_delta_max = 0.5;
+    double param_delta_dot_max = 1.0;
     double param_tau_max = 200.0;
+    double param_car_width = 1.55;
 
     bool done = false;
     while (!done) {
@@ -184,61 +190,110 @@ int main(int argc, char* argv[]) {
         
         ImGui::Spacing();
         ImGui::Spacing();
-        
-        // MPC Cost Parameters
-        ImGui::Text("MPC Cost Parameters");
-        ImGui::Separator();
-        
-        ImGui::Text("v_ref (reference velocity)");
-        double v_ref_min = 0.5, v_ref_max = 10.0;
-        ImGui::SliderScalar("##v_ref", ImGuiDataType_Double, &param_v_ref, &v_ref_min, &v_ref_max, "%.2f m/s");
-        
-        ImGui::Text("q_s (s progress weight)");
-        double q_s_min = 0.0, q_s_max = 100.0;
-        ImGui::SliderScalar("##q_s", ImGuiDataType_Double, &param_q_s, &q_s_min, &q_s_max, "%.1f");
-        
-        ImGui::Text("q_n (n deviation weight)");
-        double q_n_min = 0.0, q_n_max = 100.0;
-        ImGui::SliderScalar("##q_n", ImGuiDataType_Double, &param_q_n, &q_n_min, &q_n_max, "%.1f");
-        
-        ImGui::Text("q_psi (heading error weight)");
-        double q_psi_min = 0.0, q_psi_max = 200.0;
-        ImGui::SliderScalar("##q_psi", ImGuiDataType_Double, &param_q_psi, &q_psi_min, &q_psi_max, "%.1f");
-        
-        ImGui::Text("q_v (velocity weight)");
-        double q_v_min = 0.0, q_v_max = 100.0;
-        ImGui::SliderScalar("##q_v", ImGuiDataType_Double, &param_q_v, &q_v_min, &q_v_max, "%.1f");
-        
-        ImGui::Text("r_delta (steering weight)");
-        double r_delta_min = 0.0, r_delta_max = 20.0;
-        ImGui::SliderScalar("##r_delta", ImGuiDataType_Double, &param_r_delta, &r_delta_min, &r_delta_max, "%.1f");
-        
-        ImGui::Text("r_delta_dot (steering rate weight)");
-        double r_delta_dot_min = 0.0, r_delta_dot_max = 10.0;
-        ImGui::SliderScalar("##r_delta_dot", ImGuiDataType_Double, &param_r_delta_dot, &r_delta_dot_min, &r_delta_dot_max, "%.1f");
-        
-        ImGui::Text("r_tau (torque weight)");
-        double r_tau_min = 0.0, r_tau_max = 0.01;
-        ImGui::SliderScalar("##r_tau", ImGuiDataType_Double, &param_r_tau, &r_tau_min, &r_tau_max, "%.5f");
-        
+
+        // MPC Cost Parameters - Collapsible section
+        if (ImGui::CollapsingHeader("Cost Parameters##header", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();
+
+            ImGui::Text("Reference Velocity");
+            double v_ref_min = 0.5, v_ref_max = 10.0;
+            ImGui::SliderScalar("v_ref##cost", ImGuiDataType_Double, &param_v_ref, &v_ref_min, &v_ref_max, "%.2f m/s");
+
+            ImGui::Spacing();
+            ImGui::Text("State Weights (q_*)");
+            ImGui::Separator();
+
+            double q_min = 0.0, q_max = 200.0;
+            ImGui::SliderScalar("q_s##cost", ImGuiDataType_Double, &param_q_s, &q_min, &q_max, "%.1f");
+            ImGui::SliderScalar("q_n##cost", ImGuiDataType_Double, &param_q_n, &q_min, &q_max, "%.1f");
+            ImGui::SliderScalar("q_psi##cost", ImGuiDataType_Double, &param_q_psi, &q_min, &q_max, "%.1f");
+            ImGui::SliderScalar("q_v##cost", ImGuiDataType_Double, &param_q_v, &q_min, &q_max, "%.1f");
+
+            ImGui::Spacing();
+            ImGui::Text("Control Weights (r_*)");
+            ImGui::Separator();
+
+            double r_delta_min = 0.0, r_delta_max = 20.0;
+            ImGui::SliderScalar("r_delta##cost", ImGuiDataType_Double, &param_r_delta, &r_delta_min, &r_delta_max, "%.1f");
+
+            double r_delta_dot_min = 0.0, r_delta_dot_max = 10.0;
+            ImGui::SliderScalar("r_delta_dot##cost", ImGuiDataType_Double, &param_r_delta_dot, &r_delta_dot_min, &r_delta_dot_max, "%.1f");
+
+            double r_tau_min = 0.0, r_tau_max = 0.01;
+            ImGui::SliderScalar("r_tau##cost", ImGuiDataType_Double, &param_r_tau, &r_tau_min, &r_tau_max, "%.5f");
+
+            ImGui::Spacing();
+            ImGui::Text("Terminal Weights (q_*_f)");
+            ImGui::Separator();
+
+            double q_f_min = 0.0, q_f_max = 100000.0;
+            ImGui::SliderScalar("q_s_f##cost", ImGuiDataType_Double, &param_q_s_f, &q_f_min, &q_f_max, "%.0f");
+            ImGui::SliderScalar("q_n_f##cost", ImGuiDataType_Double, &param_q_n_f, &q_f_min, &q_f_max, "%.0f");
+            ImGui::SliderScalar("q_psi_f##cost", ImGuiDataType_Double, &param_q_psi_f, &q_f_min, &q_f_max, "%.0f");
+            ImGui::SliderScalar("q_v_f##cost", ImGuiDataType_Double, &param_q_v_f, &q_f_min, &q_f_max, "%.0f");
+
+            ImGui::Spacing();
+            if (ImGui::Button("Reset Cost Defaults##button")) {
+                param_v_ref = 3.0;
+                param_q_s = 10.0;
+                param_q_n = 20.0;
+                param_q_psi = 50.0;
+                param_q_v = 20.0;
+                param_r_delta = 2.0;
+                param_r_delta_dot = 1.0;
+                param_r_tau = 0.0001;
+                param_q_s_f = 10000.0;
+                param_q_n_f = 20000.0;
+                param_q_psi_f = 50000.0;
+                param_q_v_f = 20000.0;
+            }
+
+            ImGui::Unindent();
+        }
+
         ImGui::Spacing();
-        ImGui::Spacing();
-        
-        // MPC Constraint Parameters
-        ImGui::Text("MPC Constraint Parameters");
-        ImGui::Separator();
-        
-        ImGui::Text("v_max (max velocity)");
-        double v_max_min = 1.0, v_max_max = 20.0;
-        ImGui::SliderScalar("##v_max", ImGuiDataType_Double, &param_v_max, &v_max_min, &v_max_max, "%.1f m/s");
-        
-        ImGui::Text("delta_max (max steering)");
-        double delta_max_min = 0.1, delta_max_max = 1.0;
-        ImGui::SliderScalar("##delta_max", ImGuiDataType_Double, &param_delta_max, &delta_max_min, &delta_max_max, "%.2f rad");
-        
-        ImGui::Text("tau_max (max torque)");
-        double tau_max_min = 10.0, tau_max_max = 500.0;
-        ImGui::SliderScalar("##tau_max", ImGuiDataType_Double, &param_tau_max, &tau_max_min, &tau_max_max, "%.0f Nm");
+
+        // MPC Constraint Parameters - Collapsible section
+        if (ImGui::CollapsingHeader("Constraint Parameters##header", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();
+
+            ImGui::Text("Velocity Limits");
+            ImGui::Separator();
+            double v_max_min = 1.0, v_max_max = 20.0;
+            ImGui::SliderScalar("v_max##constraints", ImGuiDataType_Double, &param_v_max, &v_max_min, &v_max_max, "%.1f m/s");
+
+            ImGui::Spacing();
+            ImGui::Text("Steering Limits");
+            ImGui::Separator();
+            double delta_max_min = 0.1, delta_max_max = 1.0;
+            ImGui::SliderScalar("delta_max##constraints", ImGuiDataType_Double, &param_delta_max, &delta_max_min, &delta_max_max, "%.2f rad");
+
+            double delta_dot_max_min = 0.1, delta_dot_max_max = 5.0;
+            ImGui::SliderScalar("delta_dot_max##constraints", ImGuiDataType_Double, &param_delta_dot_max, &delta_dot_max_min, &delta_dot_max_max, "%.2f rad/s");
+
+            ImGui::Spacing();
+            ImGui::Text("Torque Limits");
+            ImGui::Separator();
+            double tau_max_min = 10.0, tau_max_max = 500.0;
+            ImGui::SliderScalar("tau_max##constraints", ImGuiDataType_Double, &param_tau_max, &tau_max_min, &tau_max_max, "%.0f Nm");
+
+            ImGui::Spacing();
+            ImGui::Text("Vehicle Dimensions");
+            ImGui::Separator();
+            double car_width_min = 1.0, car_width_max = 2.5;
+            ImGui::SliderScalar("car_width##constraints", ImGuiDataType_Double, &param_car_width, &car_width_min, &car_width_max, "%.2f m");
+
+            ImGui::Spacing();
+            if (ImGui::Button("Reset Constraint Defaults##button")) {
+                param_v_max = 10.0;
+                param_delta_max = 0.5;
+                param_delta_dot_max = 1.0;
+                param_tau_max = 200.0;
+                param_car_width = 1.55;
+            }
+
+            ImGui::Unindent();
+        }
         
         ImGui::Spacing();
         ImGui::Spacing();
@@ -260,12 +315,18 @@ int main(int argc, char* argv[]) {
                 params.cost_params.r_delta = param_r_delta;
                 params.cost_params.r_delta_dot = param_r_delta_dot;
                 params.cost_params.r_tau = param_r_tau;
+                params.cost_params.q_s_f = param_q_s_f;
+                params.cost_params.q_n_f = param_q_n_f;
+                params.cost_params.q_psi_f = param_q_psi_f;
+                params.cost_params.q_v_f = param_q_v_f;
                 params.constraints_params.v_max = param_v_max;
                 params.constraints_params.delta_max = param_delta_max;
+                params.constraints_params.delta_dot_max = param_delta_dot_max;
                 params.constraints_params.tau_max = param_tau_max;
-                
+                params.constraints_params.car_width = param_car_width;
+
                 mpc_wrapper.configure(params);
-                
+
                 brains2::control::HighLevelController::State initial_state = {
                     gui_state.initial_s,
                     gui_state.initial_n,
@@ -273,7 +334,7 @@ int main(int argc, char* argv[]) {
                     gui_state.initial_v,
                     0.0  // initial delta
                 };
-                
+
                 last_mpc_result = mpc_wrapper.solve_open_loop(initial_state, *gui_state.current_track);
             }
         }
@@ -294,7 +355,7 @@ int main(int argc, char* argv[]) {
                 brains2::tools::SimWrapper sim_wrapper;
                 brains2::tools::SimParameters sim_params;
                 sim_wrapper.configure(sim_params);
-                
+
                 brains2::tools::MPCParameters params = mpc_wrapper.get_parameters();
                 params.cost_params.v_ref = param_v_ref;
                 params.cost_params.q_s = param_q_s;
@@ -304,12 +365,18 @@ int main(int argc, char* argv[]) {
                 params.cost_params.r_delta = param_r_delta;
                 params.cost_params.r_delta_dot = param_r_delta_dot;
                 params.cost_params.r_tau = param_r_tau;
+                params.cost_params.q_s_f = param_q_s_f;
+                params.cost_params.q_n_f = param_q_n_f;
+                params.cost_params.q_psi_f = param_q_psi_f;
+                params.cost_params.q_v_f = param_q_v_f;
                 params.constraints_params.v_max = param_v_max;
                 params.constraints_params.delta_max = param_delta_max;
+                params.constraints_params.delta_dot_max = param_delta_dot_max;
                 params.constraints_params.tau_max = param_tau_max;
-                
+                params.constraints_params.car_width = param_car_width;
+
                 mpc_wrapper.configure(params);
-                
+
                 brains2::control::HighLevelController::State initial_state = {
                     gui_state.initial_s,
                     gui_state.initial_n,
@@ -317,7 +384,7 @@ int main(int argc, char* argv[]) {
                     gui_state.initial_v,
                     0.0  // initial delta
                 };
-                
+
                 last_cl_result = sim_wrapper.run_closed_loop_simulation(
                     initial_state, *gui_state.current_track, params, static_cast<size_t>(sim_steps));
             }
@@ -325,8 +392,9 @@ int main(int argc, char* argv[]) {
         
         ImGui::Spacing();
         ImGui::Separator();
-        
-        if (ImGui::Button("Reset Parameters")) {
+
+        if (ImGui::Button("Reset All Parameters")) {
+            // Reset cost parameters
             param_v_ref = 3.0;
             param_q_s = 10.0;
             param_q_n = 20.0;
@@ -335,11 +403,19 @@ int main(int argc, char* argv[]) {
             param_r_delta = 2.0;
             param_r_delta_dot = 1.0;
             param_r_tau = 0.0001;
+            param_q_s_f = 10000.0;
+            param_q_n_f = 20000.0;
+            param_q_psi_f = 50000.0;
+            param_q_v_f = 20000.0;
+
+            // Reset constraint parameters
             param_v_max = 10.0;
             param_delta_max = 0.5;
+            param_delta_dot_max = 1.0;
             param_tau_max = 200.0;
+            param_car_width = 1.55;
         }
-        
+
         ImGui::End();
 
         // Track visualization window
@@ -497,7 +573,7 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowPos(ImVec2(360, 510), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(1230, 480), ImGuiCond_FirstUseEver);
         ImGui::Begin("Status");
-        ImGui::Text("MPC Tuning GUI - Phase 4: Closed-Loop Simulation");
+        ImGui::Text("MPC Tuning GUI - Phase 5: Parameter Tuning Interface");
         ImGui::Separator();
         
         // MPC status
@@ -530,8 +606,16 @@ int main(int argc, char* argv[]) {
         
         // Display current parameters
         ImGui::Text("Current Parameters:");
-        ImGui::Columns(3, "params");
+        ImGui::Columns(4, "params");
         ImGui::Separator();
+
+        // Cost parameters
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Cost Parameters:");
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
         ImGui::Text("v_ref: %.2f m/s", param_v_ref);
         ImGui::NextColumn();
         ImGui::Text("q_s: %.1f", param_q_s);
@@ -544,11 +628,40 @@ int main(int argc, char* argv[]) {
         ImGui::NextColumn();
         ImGui::Text("r_delta: %.1f", param_r_delta);
         ImGui::NextColumn();
+        ImGui::Text("r_delta_dot: %.1f", param_r_delta_dot);
+        ImGui::NextColumn();
+        ImGui::Text("r_tau: %.5f", param_r_tau);
+        ImGui::NextColumn();
+        ImGui::Text("q_s_f: %.0f", param_q_s_f);
+        ImGui::NextColumn();
+        ImGui::Text("q_n_f: %.0f", param_q_n_f);
+        ImGui::NextColumn();
+        ImGui::Text("q_psi_f: %.0f", param_q_psi_f);
+        ImGui::NextColumn();
+        ImGui::Text("q_v_f: %.0f", param_q_v_f);
+        ImGui::NextColumn();
+
+        // Constraint parameters
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Constraints:");
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
         ImGui::Text("v_max: %.1f m/s", param_v_max);
         ImGui::NextColumn();
         ImGui::Text("delta_max: %.2f rad", param_delta_max);
         ImGui::NextColumn();
+        ImGui::Text("delta_dot_max: %.2f rad/s", param_delta_dot_max);
+        ImGui::NextColumn();
         ImGui::Text("tau_max: %.0f Nm", param_tau_max);
+        ImGui::NextColumn();
+        ImGui::Text("car_width: %.2f m", param_car_width);
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::NextColumn();
+
         ImGui::Columns(1);
         
         ImGui::Separator();

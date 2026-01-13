@@ -73,29 +73,37 @@ A C++ GUI application using imgui_bundle to compare how MPC controller tuning in
 
 ---
 
-## Phase 5: Parameter Tuning Interface
+## Phase 5: Parameter Tuning Interface ✓ COMPLETE
 > Create sliders/inputs for all tunable parameters
 
 ### Cost Parameters (CostParams)
-- [ ] **5.1** Add slider/input for `v_ref` (reference velocity)
-- [ ] **5.2** Add sliders for state weights: `q_s`, `q_n`, `q_psi`, `q_v`
-- [ ] **5.3** Add sliders for control weights: `r_delta`, `r_delta_dot`, `r_tau`
-- [ ] **5.4** Add sliders for terminal weights: `q_s_f`, `q_n_f`, `q_psi_f`, `q_v_f`
+- [x] **5.1** Add slider/input for `v_ref` (reference velocity)
+- [x] **5.2** Add sliders for state weights: `q_s`, `q_n`, `q_psi`, `q_v`
+- [x] **5.3** Add sliders for control weights: `r_delta`, `r_delta_dot`, `r_tau`
+- [x] **5.4** Add sliders for terminal weights: `q_s_f`, `q_n_f`, `q_psi_f`, `q_v_f`
 
 ### Constraint Parameters (ConstraintsParams)
-- [ ] **5.5** Add slider for `v_max` (max velocity)
-- [ ] **5.6** Add slider for `delta_max` (max steering angle)
-- [ ] **5.7** Add slider for `delta_dot_max` (max steering rate)
-- [ ] **5.8** Add slider for `tau_max` (max torque)
-- [ ] **5.9** Add slider for `car_width`
+- [x] **5.5** Add slider for `v_max` (max velocity)
+- [x] **5.6** Add slider for `delta_max` (max steering angle)
+- [x] **5.7** Add slider for `delta_dot_max` (max steering rate)
+- [x] **5.8** Add slider for `tau_max` (max torque)
+- [x] **5.9** Add slider for `car_width`
 
 ### Parameter Groups
-- [ ] **5.10** Organize parameters into collapsible sections (Cost, Constraints)
-- [ ] **5.11** Add reset-to-defaults button for each section
+- [x] **5.10** Organize parameters into collapsible sections (Cost, Constraints)
+- [x] **5.11** Add reset-to-defaults button for each section
 
 ---
 
 ## Phase 6: Real-Time Recomputation
+> Trigger recomputation on parameter changes
+
+- [ ] **6.1** Implement parameter change detection
+- [ ] **6.2** Recreate MPC controller when parameters change
+- [ ] **6.3** Re-run open-loop solve on parameter change
+- [ ] **6.4** Re-run closed-loop simulation on parameter change
+- [ ] **6.5** Add debouncing/throttling for rapid slider changes
+- [ ] **6.6** Add "Auto-recompute" toggle (vs manual "Recompute" button)
 > Trigger recomputation on parameter changes
 
 - [ ] **6.1** Implement parameter change detection

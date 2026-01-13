@@ -68,7 +68,7 @@ struct MPCParameters {
         cost_params.q_n_f = 20000.0;
         cost_params.q_psi_f = 50000.0;
         cost_params.q_v_f = 20000.0;
-        
+
         // Initialize constraint params
         constraints_params.v_max = 10.0;
         constraints_params.delta_max = 0.5;
