@@ -230,6 +230,89 @@ endif()
 
 
 ####################################################################################################
+# tools
+####################################################################################################
+
+# Fetch Dear ImGui
+include(FetchContent)
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.8
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(imgui)
+
+# Fetch ImPlot
+FetchContent_Declare(
+    implot
+    GIT_REPOSITORY https://github.com/epezent/implot.git
+    GIT_TAG v0.16
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(implot)
+
+# Find SDL2
+find_package(SDL2 REQUIRED)
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
+
+# Create imgui library
+add_library(imgui_lib STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+target_include_directories(imgui_lib PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+)
+target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 OpenGL::GL)
+if(APPLE)
+    target_compile_definitions(imgui_lib PUBLIC GL_SILENCE_DEPRECATION)
+endif()
+
+# Create implot library
+add_library(implot_lib STATIC
+    ${implot_SOURCE_DIR}/implot.cpp
+    ${implot_SOURCE_DIR}/implot_items.cpp
+    ${implot_SOURCE_DIR}/implot_demo.cpp
+)
+target_include_directories(implot_lib PUBLIC ${implot_SOURCE_DIR})
+target_link_libraries(implot_lib PUBLIC imgui_lib)
+
+# Create the MPC tuning GUI executable
+add_executable(mpc_tuning_gui 
+    src/tools/mpc_tuning_gui.cpp
+    src/tools/gui_state.cpp
+    src/tools/mpc_wrapper.cpp
+    src/tools/sim_wrapper.cpp
+)
+target_include_directories(mpc_tuning_gui PRIVATE
+    ${implot_SOURCE_DIR}
+)
+target_link_libraries(mpc_tuning_gui PRIVATE
+    imgui_lib
+    implot_lib
+    Eigen3::Eigen
+    brains2_common
+    brains2_control
+    brains2_sim
+    casadi
+    fatrop
+)
+# Add include path for acados headers used by sim.hpp
+target_include_directories(mpc_tuning_gui PRIVATE
+    ${CMAKE_INSTALL_PREFIX}/../acados/include
+)
+
+
+####################################################################################################
 # create package
 ####################################################################################################
 
