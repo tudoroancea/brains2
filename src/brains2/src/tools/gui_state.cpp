@@ -156,7 +156,7 @@ void GuiState::select_track(int index) {
     if (result.has_value()) {
         current_track = std::make_unique<common::Track>(std::move(result.value()));
         // Reset initial position to start of track
-        initial_s = current_track->s_min() + 5.0;  // Start a bit into the track
+        initial_s = 0.0;  // Start at s = 0
         initial_n = 0.0;
         initial_psi = 0.0;
         std::cout << "Selected track: " << track_info.name << std::endl;

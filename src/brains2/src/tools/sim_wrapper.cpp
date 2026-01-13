@@ -30,7 +30,6 @@ SimWrapper::SimWrapper()
     : sim_(nullptr),
       configured_(false),
       last_total_time_(0.0),
-      total_mpc_time_(0.0),
       total_sim_time_(0.0),
       num_runs_(0) {
 }
@@ -55,17 +54,16 @@ bool SimWrapper::is_configured() const {
     return configured_ && sim_ != nullptr;
 }
 
-ClosedLoopResult SimWrapper::run_closed_loop_simulation(
+OpenLoopSimResult SimWrapper::run_open_loop_simulation(
     control::HighLevelController::State initial_state,
     const common::Track& track,
     const MPCParameters& mpc_params,
-    size_t num_steps
+    const std::vector<control::HighLevelController::Control>& control_sequence
 ) {
-    ClosedLoopResult result;
+    OpenLoopSimResult result;
     result.success = false;
     result.error_message = "";
     result.total_time_ms = 0.0;
-    result.mpc_solve_time_ms = 0.0;
     result.sim_step_time_ms = 0.0;
     result.num_steps = 0;
     
@@ -76,47 +74,23 @@ ClosedLoopResult SimWrapper::run_closed_loop_simulation(
     
     auto start_total = std::chrono::high_resolution_clock::now();
     
-    // Create MPC controller
-    control::HighLevelController mpc(
-        MPCWrapper::HORIZON_NF,
-        mpc_params.model_params,
-        mpc_params.constraints_params,
-        mpc_params.cost_params,
-        mpc_params.solver_params
-    );
-    
     double dt = mpc_params.model_params.dt;
+    size_t num_steps = control_sequence.size();
     
     // Initialize state
     control::HighLevelController::State current_state = initial_state;
     
     // Store trajectory
     result.frenet_states.reserve(num_steps + 1);
-    result.controls.reserve(num_steps);
+    result.controls = control_sequence;  // Store the control sequence
     result.time_stamps.reserve(num_steps + 1);
     
     result.frenet_states.push_back(current_state);
     result.time_stamps.push_back(0.0);
     
     for (size_t step = 0; step < num_steps; step++) {
-        // Solve MPC
-        auto mpc_start = std::chrono::high_resolution_clock::now();
-        auto mpc_result = mpc.compute_control(current_state, track);
-        auto mpc_end = std::chrono::high_resolution_clock::now();
-        
-        auto mpc_duration = std::chrono::duration_cast<std::chrono::microseconds>(mpc_end - mpc_start);
-        result.mpc_solve_time_ms += mpc_duration.count() / 1000.0;
-        
-        if (!mpc_result.has_value()) {
-            result.error_message = "MPC solve failed at step " + std::to_string(step) + ": " + 
-                                   control::to_string(mpc_result.error());
-            result.num_steps = step;
-            return result;
-        }
-        
-        // Get first control
-        control::HighLevelController::Control ctrl = mpc_result.value()[0];
-        result.controls.push_back(ctrl);
+        // Get control from sequence
+        const control::HighLevelController::Control& ctrl = control_sequence[step];
         
         // Convert to Sim state and step
         sim::Sim::State sim_state = frenet_to_sim_state(current_state, track);
@@ -165,7 +139,6 @@ ClosedLoopResult SimWrapper::run_closed_loop_simulation(
     
     // Update timing statistics
     last_total_time_ = result.total_time_ms;
-    total_mpc_time_ += result.mpc_solve_time_ms;
     total_sim_time_ += result.sim_step_time_ms;
     num_runs_++;
     
@@ -176,9 +149,9 @@ double SimWrapper::last_total_time_ms() const {
     return last_total_time_;
 }
 
-double SimWrapper::average_mpc_solve_time_ms() const {
+double SimWrapper::average_sim_step_time_ms() const {
     if (num_runs_ == 0) return 0.0;
-    return total_mpc_time_ / static_cast<double>(num_runs_);
+    return total_sim_time_ / static_cast<double>(num_runs_);
 }
 
 size_t SimWrapper::total_runs() const {
@@ -187,7 +160,6 @@ size_t SimWrapper::total_runs() const {
 
 void SimWrapper::reset_timing_stats() {
     last_total_time_ = 0.0;
-    total_mpc_time_ = 0.0;
     total_sim_time_ = 0.0;
     num_runs_ = 0;
 }

@@ -63,11 +63,10 @@ struct SimParameters {
     }
 };
 
-struct ClosedLoopResult {
+struct OpenLoopSimResult {
     bool success;
     std::string error_message;
     double total_time_ms;
-    double mpc_solve_time_ms;
     double sim_step_time_ms;
     
     // Full simulation trajectory
@@ -91,16 +90,18 @@ public:
     void configure(const SimParameters& params);
     bool is_configured() const;
     
-    ClosedLoopResult run_closed_loop_simulation(
+    // Run open-loop simulation: apply the HLC's predicted control sequence to the full dynamics model
+    // (no feedback, no re-solving MPC at each step)
+    OpenLoopSimResult run_open_loop_simulation(
         control::HighLevelController::State initial_state,
         const common::Track& track,
         const MPCParameters& mpc_params,
-        size_t num_steps = 100  // 5 seconds at 0.05s dt
+        const std::vector<control::HighLevelController::Control>& control_sequence
     );
     
     // Get timing statistics
     double last_total_time_ms() const;
-    double average_mpc_solve_time_ms() const;
+    double average_sim_step_time_ms() const;
     size_t total_runs() const;
     
     void reset_timing_stats();
@@ -112,7 +113,6 @@ private:
     
     // Timing statistics
     double last_total_time_;
-    double total_mpc_time_;
     double total_sim_time_;
     size_t num_runs_;
     
