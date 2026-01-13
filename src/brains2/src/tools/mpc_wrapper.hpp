@@ -85,15 +85,16 @@ struct MPCParameters {
 struct MPCResult {
     bool success;
     control::HighLevelController::Error error_code;
+    std::string error_message;
     double solve_time_ms;
-    
+
     // State and control trajectories
     std::vector<control::HighLevelController::State> state_trajectory;
     std::vector<control::HighLevelController::Control> control_trajectory;
-    
+
     // Time stamps for each step
     std::vector<double> time_stamps;
-    
+
     // Cartesian trajectory for visualization
     std::vector<double> cart_X;
     std::vector<double> cart_Y;

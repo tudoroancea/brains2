@@ -95,15 +95,15 @@ A C++ GUI application using imgui_bundle to compare how MPC controller tuning in
 
 ---
 
-## Phase 6: Real-Time Recomputation
+## Phase 6: Real-Time Recomputation ✓ COMPLETE
 > Trigger recomputation on parameter changes
 
-- [ ] **6.1** Implement parameter change detection
-- [ ] **6.2** Recreate MPC controller when parameters change
-- [ ] **6.3** Re-run open-loop solve on parameter change
-- [ ] **6.4** Re-run closed-loop simulation on parameter change
-- [ ] **6.5** Add debouncing/throttling for rapid slider changes
-- [ ] **6.6** Add "Auto-recompute" toggle (vs manual "Recompute" button)
+- [x] **6.1** Implement parameter change detection
+- [x] **6.2** Recreate MPC controller when parameters change
+- [x] **6.3** Re-run open-loop solve on parameter change
+- [x] **6.4** Re-run closed-loop simulation on parameter change
+- [x] **6.5** Add debouncing/throttling for rapid slider changes
+- [x] **6.6** Add "Auto-recompute" toggle (vs manual "Recompute" button)
 > Trigger recomputation on parameter changes
 
 - [ ] **6.1** Implement parameter change detection
@@ -116,6 +116,15 @@ A C++ GUI application using imgui_bundle to compare how MPC controller tuning in
 ---
 
 ## Phase 7: Polish & UX
+> Final UI improvements and stability
+
+- [ ] **7.1** Add error handling and display for MPC failures
+- [ ] **7.2** Add plot legends and axis labels
+- [ ] **7.3** Add zoom/pan controls for plots
+- [ ] **7.4** Add trajectory comparison mode (overlay old vs new tuning)
+- [ ] **7.5** Add parameter save/load functionality (JSON/YAML)
+- [ ] **7.6** Add keyboard shortcuts for common actions
+- [ ] **7.7** Final testing and bug fixes
 > Final UI improvements and stability
 
 - [ ] **7.1** Add error handling and display for MPC failures

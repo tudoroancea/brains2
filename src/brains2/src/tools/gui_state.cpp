@@ -86,10 +86,10 @@ void GuiState::load_available_tracks() {
                 track_info.length = current_track->length();
                 track_info.min_s = current_track->s_min();
                 track_info.max_s = track_info.min_s + track_info.length;
-                
-                // Compute track bounds
-                compute_track_bounds(track_info);
-                
+
+                // Compute track bounds using the track object
+                compute_track_bounds(track_info, *current_track);
+
                 available_tracks.push_back(track_info);
             } else {
                 std::cerr << "Failed to load track " << name << ": " << common::to_string(result.error()) << std::endl;
@@ -100,46 +100,40 @@ void GuiState::load_available_tracks() {
     }
 }
 
-void GuiState::compute_track_bounds(TrackInfo& track_info) {
+void GuiState::compute_track_bounds(TrackInfo& track_info, const common::Track& track) {
     const size_t n_points = track_info.s_vals.size();
-    
+
     track_info.left_bound_X.resize(n_points);
     track_info.left_bound_Y.resize(n_points);
     track_info.right_bound_X.resize(n_points);
     track_info.right_bound_Y.resize(n_points);
-    
-    // Get the current track for width evaluation
-    if (!current_track) {
-        std::cerr << "No current track for computing bounds" << std::endl;
-        return;
-    }
-    
+
     // Get phi and width values directly from the track object
-    const auto& phi_vals = current_track->get_vals_phi();
-    const auto& width_vals = current_track->get_vals_width();
-    
+    const auto& phi_vals = track.get_vals_phi();
+    const auto& width_vals = track.get_vals_width();
+
     // Verify sizes match
     if (static_cast<size_t>(phi_vals.size()) != n_points || static_cast<size_t>(width_vals.size()) != n_points) {
-        std::cerr << "Size mismatch: n_points=" << n_points 
-                  << ", phi_vals.size()=" << phi_vals.size() 
+        std::cerr << "Size mismatch: n_points=" << n_points
+                  << ", phi_vals.size()=" << phi_vals.size()
                   << ", width_vals.size()=" << width_vals.size() << std::endl;
         return;
     }
-    
+
     for (size_t i = 0; i < n_points; i++) {
         double X = track_info.X_vals[i];
         double Y = track_info.Y_vals[i];
         double phi = phi_vals(static_cast<Eigen::Index>(i));
         double width = width_vals(static_cast<Eigen::Index>(i));
-        
+
         // Compute left and right bounds (perpendicular to centerline)
         double cos_phi = std::cos(phi + M_PI / 2.0);
         double sin_phi = std::sin(phi + M_PI / 2.0);
-        
+
         // Left bound (positive lateral offset)
         track_info.left_bound_X[i] = X + width * cos_phi;
         track_info.left_bound_Y[i] = Y + width * sin_phi;
-        
+
         // Right bound (negative lateral offset)
         track_info.right_bound_X[i] = X - width * cos_phi;
         track_info.right_bound_Y[i] = Y - width * sin_phi;

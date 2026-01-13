@@ -74,6 +74,7 @@ MPCResult MPCWrapper::solve_open_loop(
     
     if (!is_configured()) {
         std::cerr << "MPC not configured" << std::endl;
+        result.error_message = "MPC not configured. Load a track first.";
         return result;
     }
     
@@ -93,7 +94,8 @@ MPCResult MPCWrapper::solve_open_loop(
     
     if (!control_result.has_value()) {
         result.error_code = control_result.error();
-        std::cerr << "MPC solve failed: " << brains2::control::to_string(result.error_code) << std::endl;
+        result.error_message = "MPC solve failed: " + brains2::control::to_string(result.error_code);
+        std::cerr << result.error_message << std::endl;
         return result;
     }
     

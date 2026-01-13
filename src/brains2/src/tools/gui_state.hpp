@@ -68,9 +68,9 @@ public:
     void load_available_tracks();
     void select_track(int index);
     void update_initial_s(double s);
-    
+
 private:
-    void compute_track_bounds(TrackInfo& track_info);
+    void compute_track_bounds(TrackInfo& track_info, const common::Track& track);
 };
 
 }  // namespace tools

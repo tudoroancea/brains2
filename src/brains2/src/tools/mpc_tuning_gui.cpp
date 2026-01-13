@@ -108,6 +108,102 @@ int main(int argc, char* argv[]) {
     double param_tau_max = 200.0;
     double param_car_width = 1.55;
 
+    // Store previous parameters for change detection
+    struct StoredParams {
+        double v_ref = 3.0;
+        double q_s = 10.0, q_n = 20.0, q_psi = 50.0, q_v = 20.0;
+        double r_delta = 2.0, r_delta_dot = 1.0, r_tau = 0.0001;
+        double q_s_f = 10000.0, q_n_f = 20000.0, q_psi_f = 50000.0, q_v_f = 20000.0;
+        double v_max = 10.0;
+        double delta_max = 0.5, delta_dot_max = 1.0;
+        double tau_max = 200.0;
+        double car_width = 1.55;
+    };
+    StoredParams last_params;
+
+    // Debouncing/throttling for rapid slider changes
+    double last_param_change_time = 0.0;
+    const double debounce_delay = 0.3;  // 300ms delay before auto-recomputing
+    bool parameters_changed = false;
+
+    // Helper function to check if parameters changed
+    auto parameters_have_changed = [&]() -> bool {
+        const double eps = 1e-6;
+        return std::abs(param_v_ref - last_params.v_ref) > eps ||
+               std::abs(param_q_s - last_params.q_s) > eps ||
+               std::abs(param_q_n - last_params.q_n) > eps ||
+               std::abs(param_q_psi - last_params.q_psi) > eps ||
+               std::abs(param_q_v - last_params.q_v) > eps ||
+               std::abs(param_r_delta - last_params.r_delta) > eps ||
+               std::abs(param_r_delta_dot - last_params.r_delta_dot) > eps ||
+               std::abs(param_r_tau - last_params.r_tau) > eps ||
+               std::abs(param_q_s_f - last_params.q_s_f) > eps ||
+               std::abs(param_q_n_f - last_params.q_n_f) > eps ||
+               std::abs(param_q_psi_f - last_params.q_psi_f) > eps ||
+               std::abs(param_q_v_f - last_params.q_v_f) > eps ||
+               std::abs(param_v_max - last_params.v_max) > eps ||
+               std::abs(param_delta_max - last_params.delta_max) > eps ||
+               std::abs(param_delta_dot_max - last_params.delta_dot_max) > eps ||
+               std::abs(param_tau_max - last_params.tau_max) > eps ||
+               std::abs(param_car_width - last_params.car_width) > eps;
+    };
+
+    // Helper function to update stored parameters
+    auto update_stored_params = [&]() {
+        last_params.v_ref = param_v_ref;
+        last_params.q_s = param_q_s;
+        last_params.q_n = param_q_n;
+        last_params.q_psi = param_q_psi;
+        last_params.q_v = param_q_v;
+        last_params.r_delta = param_r_delta;
+        last_params.r_delta_dot = param_r_delta_dot;
+        last_params.r_tau = param_r_tau;
+        last_params.q_s_f = param_q_s_f;
+        last_params.q_n_f = param_q_n_f;
+        last_params.q_psi_f = param_q_psi_f;
+        last_params.q_v_f = param_q_v_f;
+        last_params.v_max = param_v_max;
+        last_params.delta_max = param_delta_max;
+        last_params.delta_dot_max = param_delta_dot_max;
+        last_params.tau_max = param_tau_max;
+        last_params.car_width = param_car_width;
+    };
+
+    // Helper function to configure MPC with current parameters
+    auto configure_mpc = [&]() -> brains2::tools::MPCParameters {
+        brains2::tools::MPCParameters params = mpc_wrapper.get_parameters();
+        params.cost_params.v_ref = param_v_ref;
+        params.cost_params.q_s = param_q_s;
+        params.cost_params.q_n = param_q_n;
+        params.cost_params.q_psi = param_q_psi;
+        params.cost_params.q_v = param_q_v;
+        params.cost_params.r_delta = param_r_delta;
+        params.cost_params.r_delta_dot = param_r_delta_dot;
+        params.cost_params.r_tau = param_r_tau;
+        params.cost_params.q_s_f = param_q_s_f;
+        params.cost_params.q_n_f = param_q_n_f;
+        params.cost_params.q_psi_f = param_q_psi_f;
+        params.cost_params.q_v_f = param_q_v_f;
+        params.constraints_params.v_max = param_v_max;
+        params.constraints_params.delta_max = param_delta_max;
+        params.constraints_params.delta_dot_max = param_delta_dot_max;
+        params.constraints_params.tau_max = param_tau_max;
+        params.constraints_params.car_width = param_car_width;
+        mpc_wrapper.configure(params);
+        return params;
+    };
+
+    // Helper function to get initial state from GUI
+    auto get_initial_state = [&]() -> brains2::control::HighLevelController::State {
+        return brains2::control::HighLevelController::State{
+            gui_state.initial_s,
+            gui_state.initial_n,
+            gui_state.initial_psi,
+            gui_state.initial_v,
+            0.0  // initial delta
+        };
+    };
+
     bool done = false;
     while (!done) {
         SDL_Event event;
@@ -127,6 +223,29 @@ int main(int argc, char* argv[]) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
+
+        // Auto-recompute logic: check for parameter changes and debounce
+        if (auto_recompute && gui_state.current_track && mpc_configured) {
+            if (parameters_have_changed()) {
+                double current_time = ImGui::GetTime();
+
+                // First change detected - start debounce timer
+                if (!parameters_changed) {
+                    parameters_changed = true;
+                    last_param_change_time = current_time;
+                }
+                // Check if debounce delay has passed
+                else if (current_time - last_param_change_time > debounce_delay) {
+                    // Re-run open-loop MPC solve
+                    configure_mpc();
+                    last_mpc_result = mpc_wrapper.solve_open_loop(get_initial_state(), *gui_state.current_track);
+
+                    // Update stored parameters
+                    update_stored_params();
+                    parameters_changed = false;
+                }
+            }
+        }
 
         // Main window with controls on the left
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
@@ -306,36 +425,16 @@ int main(int argc, char* argv[]) {
         
         if (ImGui::Button("Solve Open-Loop MPC")) {
             if (gui_state.current_track && mpc_configured) {
-                brains2::tools::MPCParameters params = mpc_wrapper.get_parameters();
-                params.cost_params.v_ref = param_v_ref;
-                params.cost_params.q_s = param_q_s;
-                params.cost_params.q_n = param_q_n;
-                params.cost_params.q_psi = param_q_psi;
-                params.cost_params.q_v = param_q_v;
-                params.cost_params.r_delta = param_r_delta;
-                params.cost_params.r_delta_dot = param_r_delta_dot;
-                params.cost_params.r_tau = param_r_tau;
-                params.cost_params.q_s_f = param_q_s_f;
-                params.cost_params.q_n_f = param_q_n_f;
-                params.cost_params.q_psi_f = param_q_psi_f;
-                params.cost_params.q_v_f = param_q_v_f;
-                params.constraints_params.v_max = param_v_max;
-                params.constraints_params.delta_max = param_delta_max;
-                params.constraints_params.delta_dot_max = param_delta_dot_max;
-                params.constraints_params.tau_max = param_tau_max;
-                params.constraints_params.car_width = param_car_width;
-
-                mpc_wrapper.configure(params);
-
-                brains2::control::HighLevelController::State initial_state = {
-                    gui_state.initial_s,
-                    gui_state.initial_n,
-                    gui_state.initial_psi,
-                    gui_state.initial_v,
-                    0.0  // initial delta
-                };
-
-                last_mpc_result = mpc_wrapper.solve_open_loop(initial_state, *gui_state.current_track);
+                configure_mpc();
+                last_mpc_result = mpc_wrapper.solve_open_loop(get_initial_state(), *gui_state.current_track);
+                update_stored_params();
+                parameters_changed = false;
+            } else if (!gui_state.current_track) {
+                last_mpc_result.success = false;
+                last_mpc_result.error_message = "No track loaded! Click 'Load Track' first.";
+            } else if (!mpc_configured) {
+                last_mpc_result.success = false;
+                last_mpc_result.error_message = "MPC not configured! Click 'Load Track' first.";
             }
         }
         
@@ -356,37 +455,11 @@ int main(int argc, char* argv[]) {
                 brains2::tools::SimParameters sim_params;
                 sim_wrapper.configure(sim_params);
 
-                brains2::tools::MPCParameters params = mpc_wrapper.get_parameters();
-                params.cost_params.v_ref = param_v_ref;
-                params.cost_params.q_s = param_q_s;
-                params.cost_params.q_n = param_q_n;
-                params.cost_params.q_psi = param_q_psi;
-                params.cost_params.q_v = param_q_v;
-                params.cost_params.r_delta = param_r_delta;
-                params.cost_params.r_delta_dot = param_r_delta_dot;
-                params.cost_params.r_tau = param_r_tau;
-                params.cost_params.q_s_f = param_q_s_f;
-                params.cost_params.q_n_f = param_q_n_f;
-                params.cost_params.q_psi_f = param_q_psi_f;
-                params.cost_params.q_v_f = param_q_v_f;
-                params.constraints_params.v_max = param_v_max;
-                params.constraints_params.delta_max = param_delta_max;
-                params.constraints_params.delta_dot_max = param_delta_dot_max;
-                params.constraints_params.tau_max = param_tau_max;
-                params.constraints_params.car_width = param_car_width;
-
-                mpc_wrapper.configure(params);
-
-                brains2::control::HighLevelController::State initial_state = {
-                    gui_state.initial_s,
-                    gui_state.initial_n,
-                    gui_state.initial_psi,
-                    gui_state.initial_v,
-                    0.0  // initial delta
-                };
-
+                brains2::tools::MPCParameters params = configure_mpc();
                 last_cl_result = sim_wrapper.run_closed_loop_simulation(
-                    initial_state, *gui_state.current_track, params, static_cast<size_t>(sim_steps));
+                    get_initial_state(), *gui_state.current_track, params, static_cast<size_t>(sim_steps));
+                update_stored_params();
+                parameters_changed = false;
             }
         }
         
@@ -422,81 +495,123 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowPos(ImVec2(360, 0), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(800, 500), ImGuiCond_FirstUseEver);
         ImGui::Begin("Track Visualization");
-        
-        bool has_valid_track = gui_state.current_track && 
+
+        bool has_valid_track = gui_state.current_track &&
                                gui_state.selected_track_index >= 0 &&
                                gui_state.selected_track_index < static_cast<int>(gui_state.available_tracks.size());
-        
+
         if (has_valid_track && ImPlot::BeginPlot("Track View", ImVec2(-1, -1))) {
             ImPlot::SetupAxes("X (m)", "Y (m)");
-            ImPlot::SetupAxisLimits(ImAxis_X1, -50, 50, ImGuiCond_Once);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, -50, 50, ImGuiCond_Once);
-            
+
+            // Auto-scale axes based on track data
+            const auto& track_info = gui_state.available_tracks[gui_state.selected_track_index];
+            double min_x = 0, max_x = 0, min_y = 0, max_y = 0;
+            bool has_bounds = false;
+
+            auto update_bounds = [&](const std::vector<double>& xs, const std::vector<double>& ys) {
+                for (size_t i = 0; i < xs.size() && i < ys.size(); i++) {
+                    if (!has_bounds) {
+                        min_x = max_x = xs[i];
+                        min_y = max_y = ys[i];
+                        has_bounds = true;
+                    } else {
+                        min_x = std::min(min_x, xs[i]);
+                        max_x = std::max(max_x, xs[i]);
+                        min_y = std::min(min_y, ys[i]);
+                        max_y = std::max(max_y, ys[i]);
+                    }
+                }
+            };
+
+            // Get track bounds
+            if (gui_state.show_centerline && !track_info.X_vals.empty()) {
+                update_bounds(track_info.X_vals, track_info.Y_vals);
+            }
+            if (gui_state.show_track_bounds && !track_info.left_bound_X.empty()) {
+                update_bounds(track_info.left_bound_X, track_info.left_bound_Y);
+                update_bounds(track_info.right_bound_X, track_info.right_bound_Y);
+            }
+            // Get trajectory bounds
+            if (last_mpc_result.success && !last_mpc_result.cart_X.empty()) {
+                update_bounds(last_mpc_result.cart_X, last_mpc_result.cart_Y);
+            }
+            if (last_cl_result.success && !last_cl_result.cart_X.empty()) {
+                update_bounds(last_cl_result.cart_X, last_cl_result.cart_Y);
+            }
+
+            // Add padding and set axis limits
+            if (has_bounds) {
+                double padding_x = (max_x - min_x) * 0.2;
+                double padding_y = (max_y - min_y) * 0.2;
+                if (padding_x < 5.0) padding_x = 5.0;
+                if (padding_y < 5.0) padding_y = 5.0;
+                ImPlot::SetupAxisLimits(ImAxis_X1, min_x - padding_x, max_x + padding_x, ImGuiCond_Once);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, min_y - padding_y, max_y + padding_y, ImGuiCond_Once);
+            }
+
             // Plot track centerline
             if (gui_state.show_centerline) {
-                const auto& track_info = gui_state.available_tracks[gui_state.selected_track_index];
                 if (!track_info.X_vals.empty()) {
-                    ImPlot::PlotLine("Centerline", 
-                                    track_info.X_vals.data(), 
-                                    track_info.Y_vals.data(), 
+                    ImPlot::PlotLine("Centerline",
+                                    track_info.X_vals.data(),
+                                    track_info.Y_vals.data(),
                                     static_cast<int>(track_info.X_vals.size()));
                 }
             }
-            
+
             // Plot track bounds
             if (gui_state.show_track_bounds) {
-                const auto& track_info = gui_state.available_tracks[gui_state.selected_track_index];
                 if (!track_info.left_bound_X.empty()) {
-                    ImPlot::PlotLine("Left Bound", 
-                                    track_info.left_bound_X.data(), 
-                                    track_info.left_bound_Y.data(), 
+                    ImPlot::PlotLine("Left Bound",
+                                    track_info.left_bound_X.data(),
+                                    track_info.left_bound_Y.data(),
                                     static_cast<int>(track_info.left_bound_X.size()),
                                     ImPlotLineFlags_None);
-                    ImPlot::PlotLine("Right Bound", 
-                                    track_info.right_bound_X.data(), 
-                                    track_info.right_bound_Y.data(), 
+                    ImPlot::PlotLine("Right Bound",
+                                    track_info.right_bound_X.data(),
+                                    track_info.right_bound_Y.data(),
                                     static_cast<int>(track_info.right_bound_X.size()),
                                     ImPlotLineFlags_None);
                 }
             }
-            
+
             // Plot open-loop trajectory
             if (last_mpc_result.success && !last_mpc_result.cart_X.empty()) {
-                ImPlot::PlotLine("Open-Loop Trajectory", 
-                                last_mpc_result.cart_X.data(), 
-                                last_mpc_result.cart_Y.data(), 
+                ImPlot::PlotLine("Open-Loop Trajectory (Green)",
+                                last_mpc_result.cart_X.data(),
+                                last_mpc_result.cart_Y.data(),
                                 static_cast<int>(last_mpc_result.cart_X.size()));
             }
-            
+
             // Plot closed-loop trajectory
             if (last_cl_result.success && !last_cl_result.cart_X.empty()) {
-                ImPlot::PlotLine("Closed-Loop Trajectory", 
-                                last_cl_result.cart_X.data(), 
-                                last_cl_result.cart_Y.data(), 
+                ImPlot::PlotLine("Closed-Loop Trajectory (Yellow)",
+                                last_cl_result.cart_X.data(),
+                                last_cl_result.cart_Y.data(),
                                 static_cast<int>(last_cl_result.cart_X.size()));
             }
-            
+
             // Plot start position
             if (gui_state.show_start_position && gui_state.current_track) {
                 double start_X = gui_state.current_track->eval_X(gui_state.initial_s);
                 double start_Y = gui_state.current_track->eval_Y(gui_state.initial_s);
                 double start_phi = gui_state.current_track->eval_phi(gui_state.initial_s);
-                
+
                 // Draw a marker at start position
                 ImPlot::PlotScatter("Start", &start_X, &start_Y, 1);
-                
+
                 // Draw heading arrow
                 double arrow_length = 2.0;
                 double arrow_X[2] = {start_X, start_X + arrow_length * std::cos(start_phi)};
                 double arrow_Y[2] = {start_Y, start_Y + arrow_length * std::sin(start_phi)};
                 ImPlot::PlotLine("Heading", arrow_X, arrow_Y, 2);
             }
-            
+
             ImPlot::EndPlot();
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No track loaded");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No track loaded. Click 'Load Track' to begin.");
         }
-        
+
         ImGui::End();
 
         // State plots
@@ -573,33 +688,47 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowPos(ImVec2(360, 510), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(1230, 480), ImGuiCond_FirstUseEver);
         ImGui::Begin("Status");
-        ImGui::Text("MPC Tuning GUI - Phase 5: Parameter Tuning Interface");
+        ImGui::Text("MPC Tuning GUI - Phase 6: Real-Time Recomputation");
         ImGui::Separator();
-        
+
         // MPC status
         if (mpc_configured) {
             ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f), "MPC: Configured");
         } else {
             ImGui::TextColored(ImVec4(0.8f, 0.3f, 0.3f, 1.0f), "MPC: Not Configured");
         }
-        
+
         if (last_mpc_result.success) {
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f), " | Open-Loop: %.2f ms", last_mpc_result.solve_time_ms);
-        } else if (last_mpc_result.solve_time_ms > 0) {
+        } else if (!last_mpc_result.error_message.empty()) {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.8f, 0.3f, 0.3f, 1.0f), " | Open-Loop failed");
+            ImGui::TextColored(ImVec4(0.8f, 0.3f, 0.3f, 1.0f), " | Error: %s", last_mpc_result.error_message.c_str());
         }
-        
+
         // Closed-loop status
         if (last_cl_result.success) {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f), " | Closed-Loop: %.2f ms (%zu steps)", 
+            ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f), " | Closed-Loop: %.2f ms (%zu steps)",
                               last_cl_result.total_time_ms, last_cl_result.num_steps);
         } else if (last_cl_result.total_time_ms > 0) {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.8f, 0.3f, 0.3f, 1.0f), " | Closed-Loop failed: %s", 
+            ImGui::TextColored(ImVec4(0.8f, 0.3f, 0.3f, 1.0f), " | Closed-Loop failed: %s",
                               last_cl_result.error_message.c_str());
+        }
+
+        // Auto-recompute status
+        ImGui::SameLine();
+        if (auto_recompute) {
+            if (parameters_changed) {
+                double time_until_recompute = debounce_delay - (ImGui::GetTime() - last_param_change_time);
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), " | Auto-recompute: %.1fs",
+                                  std::max(0.0, time_until_recompute));
+            } else {
+                ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f), " | Auto-recompute: ON");
+            }
+        } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), " | Auto-recompute: OFF");
         }
         
         ImGui::Separator();
@@ -663,14 +792,54 @@ int main(int argc, char* argv[]) {
         ImGui::NextColumn();
 
         ImGui::Columns(1);
-        
+
         ImGui::Separator();
+
+        // Debug/Troubleshooting section
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Debug Info:");
+        ImGui::Separator();
+
+        // Track info
+        if (gui_state.current_track) {
+            ImGui::Text("Track loaded: %s", gui_state.available_tracks[gui_state.selected_track_index].name.c_str());
+            ImGui::Text("Track length: %.2f m", gui_state.current_track->length());
+            ImGui::Text("Track points: %zu", gui_state.available_tracks[gui_state.selected_track_index].X_vals.size());
+
+            // Check if track has valid coordinates
+            const auto& track_info = gui_state.available_tracks[gui_state.selected_track_index];
+            if (!track_info.X_vals.empty()) {
+                double min_x = *std::min_element(track_info.X_vals.begin(), track_info.X_vals.end());
+                double max_x = *std::max_element(track_info.X_vals.begin(), track_info.X_vals.end());
+                double min_y = *std::min_element(track_info.Y_vals.begin(), track_info.Y_vals.end());
+                double max_y = *std::max_element(track_info.Y_vals.begin(), track_info.Y_vals.end());
+                ImGui::Text("Track X range: [%.1f, %.1f]", min_x, max_x);
+                ImGui::Text("Track Y range: [%.1f, %.1f]", min_y, max_y);
+            }
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "No track loaded!");
+        }
+
+        // MPC debug info
+        ImGui::Spacing();
+        ImGui::Text("MPC configured: %s", mpc_configured ? "Yes" : "No");
+        if (!last_mpc_result.success && !last_mpc_result.error_message.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Last error: %s", last_mpc_result.error_message.c_str());
+        }
+
+        // Trajectory debug info
+        ImGui::Spacing();
+        ImGui::Text("Open-loop states: %zu", last_mpc_result.state_trajectory.size());
+        ImGui::Text("Open-loop points: %zu", last_mpc_result.cart_X.size());
+        ImGui::Text("Closed-loop points: %zu", last_cl_result.cart_X.size());
         ImGui::TextWrapped("Instructions:");
-        ImGui::BulletText("Adjust parameters using the sliders on the left");
-        ImGui::BulletText("Click 'Solve Open-Loop MPC' for single-shot trajectory prediction");
-        ImGui::BulletText("Click 'Run Closed-Loop Sim' for full MPC+Sim simulation");
-        ImGui::BulletText("Open-loop: green, Closed-loop: yellow on track plot");
-        ImGui::BulletText("State plots show OL (solid) and CL (dashed) trajectories");
+        ImGui::BulletText("1. Select a track from the dropdown and click 'Load Track'");
+        ImGui::BulletText("2. Adjust MPC parameters in the Cost/Constraint sections");
+        ImGui::BulletText("3. Click 'Solve Open-Loop MPC' to see predicted trajectory");
+        ImGui::BulletText("4. Click 'Run Closed-Loop Sim' for full MPC+Sim simulation");
+        ImGui::BulletText("5. Enable 'Auto-recompute' for real-time parameter tuning");
+        ImGui::BulletText("6. Use mouse wheel to zoom, right-click drag to pan plots");
+        ImGui::Spacing();
+        ImGui::TextWrapped("Tip: If nothing appears on the track plot, check the Debug Info section for errors.");
         
         ImGui::End();
 
