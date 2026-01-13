@@ -24,11 +24,11 @@ A C++ GUI application using imgui_bundle to compare how MPC controller tuning in
 ## Phase 1: Project Setup & Basic Window
 > Set up build system and create a basic imgui window
 
-- [ ] **1.1** Create `src/brains2/src/tools/` directory for the tuning GUI
-- [ ] **1.2** Create `CMakeLists.txt` for the tuning tool with FetchContent for imgui_bundle
-- [ ] **1.3** Create basic `mpc_tuning_gui.cpp` with imgui_bundle hello world window
-- [ ] **1.4** Integrate into main `src/brains2/CMakeLists.txt` build system
-- [ ] **1.5** Verify the application builds and displays a window
+- [x] **1.1** Create `src/brains2/src/tools/` directory for the tuning GUI
+- [x] **1.2** Create `CMakeLists.txt` for the tuning tool with FetchContent for imgui_bundle
+- [x] **1.3** Create basic `mpc_tuning_gui.cpp` with imgui_bundle hello world window
+- [x] **1.4** Integrate into main `src/brains2/CMakeLists.txt` build system
+- [x] **1.5** Verify the application builds and displays a window
 
 ---
 
