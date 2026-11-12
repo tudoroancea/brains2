@@ -3,10 +3,12 @@ subdirs:
     packages:
       __glibc: "2.39"
       __linux: "5.15"
+      __archspec: "1 x86_64"
   linux-aarch64:
     packages:
       __glibc: "2.39"
       __linux: "5.15"
+      __archspec: "1 aarch64"
   osx-arm64:
     packages:
       __osx: "15.0"

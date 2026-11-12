@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 #include <tuple>
-#include "ament_index_cpp/get_package_share_directory.hpp"
+#include "ament_index_cpp/get_package_share_path.hpp"
 #include "brains2/common/cone_color.hpp"
 #include "brains2/common/marker_color.hpp"
 #include "brains2/common/math.hpp"
@@ -38,7 +38,7 @@
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_srvs/srv/empty.hpp"
-#include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_broadcaster.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "yaml-cpp/yaml.h"
@@ -367,8 +367,8 @@ private:
     }
 
     std::string get_local_mesh_path(std::string mesh_file) {
-        return "file://" + ament_index_cpp::get_package_share_directory("brains2") + "/meshes/" +
-               mesh_file;
+        return "file://" +
+               (ament_index_cpp::get_package_share_path("brains2") / "meshes" / mesh_file).string();
     }
 
     std::string get_mesh_path(std::string mesh_file) {
